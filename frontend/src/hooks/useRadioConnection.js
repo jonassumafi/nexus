@@ -7,7 +7,13 @@ import { buildSpacesuitChain } from '../utils/spacesuitFilter';
 // spacesuit-filtered local mic stream. Returns the state RadioPanel needs
 // plus join/leave/PTT methods.
 
-export function useRadioConnection({ voiceProfile, voiceProfileVersion = 0, pttKey = 'v' }) {
+export function useRadioConnection({
+  voiceProfile,
+  voiceProfileVersion = 0,
+  pttKey = 'v',
+  micDeviceId = null,
+  outputDeviceId = null,
+}) {
   const { socket } = useSocketContext();
 
   const [tunedFrequency, setTunedFrequency] = useState(null);
@@ -15,6 +21,15 @@ export function useRadioConnection({ voiceProfile, voiceProfileVersion = 0, pttK
   const [transmittingPeerIds, setTransmittingPeerIds] = useState([]);
   const [isPTTActive, setIsPTTActive] = useState(false);
   const [micGranted, setMicGranted] = useState(false);
+  // Coarse-grained browser-level mic permission state so the panel can nudge
+  // the operator when the prompt was missed or denied. 'unknown' means the
+  // Permissions API isn't available (Safari) — treat it as neutral.
+  const [micPermission, setMicPermission] = useState('unknown');
+
+  const micDeviceIdRef    = useRef(micDeviceId);
+  const outputDeviceIdRef = useRef(outputDeviceId);
+  useEffect(() => { micDeviceIdRef.current = micDeviceId; }, [micDeviceId]);
+  useEffect(() => { outputDeviceIdRef.current = outputDeviceId; }, [outputDeviceId]);
 
   const peerConnsRef    = useRef({});  // socketId -> RTCPeerConnection
   const peerConnPromisesRef = useRef({});  // socketId -> in-flight createPeerConnection promise
@@ -58,14 +73,24 @@ export function useRadioConnection({ voiceProfile, voiceProfileVersion = 0, pttK
     let stream = micStreamRef.current;
     if (!stream) {
       try {
+        const audioConstraints = {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        };
+        if (micDeviceIdRef.current) {
+          audioConstraints.deviceId = { exact: micDeviceIdRef.current };
+        }
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          audio: audioConstraints,
           video: false,
         });
         micStreamRef.current = stream;
         setMicGranted(true);
+        setMicPermission('granted');
       } catch (err) {
         console.error('[Radio] mic permission denied:', err);
+        setMicPermission('denied');
         return null;
       }
     }
@@ -113,6 +138,96 @@ export function useRadioConnection({ voiceProfile, voiceProfileVersion = 0, pttK
     filterChainRef.current.setProfile(profileRef.current);
   }, [voiceProfileVersion]);
 
+  // ── Input device switch ─────────────────────────────────────────────────
+  // When the operator picks a different mic in Settings, tear down the mic
+  // + filter chain (keeping the AudioContext alive), rebuild with the new
+  // deviceId, then replaceTrack() on every peer connection so the far side
+  // keeps receiving without a full ICE renegotiation. Skips work if no chain
+  // has been built yet (initial mount / not yet tuned).
+  useEffect(() => {
+    if (!filteredStreamRef.current) return;
+    let cancelled = false;
+    (async () => {
+      try { filteredStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
+      try { filterChainRef.current?.dispose(); } catch {}
+      try { micGainRef.current?.disconnect(); } catch {}
+      try { analyserSourceRef.current?.disconnect(); } catch {}
+      try { analyserRef.current?.disconnect(); } catch {}
+      try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
+
+      filteredStreamRef.current = null;
+      filterChainRef.current    = null;
+      micGainRef.current        = null;
+      analyserRef.current       = null;
+      analyserSourceRef.current = null;
+      micStreamRef.current      = null;
+
+      const newStream = await ensureMicAndChain();
+      if (cancelled || !newStream) return;
+
+      const newTrack = newStream.getAudioTracks()[0];
+      if (!newTrack) return;
+
+      for (const pc of Object.values(peerConnsRef.current)) {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (sender) {
+          try { await sender.replaceTrack(newTrack); }
+          catch (err) { console.error('[Radio] replaceTrack failed:', err); }
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // ensureMicAndChain is intentionally omitted — its identity changes on
+    // every render and we only want to fire on deviceId change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [micDeviceId]);
+
+  // ── Output device switch ────────────────────────────────────────────────
+  // Chromium supports setSinkId directly on the <audio> element. Firefox
+  // requires media.setsinkid.enabled; Safari doesn't support it at all.
+  // Failures are silently swallowed — the fallback is the OS default output.
+  useEffect(() => {
+    for (const audio of Object.values(peerAudiosRef.current)) {
+      if (typeof audio.setSinkId === 'function') {
+        audio.setSinkId(outputDeviceId || '').catch(() => {});
+      }
+    }
+  }, [outputDeviceId]);
+
+  // ── Mic permission tracking ─────────────────────────────────────────────
+  // Uses the Permissions API where available so the panel can render an
+  // affordance ("GRANT MIC ACCESS") when the browser prompt was missed.
+  useEffect(() => {
+    if (!navigator.permissions?.query) return;
+    let permStatus = null;
+    let cancelled = false;
+    navigator.permissions.query({ name: 'microphone' }).then((p) => {
+      if (cancelled) return;
+      permStatus = p;
+      setMicPermission(p.state);
+      p.onchange = () => setMicPermission(p.state);
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+      if (permStatus) permStatus.onchange = null;
+    };
+  }, []);
+
+  const requestMicPermission = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      // Release immediately — the real chain builds its own stream with the
+      // preferred deviceId + constraints via ensureMicAndChain when tuning.
+      stream.getTracks().forEach(t => t.stop());
+      setMicPermission('granted');
+      return true;
+    } catch (err) {
+      console.error('[Radio] mic permission request denied:', err);
+      setMicPermission('denied');
+      return false;
+    }
+  }, []);
+
   const createPeerConnection = useCallback(async (peerSocketId) => {
     if (peerConnsRef.current[peerSocketId]) return peerConnsRef.current[peerSocketId];
     if (peerConnPromisesRef.current[peerSocketId]) return peerConnPromisesRef.current[peerSocketId];
@@ -153,6 +268,14 @@ export function useRadioConnection({ voiceProfile, voiceProfileVersion = 0, pttK
         const audio = new Audio();
         audio.srcObject = e.streams[0];
         audio.autoplay = true;
+        // Apply the selected output device if the browser supports the
+        // spec'd setSinkId API (Chromium yes, Safari no, Firefox behind a
+        // flag). Failures are non-fatal — audio still plays through default.
+        if (outputDeviceIdRef.current && typeof audio.setSinkId === 'function') {
+          audio.setSinkId(outputDeviceIdRef.current).catch((err) => {
+            console.error('[Radio] setSinkId failed:', err);
+          });
+        }
         audio.play().catch(() => {});
         peerAudiosRef.current[peerSocketId] = audio;
       };
@@ -542,6 +665,8 @@ export function useRadioConnection({ voiceProfile, voiceProfileVersion = 0, pttK
     transmittingPeerIds,
     isPTTActive,
     micGranted,
+    micPermission,
+    requestMicPermission,
     joinFrequency,
     leaveFrequency,
     startPTT,

@@ -708,7 +708,10 @@ function ReadOnlySchematic({ ship, schemImg }) {
 
   return (
     <>
-      <div style={{ position: 'relative', width: '100%', maxWidth: 520, margin: '0 auto' }}>
+      <div style={{
+        position: 'relative', width: '100%', maxWidth: 520, margin: '0 auto',
+        padding: 8, background: '#040D15', boxSizing: 'border-box',
+      }}>
         <img
           src={schemImg}
           alt=""
@@ -716,11 +719,12 @@ function ReadOnlySchematic({ ship, schemImg }) {
             width: '100%',
             height: 'auto',
             display: 'block',
+            objectFit: 'contain',
             filter: 'invert(1) sepia(1) saturate(4) hue-rotate(170deg) brightness(0.5) contrast(1.3)',
           }}
         />
         <div style={{
-          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+          position: 'absolute', top: 8, left: 8, right: 8, bottom: 8,
           pointerEvents: 'none',
         }}>
           {nodes.map((n, i) => (
@@ -792,7 +796,7 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
     const onKey = (e) => {
       const t = e.target;
       const isInput = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId !== null) {
+      if (e.key === 'Delete' && selectedNodeId !== null) {
         if (isInput) return;
         e.preventDefault();
         setNodes(prev => prev.filter(n => n.id !== selectedNodeId));
@@ -807,6 +811,8 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
   }, [selectedNodeId]);
 
   function placeNode(e) {
+    // Right-click places a node — suppress the browser's own context menu.
+    e.preventDefault();
     if (!activeRole) return;
     if (!schematicRef.current) return;
     const rect = schematicRef.current.getBoundingClientRect();
@@ -846,10 +852,8 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
       }
     };
     const onUp = () => {
-      const ds = dragState.current;
-      if (ds && !ds.moved) {
-        setSelectedNodeId(prev => prev === ds.nodeId ? null : ds.nodeId);
-      }
+      // Selection is handled by a separate onClick on the node — mouse-down
+      // now only owns the drag lifecycle.
       dragState.current = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -859,10 +863,10 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
   }
 
   function onNodeContextMenu(e, node) {
+    // Right-click on a node deselects (no longer deletes — Delete key does that).
     e.preventDefault();
     e.stopPropagation();
-    setNodes(prev => prev.filter(n => n.id !== node.id));
-    if (selectedNodeId === node.id) setSelectedNodeId(null);
+    setSelectedNodeId(null);
   }
 
   function nodeLabel(node) {
@@ -886,10 +890,28 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
 
   return (
     <>
+      {/* Instructions panel — matches ShipRegistration exactly so operators
+          who registered a ship recognize the same UX when editing later. */}
+      <div style={{
+        background: '#0D2030', border: '1px solid #1A3D55',
+        padding: '10px 14px', fontSize: 16, color: '#66AADD',
+        lineHeight: 1.8, letterSpacing: '0.06em',
+        marginBottom: 12,
+      }}>
+        <div style={{ color: '#99CCFF', marginBottom: 4 }}>HOW TO CONFIGURE YOUR CREW</div>
+        <div style={{ color: '#1A3D55' }}>──────────────────────────────────────────</div>
+        <div>1. Select a role from the palette</div>
+        <div>2. Right-click schematic to place</div>
+        <div>3. Left-click a node to select it</div>
+        <div>4. Drag a selected node to move it</div>
+        <div>5. Right-click a node to deselect</div>
+        <div>6. Press DELETE to remove selected</div>
+        <div>7. Same role can be placed multiple times</div>
+      </div>
       <div
         ref={schematicRef}
-        onClick={placeNode}
-        onContextMenu={e => e.preventDefault()}
+        onContextMenu={placeNode}
+        onClick={() => setSelectedNodeId(null)}
         style={{
           position: 'relative', width: '100%', maxWidth: 520, margin: '0 auto',
           cursor: activeRole ? 'crosshair' : 'default',
@@ -921,6 +943,10 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
                 key={n.id}
                 className="nexus-node"
                 onMouseDown={e => onNodeMouseDown(e, n)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedNodeId(prev => prev === n.id ? null : n.id);
+                }}
                 onContextMenu={e => onNodeContextMenu(e, n)}
                 onMouseEnter={() => setHoveredId(n.id)}
                 onMouseLeave={() => setHoveredId(null)}

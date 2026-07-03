@@ -312,7 +312,7 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
     const onKey = (e) => {
       const t = e.target;
       const isInput = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId !== null) {
+      if (e.key === 'Delete' && selectedNodeId !== null) {
         if (isInput) return;
         e.preventDefault();
         removeNode(selectedNodeId);
@@ -336,6 +336,8 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
   }
 
   function placeNode(e) {
+    // Right-click places a node — suppress the browser's own context menu.
+    e.preventDefault();
     if (!activeRole) return;
     if (!schematicRef.current) return;
     const rect = schematicRef.current.getBoundingClientRect();
@@ -385,11 +387,8 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
       }
     };
     const onUp = () => {
-      const ds = dragState.current;
-      if (ds && !ds.moved) {
-        // It was a click — toggle selection
-        setSelectedNodeId(prev => prev === ds.nodeId ? null : ds.nodeId);
-      }
+      // Selection is handled by a separate onClick on the node — mouse-down
+      // now only owns the drag lifecycle.
       dragState.current = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -399,10 +398,10 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
   }
 
   function onNodeContextMenu(e, node) {
+    // Right-click on a node deselects (no longer deletes — Delete key does that).
     e.preventDefault();
     e.stopPropagation();
-    removeNode(node.id);
-    if (selectedNodeId === node.id) setSelectedNodeId(null);
+    setSelectedNodeId(null);
   }
 
   // Per-role node count for number label
@@ -697,19 +696,22 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
           }}>
             <div style={{ color: '#99CCFF', marginBottom: 4 }}>HOW TO CONFIGURE YOUR CREW</div>
             <div style={{ color: '#1A3D55' }}>──────────────────────────────────────────</div>
-            <div>1. Select a role from the palette below</div>
-            <div>2. Click on the schematic to place it</div>
-            <div>3. Click a placed node to select it</div>
-            <div>4. Press DELETE to remove selected node</div>
-            <div>5. Drag any node to reposition it</div>
-            <div>6. Same role can be placed multiple times</div>
+            <div>1. Select a role from the palette</div>
+            <div>2. Right-click schematic to place</div>
+            <div>3. Left-click a node to select it</div>
+            <div>4. Drag a selected node to move it</div>
+            <div>5. Right-click a node to deselect</div>
+            <div>6. Press DELETE to remove selected</div>
+            <div>7. Same role can be placed multiple times</div>
           </div>
 
-          {/* Schematic */}
+          {/* Schematic — right-click places, left-click on empty space
+              deselects. Node clicks stopPropagation so they don't bubble to
+              this handler. */}
           <div
             ref={schematicRef}
-            onClick={placeNode}
-            onContextMenu={e => e.preventDefault()}
+            onContextMenu={placeNode}
+            onClick={() => setSelectedNodeId(null)}
             style={{
               position: 'relative', width: '100%', maxWidth: '80%', margin: '0 auto',
               background: '#000',
@@ -751,6 +753,10 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
                     <div
                       key={n.id}
                       onMouseDown={e => onNodeMouseDown(e, n)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedNodeId(prev => prev === n.id ? null : n.id);
+                      }}
                       onContextMenu={e => onNodeContextMenu(e, n)}
                       onMouseEnter={() => setHoveredNodeId(n.id)}
                       onMouseLeave={() => setHoveredNodeId(null)}

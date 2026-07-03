@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
-import { useRadioConnection } from '../hooks/useRadioConnection';
 import {
   VOICE_PROFILE_RANGES,
   randomVoiceProfile,
@@ -41,82 +40,63 @@ const FIELD_DISPLAY = {
 
 const FONT = "'JetBrains Mono', 'Courier New', Courier, monospace";
 
-const PANEL_BG       = '#06121C';
-const HEADER_BG      = '#0A1A28';
-const FREQ_BG        = '#08141F';
-const SOFT_DIVIDER   = '#1A3D55';
-const PANEL_BORDER   = '#2A6A9A';
+// Every child container is transparent so the texture behind shows through
+// the whole panel. Dividers are semi-transparent black — the design calls for
+// slightly lighter divisions further down (0.12 / 0.10) but a single value
+// simplifies the JSX and matches the reference visually.
+const PANEL_BG       = 'transparent';
+const HEADER_BG      = 'transparent';
+const FREQ_BG        = 'transparent';
+const SOFT_DIVIDER   = 'rgba(0,0,0,0.12)';
+const PANEL_BORDER   = 'rgba(0,0,0,0.15)';
+// Semantic palette from the reference — dark navy for text/primary controls,
+// muted navy for secondary text, warm dark green for MIC ACTIVE, dark red for
+// DISCONNECT / MUTED / PTT active.
+const INK_PRIMARY    = '#061018';
+const INK_SECONDARY  = '#1A3A50';
+const INK_MUTED      = '#2A5A7A';
+const ICON_BLUE      = '#9DC4D8';
+const ALARM_RED      = '#CC3322';
+const OK_GREEN       = '#1A7A40';
+const PILL_BG        = 'rgba(6,16,24,0.70)';
 
-export default function RadioPanel({ missionFrequency = null, missionId = null }) {
-  const [voiceProfile, setVoiceProfile] = useState(null);
-  const [profileVersion, setProfileVersion] = useState(0);
-  const [radioState, setRadioState] = useState('standby');
+export default function RadioPanel({
+  missionFrequency = null,
+  missionId = null,
+  // Lifted radio state — owned by Dashboard so it survives RadioPanel
+  // unmount/remount (e.g. when the user toggles MY SHIPS mode).
+  voiceProfile,
+  setVoiceProfile,
+  profileVersion,       // eslint-disable-line no-unused-vars
+  setProfileVersion,
+  pttKey,
+  setPttKey,
+  radioState,
+  setRadioState,
+  isMuted,
+  setIsMuted,
+  micSensitivity,
+  setMicSensitivity,
+  // Lifted WebRTC connection outputs — the hook itself now runs at Dashboard.
+  tunedFrequency,
+  peers,
+  transmittingPeerIds,
+  isPTTActive,
+  joinFrequency,
+  leaveFrequency,
+  getInputLevel,
+  startPTT,
+  stopPTT,
+  // Device selection + permission wiring.
+  micDeviceId,
+  setMicDeviceId,
+  outputDeviceId,
+  setOutputDeviceId,
+  micPermission,
+  requestMicPermission,
+}) {
   const [manualFreq, setManualFreq] = useState('');
-  const [pttKey, setPttKey] = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
 
-  const {
-    tunedFrequency,
-    peers,
-    transmittingPeerIds,
-    isPTTActive,
-    joinFrequency,
-    leaveFrequency,
-    getInputLevel,
-    setMicSensitivity,
-    setMuted,
-  } = useRadioConnection({ voiceProfile, voiceProfileVersion: profileVersion, pttKey });
-
-  const [isMuted, setIsMuted] = useState(false);
-  const [micSensitivity, setMicSensitivityState] = useState(100);
-
-  useEffect(() => { setMuted(isMuted); }, [isMuted, setMuted]);
-  useEffect(() => { setMicSensitivity(micSensitivity); }, [micSensitivity, setMicSensitivity]);
-
-  // Load voice profile from server
-  useEffect(() => {
-    let cancelled = false;
-    api.get('/users/voice-profile').then(({ data }) => {
-      if (cancelled) return;
-      // PTT key: server value wins, else keep whatever localStorage-derived
-      // value the useState initializer already set. Also mirror the server
-      // value down to localStorage so the initializer hits the same value
-      // next mount even before the fetch completes.
-      if (data?.ptt_key != null && data.ptt_key !== '') {
-        setPttKey(data.ptt_key);
-        try { localStorage.setItem('nexus_ptt_key', data.ptt_key); } catch {}
-      }
-
-      if (data?.needs_generation) {
-        setVoiceProfile(randomVoiceProfile());
-      } else {
-        const cleaned = {};
-        for (const f of PROFILE_FIELDS) {
-          cleaned[f] = data?.[f] != null ? Number(data[f]) : null;
-        }
-        const coreFields = ['highpass', 'lowpass', 'resonance_freq', 'resonance_q', 'distortion', 'static_level'];
-        const allSet = coreFields.every(f => cleaned[f] != null);
-        if (allSet) {
-          if (cleaned.pitch_shift == null) cleaned.pitch_shift = 0;
-          if (cleaned.bit_crush == null)   cleaned.bit_crush = 16;
-          setVoiceProfile(cleaned);
-        } else {
-          setVoiceProfile(randomVoiceProfile());
-        }
-      }
-    }).catch(() => {
-      if (!cancelled) setVoiceProfile(randomVoiceProfile());
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (tunedFrequency && radioState === 'standby') setRadioState('tuned');
-    // If the underlying connection drops mid-retune (or after tuned), drop
-    // back to standby so the panel doesn't render a stale editor.
-    if (!tunedFrequency && (radioState === 'tuned' || radioState === 'retuning')) {
-      setRadioState('standby');
-    }
-  }, [tunedFrequency, radioState]);
 
   const onTuneManual = useCallback(() => {
     const f = manualFreq.trim();
@@ -134,22 +114,26 @@ export default function RadioPanel({ missionFrequency = null, missionId = null }
 
   // Retune: stay connected while the operator edits inline. leaveFrequency()
   // is only called on confirm (via joinFrequency's internal room-switch).
-  const onRetune       = useCallback(() => setRadioState('retuning'), []);
-  const onCancelRetune = useCallback(() => setRadioState('tuned'), []);
+  const onRetune       = useCallback(() => setRadioState('retuning'), [setRadioState]);
+  const onCancelRetune = useCallback(() => setRadioState('tuned'), [setRadioState]);
   const onConfirmRetune = useCallback(async (newFreq) => {
     // joinFrequency internally emits radio:leave for the current room before
     // joining the new one — awaiting the join before switching UI state
     // avoids the tuned-with-old-freq flash.
     await joinFrequency(newFreq, missionId);
     setRadioState('tuned');
-  }, [joinFrequency, missionId]);
+  }, [joinFrequency, missionId, setRadioState]);
 
   return (
+    <div style={{
+      position: 'relative',
+      zIndex: 9001,
+      background: '#7AAAC8',
+    }}>
     <div style={{
       margin: '8px 8px 8px 0',
       background: PANEL_BG,
       border: `1px solid ${PANEL_BORDER}`,
-      boxShadow: 'inset 0 0 0 1px #0D2030',
       fontFamily: FONT,
       flexShrink: 0,
     }}>
@@ -162,13 +146,20 @@ export default function RadioPanel({ missionFrequency = null, missionId = null }
           getInputLevel={getInputLevel}
           pttKey={pttKey}
           setPttKey={setPttKey}
+          micDeviceId={micDeviceId}
+          setMicDeviceId={setMicDeviceId}
+          outputDeviceId={outputDeviceId}
+          setOutputDeviceId={setOutputDeviceId}
         />
       ) : (
         <>
           <PanelHeader
-            title="NEXUS COMM SYSTEM"
             isTuned={!!tunedFrequency}
             onOpenSettings={() => setRadioState('settings')}
+          />
+          <MicPermissionBanner
+            micPermission={micPermission}
+            requestMicPermission={requestMicPermission}
           />
           {tunedFrequency ? (
             <TunedView
@@ -177,9 +168,19 @@ export default function RadioPanel({ missionFrequency = null, missionId = null }
               transmittingPeerIds={transmittingPeerIds}
               isPTTActive={isPTTActive}
               isMuted={isMuted}
-              onToggleMute={() => setIsMuted(m => !m)}
+              onToggleMute={() => {
+                // Sound plays only on the false → true transition (muting).
+                // Unmuting is silent. Reading `isMuted` from the closure is
+                // safe because a re-render always follows a state flip, so
+                // the next click sees the fresh value.
+                if (!isMuted) {
+                  const muteClick = new Audio('/sounds/mute_mic.mp3');
+                  muteClick.play().catch(() => {});
+                }
+                setIsMuted(m => !m);
+              }}
               micSensitivity={micSensitivity}
-              onSensitivityChange={setMicSensitivityState}
+              onSensitivityChange={setMicSensitivity}
               onDisconnect={onDisconnect}
               onRetune={onRetune}
               getInputLevel={getInputLevel}
@@ -187,6 +188,8 @@ export default function RadioPanel({ missionFrequency = null, missionId = null }
               isRetuning={radioState === 'retuning'}
               onConfirmRetune={onConfirmRetune}
               onCancelRetune={onCancelRetune}
+              startPTT={startPTT}
+              stopPTT={stopPTT}
             />
           ) : (
             <StandbyView
@@ -200,54 +203,79 @@ export default function RadioPanel({ missionFrequency = null, missionId = null }
         </>
       )}
     </div>
+    </div>
   );
 }
 
 // ─── Header ─────────────────────────────────────────────────────────────────
 
-function PanelHeader({ title, isTuned, onOpenSettings, closeIcon = false, onClose }) {
-  const [gearHover, setGearHover] = useState(false);
+function PanelHeader({ isTuned, onOpenSettings, closeIcon = false, onClose }) {
   return (
     <div style={{
-      padding: '10px 16px',
+      padding: '10px 14px',
       borderBottom: `1px solid ${PANEL_BORDER}`,
       background: HEADER_BG,
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
     }}>
-      <span style={{
-        fontSize: 13,
-        color: '#99CCFF',
-        letterSpacing: '0.14em',
-        fontWeight: 'bold',
-      }}>
-        {title}
-      </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Title block — "NEXUS COMM" over "SYSTEM", left-aligned column,
+          SYSTEM centered under COMM per the reference. */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <span style={{
+          fontSize: 12,
+          color: INK_PRIMARY,
+          fontWeight: 'bold',
+          letterSpacing: '0.1em',
+        }}>
+          NEXUS COMM
+        </span>
+        <span style={{
+          fontSize: 10,
+          color: INK_SECONDARY,
+          letterSpacing: '0.08em',
+          alignSelf: 'center',
+        }}>
+          SYSTEM
+        </span>
+      </div>
+      {/* Header-right — LIVE pill + gear pill on the SAME line. flexWrap:
+          nowrap and flexShrink: 0 on each pill guarantee they never break. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
         {isTuned && (
           <span style={{
-            fontSize: 11,
+            position: 'relative',
+            zIndex: 1,
+            background: PILL_BG,
+            borderRadius: 3,
+            padding: '3px 8px',
+            fontSize: 10,
             color: '#33DDAA',
             fontWeight: 'bold',
-            letterSpacing: '0.12em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}>
             ● LIVE
           </span>
         )}
         <button
           onClick={closeIcon ? onClose : onOpenSettings}
-          onMouseEnter={() => setGearHover(true)}
-          onMouseLeave={() => setGearHover(false)}
           style={{
-            fontSize: 24,
-            color: gearHover ? '#CCE8FF' : '#66AADD',
+            position: 'relative',
+            zIndex: 1,
+            background: PILL_BG,
+            borderRadius: 3,
+            padding: '4px 8px',
+            fontSize: 20,
+            color: ICON_BLUE,
             cursor: 'pointer',
-            background: 'none',
             border: 'none',
-            padding: 0,
             lineHeight: 1,
             fontFamily: FONT,
+            flexShrink: 0,
           }}
           aria-label={closeIcon ? 'Close settings' : 'Voice profile settings'}
         >
@@ -258,16 +286,81 @@ function PanelHeader({ title, isTuned, onOpenSettings, closeIcon = false, onClos
   );
 }
 
+// ─── Mic permission banner ─────────────────────────────────────────────────
+// Renders a strip below the header whenever the browser hasn't granted mic
+// access yet. Two states we care about:
+//   `prompt`  — user hasn't answered the browser popup (or missed it entirely)
+//   `denied`  — user or a site-level block refused mic access
+// `granted` and `unknown` (Safari, no Permissions API) both render nothing —
+// the panel stays clean.
+function MicPermissionBanner({ micPermission, requestMicPermission }) {
+  const [requesting, setRequesting] = useState(false);
+  if (micPermission !== 'prompt' && micPermission !== 'denied') return null;
+
+  const isDenied = micPermission === 'denied';
+  return (
+    <div style={{
+      padding: '10px 14px',
+      borderBottom: `1px solid ${SOFT_DIVIDER}`,
+      background: 'rgba(204,51,34,0.15)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+    }}>
+      <div style={{
+        fontSize: 10, color: INK_PRIMARY, fontWeight: 'bold',
+        letterSpacing: '0.06em',
+      }}>
+        {isDenied
+          ? '⛔ MIC ACCESS BLOCKED'
+          : '⚠ MIC NOT YET AUTHORIZED'}
+      </div>
+      <div style={{ fontSize: 10, color: INK_SECONDARY, lineHeight: 1.4 }}>
+        {isDenied
+          ? 'Your browser is blocking mic access for this site. Click the lock/mic icon in the address bar to re-enable, then reload.'
+          : 'The browser needs your permission to transmit. Click below to grant access.'}
+      </div>
+      {!isDenied && (
+        <button
+          onClick={async () => {
+            if (requesting) return;
+            setRequesting(true);
+            try { await requestMicPermission?.(); }
+            finally { setRequesting(false); }
+          }}
+          style={{
+            position: 'relative', zIndex: 1,
+            marginTop: 2,
+            width: '100%',
+            padding: '6px 0',
+            fontSize: 11,
+            fontWeight: 'bold',
+            fontFamily: FONT,
+            color: '#EEF4F8',
+            background: INK_PRIMARY,
+            border: 'none',
+            cursor: requesting ? 'wait' : 'pointer',
+            letterSpacing: '0.1em',
+            opacity: requesting ? 0.7 : 1,
+          }}
+        >
+          {requesting ? 'REQUESTING...' : 'GRANT MIC ACCESS'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Standby ────────────────────────────────────────────────────────────────
 
 function StandbyView({ missionFrequency, manualFreq, setManualFreq, onTuneManual, onTuneMission }) {
   return (
     <div style={{ padding: '20px 16px', textAlign: 'center' }}>
       <div style={{
-        fontSize: 13,
-        color: '#66AADD',
+        fontSize: 12,
+        color: INK_PRIMARY,
         letterSpacing: '0.1em',
-        marginBottom: 14,
+        marginBottom: 16,
         fontWeight: 'bold',
       }}>
         NO FREQUENCY TUNED
@@ -276,26 +369,28 @@ function StandbyView({ missionFrequency, manualFreq, setManualFreq, onTuneManual
       {missionFrequency && (
         <>
           <div style={{
-            fontSize: 12,
-            color: '#FFBB33',
-            letterSpacing: '0.08em',
+            fontSize: 11,
+            color: '#5A3A00',
             marginBottom: 8,
             fontWeight: 'bold',
           }}>
-            MISSION FREQUENCY AVAILABLE: {missionFrequency} MHz
+            MISSION FREQUENCY: {missionFrequency} MHz
           </div>
           <button
             onClick={onTuneMission}
             style={{
-              border: '2px solid #FFBB33',
-              color: '#FFBB33',
-              background: PANEL_BG,
-              fontSize: 12,
-              padding: '8px 16px',
-              letterSpacing: '0.1em',
+              position: 'relative',
+              zIndex: 1,
+              width: '100%',
+              border: '2px solid #5A3A00',
+              color: '#5A3A00',
+              background: 'rgba(90,58,0,0.12)',
+              fontSize: 11,
+              padding: '7px 0',
+              letterSpacing: '0.08em',
               fontWeight: 'bold',
               cursor: 'pointer',
-              marginBottom: 16,
+              marginBottom: 14,
               fontFamily: FONT,
             }}
           >
@@ -311,15 +406,17 @@ function StandbyView({ missionFrequency, manualFreq, setManualFreq, onTuneManual
           onKeyDown={e => { if (e.key === 'Enter') onTuneManual(); }}
           placeholder="127.4"
           style={{
-            width: 100,
-            background: PANEL_BG,
-            border: '1px solid #4488BB',
-            color: '#00EEFF',
+            position: 'relative',
+            zIndex: 1,
+            width: 120,
+            background: '#EEF4F8',
+            border: `1px solid ${INK_MUTED}`,
+            color: INK_PRIMARY,
             fontFamily: FONT,
-            fontSize: 16,
-            padding: 8,
-            textAlign: 'center',
+            fontSize: 18,
             fontWeight: 'bold',
+            padding: '6px 8px',
+            textAlign: 'center',
             outline: 'none',
             boxSizing: 'border-box',
           }}
@@ -327,11 +424,13 @@ function StandbyView({ missionFrequency, manualFreq, setManualFreq, onTuneManual
         <button
           onClick={onTuneManual}
           style={{
-            border: '2px solid #66AADD',
-            color: '#66AADD',
-            background: PANEL_BG,
+            position: 'relative',
+            zIndex: 1,
+            border: 'none',
+            color: '#EEF4F8',
+            background: INK_PRIMARY,
             fontSize: 12,
-            padding: '8px 16px',
+            padding: '6px 16px',
             letterSpacing: '0.1em',
             fontWeight: 'bold',
             cursor: 'pointer',
@@ -352,7 +451,28 @@ function TunedView({
   isMuted, onToggleMute, micSensitivity, onSensitivityChange,
   onDisconnect, onRetune, getInputLevel, pttKey,
   isRetuning, onConfirmRetune, onCancelRetune,
+  startPTT, stopPTT,
 }) {
+  // Mouse and touch PTT handlers dispatch to the same hook functions as the
+  // V key binding — no duplicate logic. isPTTActive is driven by startPTT /
+  // stopPTT internally, so the button's active state is identical whether
+  // the operator holds the key or the button.
+  const onTransmitDown = useCallback(() => {
+    if (isMuted) return;
+    startPTT?.();
+  }, [isMuted, startPTT]);
+  const onTransmitUp = useCallback(() => {
+    stopPTT?.();
+  }, [stopPTT]);
+  const onTouchStart = useCallback((e) => {
+    e.preventDefault();
+    if (isMuted) return;
+    startPTT?.();
+  }, [isMuted, startPTT]);
+  const onTouchEnd = useCallback((e) => {
+    e.preventDefault();
+    stopPTT?.();
+  }, [stopPTT]);
   const transmittingSet = useMemo(() => new Set(transmittingPeerIds), [transmittingPeerIds]);
 
   return (
@@ -368,71 +488,83 @@ function TunedView({
         <div style={{
           padding: 16,
           textAlign: 'center',
-          borderBottom: `1px solid ${SOFT_DIVIDER}`,
+          borderBottom: `1px solid ${PANEL_BORDER}`,
           background: FREQ_BG,
         }}>
           <div style={{
-            fontSize: 32,
-            color: '#00EEFF',
-            letterSpacing: '0.18em',
+            fontSize: 36,
+            color: INK_PRIMARY,
+            letterSpacing: '0.1em',
             fontWeight: 'bold',
-            textShadow: '0 0 12px rgba(0,238,255,0.5)',
           }}>
             {frequency}
           </div>
           <div style={{
-            fontSize: 12,
-            color: '#66AADD',
-            marginTop: 4,
-            letterSpacing: '0.12em',
+            fontSize: 11,
+            color: INK_SECONDARY,
+            marginTop: 2,
           }}>
             MHz — TUNED
           </div>
         </div>
       )}
 
-      {/* RETUNE / DISCONNECT icons */}
+      {/* RETUNE / DISCONNECT action pills. Same pill background + border-
+          radius as the header gear pill (per reference). 22px icons, 9px
+          labels, per-role blue/red coloring. */}
       <div style={{
         display: 'flex',
         justifyContent: 'center',
-        gap: 28,
-        padding: '10px 16px',
+        gap: 16,
+        padding: '12px 16px',
         borderBottom: `1px solid ${SOFT_DIVIDER}`,
       }}>
         <div
           onClick={onRetune}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+          style={{
+            position: 'relative', zIndex: 1,
+            background: PILL_BG, borderRadius: 4,
+            padding: '6px 18px', minWidth: 80,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            cursor: 'pointer',
+          }}
         >
-          <span style={{ fontSize: 18, color: '#66AADD' }}>⇄</span>
-          <span style={{ fontSize: 9, color: '#66AADD', letterSpacing: '0.1em', fontWeight: 'bold' }}>RETUNE</span>
+          <span style={{ fontSize: 22, color: ICON_BLUE }}>⇄</span>
+          <span style={{ fontSize: 9, color: ICON_BLUE, letterSpacing: '0.1em', fontWeight: 'bold' }}>RETUNE</span>
         </div>
         <div
           onClick={onDisconnect}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+          style={{
+            position: 'relative', zIndex: 1,
+            background: PILL_BG, borderRadius: 4,
+            padding: '6px 18px', minWidth: 80,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            cursor: 'pointer',
+          }}
         >
-          <span style={{ fontSize: 18, color: '#FF5544' }}>⏏</span>
-          <span style={{ fontSize: 9, color: '#FF5544', letterSpacing: '0.1em', fontWeight: 'bold' }}>DISCONNECT</span>
+          <span style={{ fontSize: 22, color: ALARM_RED }}>⏏</span>
+          <span style={{ fontSize: 9, color: ALARM_RED, letterSpacing: '0.1em', fontWeight: 'bold' }}>DISCONNECT</span>
         </div>
       </div>
 
       {/* ON FREQUENCY peer list */}
       <div style={{
-        padding: '12px 16px',
+        padding: '10px 14px',
         borderBottom: `1px solid ${SOFT_DIVIDER}`,
         maxHeight: 140,
         overflowY: 'auto',
       }}>
         <div style={{
-          fontSize: 11,
-          color: '#99CCFF',
-          letterSpacing: '0.12em',
-          marginBottom: 8,
+          fontSize: 10,
+          color: INK_PRIMARY,
+          letterSpacing: '0.1em',
+          marginBottom: 4,
           fontWeight: 'bold',
         }}>
           ON FREQUENCY
         </div>
         {peers.length === 0 ? (
-          <div style={{ fontSize: 13, color: '#66AADD', letterSpacing: '0.08em' }}>
+          <div style={{ fontSize: 10, color: INK_SECONDARY }}>
             — NO OTHER OPERATORS —
           </div>
         ) : (
@@ -442,23 +574,23 @@ function TunedView({
         )}
       </div>
 
-      {/* Inline MIC status row */}
+      {/* MIC status row — dot/label/status all in one strip */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '8px 16px',
+        padding: '8px 14px',
         borderBottom: `1px solid ${SOFT_DIVIDER}`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: isMuted ? '#FF5544' : '#33DDAA',
+            background: isMuted ? ALARM_RED : OK_GREEN,
           }} />
-          <span style={{ fontSize: 11, color: '#99CCFF', fontWeight: 'bold' }}>MIC</span>
+          <span style={{ fontSize: 10, color: INK_PRIMARY, fontWeight: 'bold' }}>MIC</span>
           <span style={{
-            fontSize: 11,
-            color: isMuted ? '#FF5544' : '#33DDAA',
+            fontSize: 10,
+            color: isMuted ? ALARM_RED : OK_GREEN,
             fontWeight: 'bold',
           }}>
             {isMuted ? 'MUTED' : 'ACTIVE'}
@@ -467,13 +599,15 @@ function TunedView({
         <button
           onClick={onToggleMute}
           style={{
-            fontSize: 16,
-            background: isMuted ? '#FF5544' : 'none',
+            position: 'relative',
+            zIndex: 1,
+            fontSize: 18,
+            background: isMuted ? 'rgba(204,51,34,0.8)' : 'none',
             border: 'none',
-            color: isMuted ? '#fff' : '#66AADD',
-            padding: isMuted ? '4px 8px' : 0,
+            padding: isMuted ? '2px 6px' : '2px 4px',
             cursor: 'pointer',
             lineHeight: 1,
+            borderRadius: isMuted ? 3 : 0,
           }}
         >
           {isMuted ? '🔇' : '🔊'}
@@ -483,12 +617,12 @@ function TunedView({
       <MicLevelMeter getLevel={getInputLevel} active />
 
       {/* MIC VOLUME slider */}
-      <div style={{ padding: '10px 16px', borderBottom: `1px solid ${SOFT_DIVIDER}` }}>
+      <div style={{ padding: '8px 14px', borderBottom: `1px solid ${SOFT_DIVIDER}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 12, color: '#99CCFF', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+          <span style={{ fontSize: 10, color: INK_PRIMARY, fontWeight: 'bold' }}>
             MIC VOLUME
           </span>
-          <span style={{ fontSize: 12, color: '#00EEFF', fontWeight: 'bold' }}>
+          <span style={{ fontSize: 10, color: INK_PRIMARY, fontWeight: 'bold' }}>
             {micSensitivity}%
           </span>
         </div>
@@ -499,27 +633,36 @@ function TunedView({
           step={5}
           value={micSensitivity}
           onChange={e => onSensitivityChange(Number(e.target.value))}
-          style={{ width: '100%', accentColor: '#66AADD', height: 6, cursor: 'pointer' }}
+          style={{ position: 'relative', zIndex: 1, width: '100%', accentColor: INK_PRIMARY, height: 6, cursor: 'pointer' }}
         />
       </div>
 
-      {/* PTT button */}
-      <div style={{ padding: '14px 16px' }}>
-        <button style={{
-          width: '100%',
-          fontSize: 14,
-          padding: '12px 0',
-          textAlign: 'center',
-          border: `2px solid ${isMuted ? '#1A3D55' : isPTTActive ? '#FF4455' : '#33DDAA'}`,
-          color: isMuted ? '#1A3D55' : isPTTActive ? '#FF4455' : '#33DDAA',
-          background: isMuted ? '#000' : isPTTActive ? 'rgba(255,68,85,0.12)' : PANEL_BG,
-          letterSpacing: '0.12em',
-          fontWeight: 'bold',
-          cursor: isMuted ? 'not-allowed' : 'pointer',
-          fontFamily: FONT,
-          userSelect: 'none',
-          opacity: isMuted ? 0.4 : 1,
-        }}>
+      {/* PTT button — dark navy default, alarm-red when active */}
+      <div style={{ padding: '12px 14px' }}>
+        <button
+          onMouseDown={onTransmitDown}
+          onMouseUp={onTransmitUp}
+          onMouseLeave={onTransmitUp}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            width: '100%',
+            fontSize: 14,
+            padding: '12px 0',
+            textAlign: 'center',
+            border: `2px solid ${isPTTActive ? ALARM_RED : INK_PRIMARY}`,
+            color: isPTTActive ? ALARM_RED : ICON_BLUE,
+            background: isPTTActive ? 'rgba(204,51,34,0.15)' : 'rgba(6,16,24,0.85)',
+            letterSpacing: '0.12em',
+            fontWeight: 'bold',
+            cursor: isMuted ? 'not-allowed' : 'pointer',
+            fontFamily: FONT,
+            userSelect: 'none',
+            opacity: isMuted ? 0.4 : 1,
+          }}
+        >
           {isMuted
             ? '[ MIC MUTED — UNMUTE TO TRANSMIT ]'
             : isPTTActive
@@ -530,9 +673,10 @@ function TunedView({
       </div>
       <div style={{
         fontSize: 10,
-        color: '#66AADD',
+        color: INK_PRIMARY,
+        fontWeight: 'bold',
         textAlign: 'center',
-        padding: '0 16px 14px',
+        padding: '0 14px 12px',
         letterSpacing: '0.08em',
       }}>
         PRESS AND HOLD
@@ -577,15 +721,16 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
   return (
     <div style={{
       padding: '14px 16px',
-      borderBottom: `1px solid ${SOFT_DIVIDER}`,
+      borderBottom: `1px solid ${PANEL_BORDER}`,
       background: FREQ_BG,
     }}>
       <div style={{
         fontSize: 10,
-        color: '#4488BB',
+        color: INK_SECONDARY,
         letterSpacing: '0.1em',
         marginBottom: 8,
         textAlign: 'center',
+        fontWeight: 'bold',
       }}>
         ENTER NEW FREQUENCY
       </div>
@@ -610,12 +755,13 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           style={{
+            position: 'relative', zIndex: 1,
             width: 130,
-            background: '#000',
-            border: `2px solid ${focused ? '#CCE8FF' : '#00EEFF'}`,
-            color: '#00EEFF',
+            background: '#EEF4F8',
+            border: `1px solid ${focused ? INK_PRIMARY : INK_MUTED}`,
+            color: INK_PRIMARY,
             fontFamily: FONT,
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: 'bold',
             textAlign: 'center',
             padding: '6px 8px',
@@ -624,7 +770,7 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
           }}
         />
         <span style={{
-          fontSize: 12, color: '#66AADD', letterSpacing: '0.08em',
+          fontSize: 11, color: INK_SECONDARY, fontWeight: 'bold',
         }}>MHz</span>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
@@ -633,10 +779,11 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
           onMouseEnter={() => setHoverConfirm(true)}
           onMouseLeave={() => setHoverConfirm(false)}
           style={{
+            position: 'relative', zIndex: 1,
             fontSize: 11,
-            color: hoverConfirm ? '#000' : '#33DDAA',
-            border: '1px solid #33DDAA',
-            background: hoverConfirm ? '#33DDAA' : '#000',
+            color: '#EEF4F8',
+            border: 'none',
+            background: hoverConfirm ? OK_GREEN : INK_PRIMARY,
             padding: '6px 16px',
             letterSpacing: '0.1em',
             fontWeight: 'bold',
@@ -649,12 +796,14 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
           onMouseEnter={() => setHoverCancel(true)}
           onMouseLeave={() => setHoverCancel(false)}
           style={{
+            position: 'relative', zIndex: 1,
             fontSize: 11,
-            color: hoverCancel ? '#000' : '#66AADD',
-            border: '1px solid #4488BB',
-            background: hoverCancel ? '#4488BB' : '#000',
+            color: hoverCancel ? '#EEF4F8' : INK_PRIMARY,
+            border: `1px solid ${INK_PRIMARY}`,
+            background: hoverCancel ? INK_PRIMARY : 'transparent',
             padding: '6px 16px',
             letterSpacing: '0.1em',
+            fontWeight: 'bold',
             fontFamily: FONT,
             cursor: 'pointer',
           }}
@@ -663,10 +812,10 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
       {err && (
         <div style={{
           fontSize: 10,
-          color: '#FF5544',
+          color: ALARM_RED,
           textAlign: 'center',
           marginTop: 8,
-          letterSpacing: '0.06em',
+          fontWeight: 'bold',
         }}>
           {err}
         </div>
@@ -677,16 +826,15 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
 
 function PeerRow({ peer, transmitting }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
       <div style={{
-        width: 9, height: 9, borderRadius: '50%',
-        background: transmitting ? '#FF4455' : '#2A6A9A',
-        boxShadow: transmitting ? '0 0 6px rgba(255,68,85,0.6)' : 'none',
+        width: 7, height: 7, borderRadius: '50%',
+        background: transmitting ? ALARM_RED : INK_SECONDARY,
         flexShrink: 0,
       }} />
       <span style={{
-        fontSize: 13,
-        color: transmitting ? '#CCE8FF' : '#99CCFF',
+        fontSize: 11,
+        color: transmitting ? INK_PRIMARY : INK_MUTED,
         fontWeight: transmitting ? 'bold' : 'normal',
       }}>
         {peer.citizenName || 'UNKNOWN'}
@@ -725,19 +873,19 @@ function MicLevelMeter({ getLevel, active }) {
     }, 50);
     return () => clearInterval(id);
   }, [getLevel, active]);
-  const fillColor = level > 70 ? '#FF4455' : level > 30 ? '#33DDAA' : '#66AADD';
+  const fillColor = level > 70 ? ALARM_RED : OK_GREEN;
   return (
-    <div style={{ padding: '10px 16px', borderBottom: `1px solid ${SOFT_DIVIDER}` }}>
+    <div style={{ padding: '8px 14px', borderBottom: `1px solid ${SOFT_DIVIDER}` }}>
       <div style={{
-        fontSize: 11, color: '#99CCFF', letterSpacing: '0.1em', marginBottom: 6, fontWeight: 'bold',
+        fontSize: 10, color: INK_PRIMARY, marginBottom: 4, fontWeight: 'bold',
       }}>
         MIC LEVEL
       </div>
       <div style={{
-        width: '100%', height: 8, background: PANEL_BG,
-        border: `1px solid ${PANEL_BORDER}`, overflow: 'hidden',
+        width: '100%', height: 6, background: 'rgba(0,0,0,0.2)',
+        borderRadius: 2, overflow: 'hidden',
       }}>
-        <div style={{ height: '100%', width: `${level}%`, background: fillColor, transition: 'width 0.05s' }} />
+        <div style={{ height: '100%', width: `${level}%`, background: fillColor, borderRadius: 2, transition: 'width 0.05s' }} />
       </div>
     </div>
   );
@@ -745,7 +893,36 @@ function MicLevelMeter({ getLevel, active }) {
 
 // ─── Settings ───────────────────────────────────────────────────────────────
 
-function SettingsView({ voiceProfile, setVoiceProfile, bumpProfileVersion, onClose, getInputLevel, pttKey, setPttKey }) {
+function SettingsView({
+  voiceProfile, setVoiceProfile, bumpProfileVersion, onClose, getInputLevel,
+  pttKey, setPttKey,
+  micDeviceId, setMicDeviceId, outputDeviceId, setOutputDeviceId,
+}) {
+  // Device enumeration — labels are only populated after mic permission has
+  // been granted for this origin. Since the preview chain below calls
+  // getUserMedia on mount, by the time this useEffect resolves we usually
+  // have real names. Re-enumerate on `devicechange` so hot-plugging a
+  // headset shows up without reopening Settings.
+  const [inputDevices, setInputDevices]   = useState([]);
+  const [outputDevices, setOutputDevices] = useState([]);
+  const outputSupported = typeof HTMLMediaElement !== 'undefined' &&
+                         typeof HTMLMediaElement.prototype.setSinkId === 'function';
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const enumerate = () => {
+      navigator.mediaDevices.enumerateDevices().then((devs) => {
+        setInputDevices(devs.filter(d => d.kind === 'audioinput'));
+        setOutputDevices(devs.filter(d => d.kind === 'audiooutput'));
+      }).catch(() => {});
+    };
+    enumerate();
+    navigator.mediaDevices.addEventListener?.('devicechange', enumerate);
+    return () => {
+      navigator.mediaDevices.removeEventListener?.('devicechange', enumerate);
+    };
+  }, []);
+
   const [savedAt, setSavedAt]   = useState(0);
   const [saving, setSaving]     = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -914,7 +1091,6 @@ function SettingsView({ voiceProfile, setVoiceProfile, bumpProfileVersion, onClo
   return (
     <>
       <PanelHeader
-        title="VOICE PROFILE SETTINGS"
         closeIcon
         onClose={() => { stopPreview(); onClose(); }}
       />
@@ -937,9 +1113,9 @@ function SettingsView({ voiceProfile, setVoiceProfile, bumpProfileVersion, onClo
           onTouchEnd={stopPreview}
           style={{
             width: '100%',
-            border: '2px solid #4488BB',
-            color: '#99CCFF',
-            background: previewing ? 'rgba(68,136,187,0.15)' : PANEL_BG,
+            border: '2px solid #2A5A7A',
+            color: '#0D1A24',
+            background: previewing ? 'rgba(0,0,0,0.1)' : PANEL_BG,
             fontSize: 12,
             padding: '8px 0',
             letterSpacing: '0.1em',
@@ -960,7 +1136,7 @@ function SettingsView({ voiceProfile, setVoiceProfile, bumpProfileVersion, onClo
             onClick={onRandomize}
             style={{
               flex: 1, fontSize: 11, padding: '8px 0', textAlign: 'center',
-              border: '2px solid #66AADD', color: '#66AADD', background: PANEL_BG,
+              border: '2px solid #2A5A7A', color: '#2A5A7A', background: PANEL_BG,
               letterSpacing: '0.08em', fontWeight: 'bold', cursor: 'pointer', fontFamily: FONT,
             }}
           >
@@ -990,16 +1166,86 @@ function SettingsView({ voiceProfile, setVoiceProfile, bumpProfileVersion, onClo
           </div>
         )}
 
+        {/* DEVICE PICKERS — input mic and output speaker/headphones. Both
+            default to system default (null value); persisted at Dashboard
+            level via localStorage so the choice survives page reloads. */}
+        <div style={{ marginTop: 20, borderTop: `1px solid ${SOFT_DIVIDER}`, paddingTop: 16 }}>
+          <div style={{
+            fontSize: 10, color: '#0D1A24', fontWeight: 'bold',
+            marginBottom: 8, letterSpacing: '0.1em',
+          }}>
+            INPUT DEVICE
+          </div>
+          <select
+            value={micDeviceId ?? '__default__'}
+            onChange={e => setMicDeviceId?.(e.target.value === '__default__' ? null : e.target.value)}
+            style={{
+              position: 'relative', zIndex: 1,
+              width: '100%',
+              background: 'rgba(255,255,255,0.85)',
+              color: '#061018',
+              border: '1px solid #2A5A7A',
+              fontSize: 11, fontFamily: FONT,
+              padding: '5px 8px',
+              outline: 'none',
+            }}
+          >
+            <option value="__default__">System Default</option>
+            {inputDevices.map((d, i) => (
+              <option key={d.deviceId || `in-${i}`} value={d.deviceId}>
+                {d.label || `Input ${i + 1}`}
+              </option>
+            ))}
+          </select>
+
+          <div style={{
+            fontSize: 10, color: '#0D1A24', fontWeight: 'bold',
+            margin: '12px 0 8px', letterSpacing: '0.1em',
+          }}>
+            OUTPUT DEVICE
+          </div>
+          <select
+            value={outputDeviceId ?? '__default__'}
+            onChange={e => setOutputDeviceId?.(e.target.value === '__default__' ? null : e.target.value)}
+            disabled={!outputSupported}
+            style={{
+              position: 'relative', zIndex: 1,
+              width: '100%',
+              background: outputSupported ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.4)',
+              color: '#061018',
+              border: '1px solid #2A5A7A',
+              fontSize: 11, fontFamily: FONT,
+              padding: '5px 8px',
+              outline: 'none',
+              cursor: outputSupported ? 'pointer' : 'not-allowed',
+            }}
+          >
+            <option value="__default__">System Default</option>
+            {outputDevices.map((d, i) => (
+              <option key={d.deviceId || `out-${i}`} value={d.deviceId}>
+                {d.label || `Output ${i + 1}`}
+              </option>
+            ))}
+          </select>
+          {!outputSupported && (
+            <div style={{
+              fontSize: 9, color: '#CC3322', marginTop: 4, letterSpacing: '0.04em',
+            }}>
+              This browser doesn't support output device selection — audio uses the OS default.
+            </div>
+          )}
+        </div>
+
         {/* PTT KEY BINDING */}
         <div style={{ marginTop: 20, borderTop: `1px solid ${SOFT_DIVIDER}`, paddingTop: 16 }}>
           <div style={{
-            fontSize: 12, color: '#99CCFF', fontWeight: 'bold',
+            fontSize: 12, color: '#0D1A24', fontWeight: 'bold',
             marginBottom: 8, letterSpacing: '0.1em',
           }}>
             PTT KEY BINDING
           </div>
           <div style={{
-            fontSize: 12, color: '#00EEFF', fontWeight: 'bold',
+            fontSize: 12, color: '#061018', fontWeight: 'bold',
             marginBottom: 6, letterSpacing: '0.08em',
           }}>
             CURRENT KEY: {(pttKey || 'v').toUpperCase()}
@@ -1007,8 +1253,8 @@ function SettingsView({ voiceProfile, setVoiceProfile, bumpProfileVersion, onClo
           <button
             onClick={remapListening ? undefined : startRemap}
             style={{
-              border: `1px solid ${remapListening ? '#FFBB33' : '#4488BB'}`,
-              color: remapListening ? '#FFBB33' : '#4488BB',
+              border: `1px solid ${remapListening ? '#FFBB33' : '#2A5A7A'}`,
+              color: remapListening ? '#FFBB33' : '#2A5A7A',
               fontSize: 11,
               padding: '5px 14px',
               cursor: remapListening ? 'default' : 'pointer',
@@ -1034,11 +1280,11 @@ function MicLevelMeterInline({ getLevel }) {
     }, 50);
     return () => clearInterval(id);
   }, [getLevel]);
-  const fillColor = level > 70 ? '#FF4455' : level > 30 ? '#33DDAA' : '#66AADD';
+  const fillColor = level > 70 ? '#FF4455' : level > 30 ? '#33DDAA' : '#2A5A7A';
   return (
     <div>
       <div style={{
-        fontSize: 11, color: '#99CCFF', letterSpacing: '0.1em', marginBottom: 6, fontWeight: 'bold',
+        fontSize: 11, color: '#0D1A24', letterSpacing: '0.1em', marginBottom: 6, fontWeight: 'bold',
       }}>
         MIC LEVEL
       </div>
@@ -1073,10 +1319,10 @@ function SliderRow({ field, value, onChange }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, color: '#99CCFF', letterSpacing: '0.1em', fontWeight: 'bold' }}>
+        <span style={{ fontSize: 12, color: '#0D1A24', letterSpacing: '0.1em', fontWeight: 'bold' }}>
           {FIELD_LABELS[field] || field.toUpperCase().replace(/_/g, ' ')}
         </span>
-        <span style={{ fontSize: 12, color: '#00EEFF', fontWeight: 'bold' }}>
+        <span style={{ fontSize: 12, color: '#061018', fontWeight: 'bold' }}>
           {formattedValue}
         </span>
       </div>
@@ -1084,7 +1330,7 @@ function SliderRow({ field, value, onChange }) {
         position: 'relative', width: '100%', height: 6,
         background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`,
       }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#66AADD' }} />
+        <div style={{ height: '100%', width: `${pct}%`, background: '#2A5A7A' }} />
         <input
           type="range"
           min={range.min}

@@ -10,6 +10,16 @@ import CreateMission from '../components/CreateMission';
 import ColumnResizeHandle from '../components/ColumnResizeHandle';
 import RadioPanel from '../components/RadioPanel';
 import RegistryBoot from '../components/RegistryBoot';
+import { useRadioConnection } from '../hooks/useRadioConnection';
+import { randomVoiceProfile } from '../utils/spacesuitFilter';
+
+// Voice profile fields fetched from /users/voice-profile — mirrored from
+// RadioPanel's original constant so the lifted fetch effect below can build
+// the same cleaned object shape without a shared module.
+const RADIO_PROFILE_FIELDS = [
+  'highpass', 'lowpass', 'resonance_freq', 'resonance_q',
+  'distortion', 'static_level', 'pitch_shift', 'bit_crush',
+];
 
 const playClick = () => {
   const file = Math.random() > 0.5 ? '/sounds/click.mp3' : '/sounds/click2.mp3';
@@ -61,23 +71,38 @@ const EVENT_LABEL = {
   SHIP_FILL_BONUS:  'earned ship bonus',
 };
 
+// Four-color feed palette:
+//   LIME   #44FF88 — positive/earned  (slot fills, mission progress, RP gains)
+//   BLUE   #66AADD — neutral/info     (creation, joins, disconnects, borrows)
+//   RED    #FF5544 — termination      (abort, queue expiry)
+//   PURPLE #AA66DD — AI summaries only
+const FEED_LIME = { accent: '#44FF88', bg: 'rgba(68,255,136,0.08)',  text: '#CCFFE0' };
+const FEED_BLUE = { accent: '#66AADD', bg: 'rgba(102,170,221,0.08)', text: '#CCE8FF' };
+const FEED_RED  = { accent: '#FF5544', bg: 'rgba(255,85,68,0.08)',   text: '#FFD4D0' };
+const FEED_PURP = { accent: '#AA66DD', bg: 'rgba(170,102,221,0.08)', text: '#E8D4FF' };
 const FEED_CATEGORY = {
-  slot_filled:         { accent: '#44FF88', bg: 'rgba(68,255,136,0.08)',  text: '#CCFFE0' },
-  mission_launched:    { accent: '#44FF88', bg: 'rgba(68,255,136,0.08)',  text: '#CCFFE0' },
-  post_mission_log:    { accent: '#44FF88', bg: 'rgba(68,255,136,0.08)',  text: '#CCFFE0' },
-  rank_advanced:       { accent: '#44FF88', bg: 'rgba(68,255,136,0.08)',  text: '#CCFFE0' },
-  ship_fill_bonus:     { accent: '#44FF88', bg: 'rgba(68,255,136,0.08)',  text: '#CCFFE0' },
-  slot_withdrawn:      { accent: '#66AADD', bg: 'rgba(102,170,221,0.08)', text: '#CCE8FF' },
-  mission_prep:        { accent: '#66AADD', bg: 'rgba(102,170,221,0.08)', text: '#CCE8FF' },
-  mission_complete:    { accent: '#66AADD', bg: 'rgba(102,170,221,0.08)', text: '#CCE8FF' },
-  mission_aborted:     { accent: '#FF5544', bg: 'rgba(255,85,68,0.08)',   text: '#FFD4D0' },
-  queue_expired:       { accent: '#FF5544', bg: 'rgba(255,85,68,0.08)',   text: '#FFD4D0' },
-  ship_borrowed:       { accent: '#FFBB33', bg: 'rgba(255,187,51,0.08)',  text: '#FFE8C0' },
-  ai_summary:          { accent: '#AA66DD', bg: 'rgba(170,102,221,0.08)', text: '#E8D4FF' },
-  player_connected:    { accent: '#FF8855', bg: 'rgba(255,136,85,0.08)',  text: '#FFE0D0' },
-  player_disconnected: { accent: '#FF8855', bg: 'rgba(255,136,85,0.08)',  text: '#FFE0D0' },
+  // LIME — earned / positive
+  slot_filled:         FEED_LIME,
+  mission_launched:    FEED_LIME,
+  mission_complete:    FEED_LIME,
+  ship_fill_bonus:     FEED_LIME,
+  rank_advanced:       FEED_LIME,   // legacy event_type
+  rank_advancement:    FEED_LIME,   // new broadcast event_type
+  post_mission_log:    FEED_LIME,
+  // BLUE — neutral / info
+  mission_created:     FEED_BLUE,
+  slot_withdrawn:      FEED_BLUE,
+  mission_prep:        FEED_BLUE,
+  ship_borrowed:       FEED_BLUE,
+  player_connected:    FEED_BLUE,
+  player_disconnected: FEED_BLUE,
+  // RED — termination
+  mission_aborted:     FEED_RED,
+  queue_expired:       FEED_RED,
+  // PURPLE — AI-generated
+  ai_summary:          FEED_PURP,
 };
-const DEFAULT_FEED_CAT = { accent: '#66AADD', bg: 'rgba(102,170,221,0.08)', text: '#CCE8FF' };
+const DEFAULT_FEED_CAT = FEED_BLUE;
 
 function formatFeedText(ev) {
   switch (ev.event_type) {
@@ -97,12 +122,20 @@ function formatFeedText(ev) {
       return ev.rp_awarded
         ? `${ev.mission_name} launched by ${ev.citizen_name} · +${ev.rp_awarded} RP`
         : `${ev.mission_name} launched by ${ev.citizen_name}`;
-    case 'ship_fill_bonus':
-      return ev.rp_earned
-        ? `${ev.ship_name} reached fill threshold · +${ev.rp_earned} RP bonus awarded`
+    case 'ship_fill_bonus': {
+      // Backend broadcasts `rp_awarded`; seed data uses `rp_earned`. Accept both.
+      const pts = ev.rp_awarded ?? ev.rp_earned;
+      return pts
+        ? `${ev.ship_name} earned +${pts} Ship RP · fill threshold reached`
         : `${ev.ship_name} reached fill threshold`;
+    }
+    case 'mission_created':
+      return `${ev.citizen_name} created ${ev.mission_name}`;
     case 'rank_advanced':
-      return `${ev.citizen_name} advanced to ${ev.rank_name}`;
+    case 'rank_advancement':
+      // `rank_advanced` (legacy, uses rank_name) and `rank_advancement`
+      // (new broadcast, uses new_rank) format identically.
+      return `${ev.citizen_name} advanced to ${ev.new_rank ?? ev.rank_name}`;
     case 'mission_prep':
       return `${ev.mission_name} is preparing for launch`;
     case 'mission_complete':
@@ -210,8 +243,249 @@ function Btn({ onClick, children, color = C.dim, disabled = false }) {
   );
 }
 
+// ─── Mini ID card widget + full-size modal ─────────────────────────────────
+// Replaces the plain name/rank/RP text block in the top-right of the top bar
+// with a compact ID card that reads like the "CITIZEN IDENTIFICATION CARD"
+// preview from Onboarding Step6. Clicking opens the full-size card modal.
+
+function computeDocNo(me) {
+  const s = me?._id ? String(me._id) : '';
+  if (!s) return 'NTS-XXXX-XXXX';
+  return `NTS-${s.slice(-4).toUpperCase()}-${s.slice(-8, -4).toUpperCase()}`;
+}
+
+function IdCardWidget({ me, rpPct, rpLabel, onClick }) {
+  const [hover, setHover] = useState(false);
+  const docNo = computeDocNo(me);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: 560,
+        background: '#FFFFFF',
+        border: `1px solid ${hover ? '#00EEFF' : '#2A6A9A'}`,
+        boxShadow: hover ? '0 0 8px rgba(0,238,255,0.3)' : 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      }}
+    >
+      {/* Left column — portrait strip */}
+      <div style={{
+        width: 80,
+        background: '#1A3A50',
+        borderRight: '1px solid #2A6A9A',
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}>
+        {me?.portrait_url && (
+          <img
+            src={me.portrait_url}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        )}
+      </div>
+      {/* Right column — card body */}
+      <div style={{
+        padding: '12px 20px',
+        background: '#FFFFFF',
+        flex: 1,
+        minWidth: 0,
+      }}>
+        <div style={{ fontSize: 14, color: '#2A3A4A', letterSpacing: '0.14em' }}>
+          UEE IDENTIFICATION — NEXUS
+        </div>
+        <div style={{
+          fontSize: 26, color: '#0D1A24', fontWeight: 'bold',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {me?.citizen_name ?? 'UNKNOWN OPERATOR'}
+        </div>
+        <div style={{
+          fontSize: 20, color: '#0D1A24',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {me?.rp_rank?.title ?? 'DRIFTER'}
+        </div>
+        <div style={{ borderTop: '1px solid #C8B898', margin: '10px 0' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 16, color: '#0D1A24', fontWeight: 'bold' }}>RP</span>
+          <div style={{
+            flex: 1, height: 8,
+            background: '#C8B898',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, bottom: 0,
+              width: `${rpPct}%`, background: '#1A5A8A',
+            }} />
+          </div>
+          <span style={{ fontSize: 16, color: '#0D1A24', fontWeight: 'bold' }}>
+            {rpLabel}
+          </span>
+        </div>
+        <div style={{ fontSize: 14, color: '#2A3A4A', marginTop: 8, letterSpacing: '0.06em' }}>
+          DOC NO. {docNo}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IdCardModal({ me, onClose }) {
+  const CARD_FONT = "'JetBrains Mono', 'Courier New', Courier, monospace";
+  const docNo = computeDocNo(me);
+  const regDate = me?.created_at
+    ? new Date(me.created_at).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
+  const portraitUrl = me?.portrait_url || me?.profile_url;
+
+  // ESC closes the modal alongside the backdrop click and the ✕ button.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.85)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9500,
+        padding: 20,
+      }}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Close ID card"
+        style={{
+          position: 'absolute', top: 20, right: 20,
+          width: 36, height: 36,
+          background: 'none', border: '1px solid #66AADD',
+          color: '#66AADD', fontSize: 20, cursor: 'pointer',
+          fontFamily: CARD_FONT,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >✕</button>
+
+      {/* Card — mirrors Onboarding.jsx Step6 styling (lines 452–555) exactly.
+          Duplicated verbatim so this modal has no cross-file coupling and
+          Step6's card can evolve independently for the preview experience. */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 700, margin: '0 auto', width: '100%', fontFamily: CARD_FONT }}
+      >
+        <div style={{ background: '#06121C', border: '1px solid #2A6A9A' }}>
+          {/* Header */}
+          <div style={{
+            padding: '14px 20px',
+            borderBottom: '1px solid #2A6A9A',
+            background: '#0A1A28',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <div>
+              <div style={{ fontSize: 16, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+                CITIZEN IDENTIFICATION CARD
+              </div>
+              <div style={{ fontSize: 10, color: '#66AADD', letterSpacing: '0.08em', marginTop: 3 }}>
+                FORM UEE-CIT-001 · OFFICIAL GOVERNMENT DOCUMENT
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32, height: 32,
+                border: '1px solid #FFBB33',
+                borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <div style={{
+                  width: 22, height: 22,
+                  border: '1px solid #FFBB33',
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, color: '#FFBB33', fontWeight: 'bold', letterSpacing: '0.02em',
+                }}>
+                  UEE
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#FFBB33', letterSpacing: '0.1em', fontWeight: 'bold' }}>
+                UNITED EMPIRE OF EARTH
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ display: 'flex', gap: 24, padding: 24 }}>
+            <div style={{ width: '30%' }}>
+              <div style={{
+                width: '100%',
+                aspectRatio: '3/4',
+                border: '1px solid #2A6A9A',
+                background: '#11202F',
+                overflow: 'hidden',
+              }}>
+                {portraitUrl && (
+                  <img
+                    src={portraitUrl}
+                    alt="Portrait"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                )}
+              </div>
+              <div style={{ fontSize: 10, color: '#FFBB33', marginTop: 10, letterSpacing: '0.08em', fontWeight: 'bold' }}>
+                DOC NO. {docNo}
+              </div>
+            </div>
+            <div style={{ width: '70%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                { label: 'NAME',           value: me?.citizen_name },
+                { label: 'PLACE OF BIRTH', value: me?.place_of_birth },
+                { label: 'CITIZENSHIP',    value: me?.citizenship },
+                { label: 'RP RANK',        value: me?.rp_rank?.title },
+                { label: 'REG. DATE',      value: regDate },
+              ].map((field, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: 11, color: '#66AADD', letterSpacing: '0.12em', marginBottom: 4, fontWeight: 'bold' }}>
+                    {field.label}
+                  </div>
+                  <div style={{ fontSize: 17, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.04em' }}>
+                    {field.value || '—'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: '10px 20px',
+            borderTop: '1px solid #2A6A9A',
+            background: '#0A1A28',
+            fontSize: 10,
+            color: '#FFBB33',
+            letterSpacing: '0.05em',
+          }}>
+            {'P<UEE<<CITIZEN<RECORD<<<<<<<<<<<<<<<<<<<'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TopBar({ me, rankList, missions, onSelectMission, onRegisterShip, onMyShips, onCreateMission, onShipRegistry, myShipsMode, registerMode, createMissionMode, shipRegistryMode, navigate }) {
   const [hoverBtn, setHoverBtn] = useState(null);
+  const [showIdCard, setShowIdCard] = useState(false);
 
   const total = me?.total_rp ?? 0;
   let rpPct = 0, rpLabel = `${total} / MAX`;
@@ -356,23 +630,19 @@ function TopBar({ me, rankList, missions, onSelectMission, onRegisterShip, onMyS
           )}
         </div>
 
-        {/* RIGHT: player identity */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-          <div style={{ fontSize: 16, color: '#CCE8FF', letterSpacing: '0.1em' }}>
-            {me?.citizen_name ?? 'UNKNOWN OPERATOR'}
-          </div>
-          <div style={{ fontSize: 13, color: '#CCE8FF', letterSpacing: '0.08em' }}>
-            {me?.rp_rank?.title ?? 'DRIFTER'}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-            <div style={{ width: 260, height: 16, background: '#0D2030', border: '1px solid #1A3D55', position: 'relative', flexShrink: 0 }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${rpPct}%`, background: '#66AADD' }} />
-            </div>
-            <span style={{ fontSize: 13, color: '#99CCFF', fontWeight: 'bold' }}>{rpLabel} RP</span>
-          </div>
-        </div>
+        {/* RIGHT: mini UEE ID card widget — click to expand to full modal */}
+        <IdCardWidget
+          me={me}
+          rpPct={rpPct}
+          rpLabel={rpLabel}
+          onClick={() => setShowIdCard(true)}
+        />
 
       </div>
+
+      {showIdCard && (
+        <IdCardModal me={me} onClose={() => setShowIdCard(false)} />
+      )}
     </>
   );
 }
@@ -519,6 +789,10 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
   const [freqReveal, setFreqReveal]     = useState(null);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [hoverComplete, setHoverComplete]     = useState(false);
+  // Post-mission log button state: 'hidden' (mission not complete / wasn't on
+  // crew / still loading), 'pending' (eligible, not yet submitted), 'submitted'
+  // (eligible, already logged). Server-derived — see /:id/my-participation.
+  const [logStatus, setLogStatus]       = useState('hidden');
 
   const myMongoId  = me?._id ? String(me._id) : null;
   const myId       = me?.discord_id ? String(me.discord_id) : myMongoId;
@@ -537,9 +811,30 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
       await api.post('/logs', { mission_id: mission._id, log_text: logText.trim() });
       setLogText('');
       setPostLogOpen(false);
+      setLogStatus('submitted');
       onFeedRefresh();
     } catch {} finally { setWorking(false); }
   };
+
+  // Fetch post-log eligibility whenever the viewed mission or its status
+  // changes. Only makes the request for COMPLETE missions — earlier states
+  // are always 'hidden' since the button shouldn't render.
+  useEffect(() => {
+    if (s !== 'COMPLETE') {
+      setLogStatus('hidden');
+      return;
+    }
+    let cancelled = false;
+    api.get(`/missions/${mission._id}/my-participation`)
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (!data?.was_on_crew) setLogStatus('hidden');
+        else if (data.log_submitted) setLogStatus('submitted');
+        else setLogStatus('pending');
+      })
+      .catch(() => { if (!cancelled) setLogStatus('hidden'); });
+    return () => { cancelled = true; };
+  }, [mission._id, s]);
 
   const handleSlotClick = async (shipId, roleName, action) => {
     try {
@@ -803,6 +1098,17 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
 
       {/* Scrollable body */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '16px 24px' }}>
+        {/* Post-mission log button sits directly above the crew manifest
+            section (which lives inside ShipSchematic). Two states: pulsing
+            cyan when the caller was on the crew but hasn't logged yet, dim
+            green with a ✓ once the log is on record. Hidden entirely when
+            the mission isn't COMPLETE or the caller wasn't on the crew. */}
+        {(logStatus === 'pending' || logStatus === 'submitted') && (
+          <PostMissionLogButton
+            status={logStatus}
+            onClick={() => setPostLogOpen(p => !p)}
+          />
+        )}
         <div style={{ marginBottom: 16 }}>
           <ShipSchematic
             ships={ships}
@@ -859,29 +1165,65 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
         )}
       </div>
 
-      {/* Fixed footer — mission log only */}
-      <div style={{
-        padding: '12px 24px',
-        borderTop: '1px solid #0D2030',
-        flexShrink: 0,
-        display: 'flex', gap: 8, flexWrap: 'wrap',
-      }}>
-        {s === 'IN PROGRESS' && (
-          <button style={{
-            background: 'none', border: `1px solid ${C.border}`, color: C.border,
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace", fontSize: 16,
-            padding: '10px 20px', cursor: 'default', pointerEvents: 'none', letterSpacing: '0.05em',
-          }}>
-            [ SUBMIT MISSION LOG ]
-          </button>
-        )}
-        {s === 'COMPLETE' && (
-          <Btn color={C.amber} onClick={() => setPostLogOpen(p => !p)} disabled={working}>
-            [ SUBMIT MISSION LOG ]
-          </Btn>
-        )}
-      </div>
     </div>
+  );
+}
+
+// Post-mission log button — two-state, rendered above the crew manifest in
+// MissionDetail's scrollable body. Pending state pulses a cyan glow to invite
+// the click; submitted state dims to muted green with a large ✓ and is
+// non-interactive. Keyframes are injected once via an inline <style> tag so
+// no global.css edit is required.
+function PostMissionLogButton({ status, onClick }) {
+  if (status === 'submitted') {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 12,
+        padding: '10px 20px',
+        border: '1px solid rgba(51,221,170,0.3)',
+        color: 'rgba(51,221,170,0.4)',
+        background: 'rgba(51,221,170,0.04)',
+        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontSize: 14, letterSpacing: '0.14em', fontWeight: 'bold',
+        marginBottom: 16,
+        cursor: 'not-allowed',
+        pointerEvents: 'none',
+      }}>
+        <span style={{ fontSize: 28, lineHeight: 1 }}>✓</span>
+        <span>POST-MISSION LOG</span>
+      </div>
+    );
+  }
+  return (
+    <>
+      <style>{`
+        @keyframes postLogPulse {
+          0%, 100% { box-shadow: 0 0 4px rgba(0,238,255,0.35); }
+          50%      { box-shadow: 0 0 16px rgba(0,238,255,0.75); }
+        }
+      `}</style>
+      <button
+        onClick={onClick}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: 10,
+          width: '100%',
+          padding: '12px 20px',
+          border: '2px solid #00EEFF',
+          color: '#00EEFF',
+          background: 'rgba(0,238,255,0.06)',
+          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          fontSize: 14, letterSpacing: '0.14em', fontWeight: 'bold',
+          marginBottom: 16,
+          cursor: 'pointer',
+          animation: 'postLogPulse 2s ease-in-out infinite',
+        }}
+      >
+        <span style={{ fontSize: 18, lineHeight: 1 }}>✎</span>
+        <span>POST-MISSION LOG</span>
+      </button>
+    </>
   );
 }
 
@@ -959,6 +1301,7 @@ function ShipInProgressCard({ ship, isPrimary, shipThumbs }) {
         border: '1px solid #1A3D55',
         background: '#040D15',
         overflow: 'hidden', marginBottom: 12,
+        padding: 8,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {thumbUrl && (
@@ -1466,6 +1809,7 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
         width: '100%', height: 80, background: '#040D15', border: '1px solid #0D2030',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 10, overflow: 'hidden',
+        padding: 8, boxSizing: 'border-box',
       }}>
         {thumbUrl ? (
           <img src={thumbUrl} alt="" style={{
@@ -1660,9 +2004,10 @@ function OwnerAccessPopup({ popup, shipThumbs, onApprove, onDeny, onDismiss }) {
 
       <div style={{ padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div style={{
-          width: 64, height: 48, background: '#000', border: '1px solid #0D2030',
+          width: 64, height: 48, background: '#040D15', border: '1px solid #0D2030',
           flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
+          padding: 8, boxSizing: 'border-box',
         }}>
           {thumbUrl ? (
             <img src={thumbUrl} alt="" style={{
@@ -1921,6 +2266,108 @@ export default function Dashboard() {
   const leftColumnRef                       = useRef(null);
   const rightColumnRef                      = useRef(null);
 
+  // ─── Radio state lifted from RadioPanel ────────────────────────────────────
+  // Owning these here (plus the useRadioConnection call) means the WebRTC
+  // connection and every UI setting survive view changes within Dashboard.
+  // When RadioPanel unmounts (e.g. flipping into MY SHIPS), the hook stays
+  // alive because it's hooked at Dashboard scope; radioState / mute /
+  // sensitivity / tuned frequency all persist and re-render into the panel
+  // on remount without a reconnect.
+  const [voiceProfile, setVoiceProfile]     = useState(null);
+  const [profileVersion, setProfileVersion] = useState(0);
+  const [pttKey, setPttKey]                 = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
+  const [radioState, setRadioState]         = useState('standby');
+  const [isMuted, setIsMuted]               = useState(false);
+  const [micSensitivity, setMicSensitivity] = useState(100);
+  // Device selection — persisted per-browser so the operator's mic/output
+  // choice sticks across sessions. `null` means "use OS default".
+  const [micDeviceId, setMicDeviceIdInternal]       = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
+  const [outputDeviceId, setOutputDeviceIdInternal] = useState(() => localStorage.getItem('nexus_output_device_id') || null);
+  const setMicDeviceId = useCallback((id) => {
+    setMicDeviceIdInternal(id);
+    try {
+      if (id) localStorage.setItem('nexus_mic_device_id', id);
+      else localStorage.removeItem('nexus_mic_device_id');
+    } catch {}
+  }, []);
+  const setOutputDeviceId = useCallback((id) => {
+    setOutputDeviceIdInternal(id);
+    try {
+      if (id) localStorage.setItem('nexus_output_device_id', id);
+      else localStorage.removeItem('nexus_output_device_id');
+    } catch {}
+  }, []);
+
+  const {
+    tunedFrequency,
+    peers: radioPeers,
+    transmittingPeerIds,
+    isPTTActive,
+    micPermission,
+    requestMicPermission,
+    joinFrequency,
+    leaveFrequency,
+    getInputLevel,
+    startPTT,
+    stopPTT,
+    setMicSensitivity: setHookMicSensitivity,
+    setMuted: setHookMuted,
+  } = useRadioConnection({
+    voiceProfile,
+    voiceProfileVersion: profileVersion,
+    pttKey,
+    micDeviceId,
+    outputDeviceId,
+  });
+
+  useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
+  useEffect(() => { setHookMicSensitivity(micSensitivity); }, [micSensitivity, setHookMicSensitivity]);
+
+  // Auto-tune state machine: transitions standby→tuned when the hook lands
+  // on a frequency, and reverts to standby if the underlying connection drops
+  // mid-tuned/retuning so the panel doesn't render a stale editor.
+  useEffect(() => {
+    if (tunedFrequency && radioState === 'standby') setRadioState('tuned');
+    if (!tunedFrequency && (radioState === 'tuned' || radioState === 'retuning')) {
+      setRadioState('standby');
+    }
+  }, [tunedFrequency, radioState]);
+
+  // Load voice profile from server once at Dashboard mount. PTT key: server
+  // value wins, else keep the localStorage-derived default. Mirror server
+  // value back into localStorage so the next init hits the same value even
+  // before the fetch completes.
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/users/voice-profile').then(({ data }) => {
+      if (cancelled) return;
+      if (data?.ptt_key != null && data.ptt_key !== '') {
+        setPttKey(data.ptt_key);
+        try { localStorage.setItem('nexus_ptt_key', data.ptt_key); } catch {}
+      }
+      if (data?.needs_generation) {
+        setVoiceProfile(randomVoiceProfile());
+      } else {
+        const cleaned = {};
+        for (const f of RADIO_PROFILE_FIELDS) {
+          cleaned[f] = data?.[f] != null ? Number(data[f]) : null;
+        }
+        const coreFields = ['highpass', 'lowpass', 'resonance_freq', 'resonance_q', 'distortion', 'static_level'];
+        const allSet = coreFields.every(f => cleaned[f] != null);
+        if (allSet) {
+          if (cleaned.pitch_shift == null) cleaned.pitch_shift = 0;
+          if (cleaned.bit_crush == null)   cleaned.bit_crush = 16;
+          setVoiceProfile(cleaned);
+        } else {
+          setVoiceProfile(randomVoiceProfile());
+        }
+      }
+    }).catch(() => {
+      if (!cancelled) setVoiceProfile(randomVoiceProfile());
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   // Refs so the socket listener can read latest `me` and dedup set without
   // triggering listener re-registration on every state change.
   const meRef = useRef(me);
@@ -2081,8 +2528,7 @@ export default function Dashboard() {
       color: C.amber,
       overflow: 'hidden',
     }}>
-      <div className="scanlines" />
-      <div className="vignette" />
+
 
       {/* Owner access-request popups — fixed bottom-right, stacked */}
       {accessRequestPopups.length > 0 && (
@@ -2296,6 +2742,33 @@ export default function Dashboard() {
           <RadioPanel
             missionFrequency={myMissionFrequency}
             missionId={myMissionId}
+            voiceProfile={voiceProfile}
+            setVoiceProfile={setVoiceProfile}
+            profileVersion={profileVersion}
+            setProfileVersion={setProfileVersion}
+            pttKey={pttKey}
+            setPttKey={setPttKey}
+            radioState={radioState}
+            setRadioState={setRadioState}
+            isMuted={isMuted}
+            setIsMuted={setIsMuted}
+            micSensitivity={micSensitivity}
+            setMicSensitivity={setMicSensitivity}
+            tunedFrequency={tunedFrequency}
+            peers={radioPeers}
+            transmittingPeerIds={transmittingPeerIds}
+            isPTTActive={isPTTActive}
+            joinFrequency={joinFrequency}
+            leaveFrequency={leaveFrequency}
+            getInputLevel={getInputLevel}
+            startPTT={startPTT}
+            stopPTT={stopPTT}
+            micDeviceId={micDeviceId}
+            setMicDeviceId={setMicDeviceId}
+            outputDeviceId={outputDeviceId}
+            setOutputDeviceId={setOutputDeviceId}
+            micPermission={micPermission}
+            requestMicPermission={requestMicPermission}
           />
         </div>
 

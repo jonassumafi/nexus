@@ -279,15 +279,19 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
       )}
 
       {/* Schematic container: image owns the height (natural aspect) so the
-          node overlay anchors to actual image bounds, not a letterboxed wrapper. */}
+          node overlay anchors to actual image bounds, not a letterboxed wrapper.
+          8px padding pushes wings away from the border; the node overlay uses a
+          matching `inset: 8` so nodes stay pinned to the image, not the padding. */}
       <div style={{
         width: '100%',
         maxWidth: 520,
         margin: '0 auto',
         position: 'relative',
-        background: '#000',
+        background: '#040D15',
         overflow: 'hidden',
         borderBottom: '1px solid #0D2030',
+        padding: 8,
+        boxSizing: 'border-box',
         minHeight: thumbUrl ? 0 : 90,
       }}>
         {/* Layer 1 — ship image with holographic filter only on the img itself */}
@@ -299,6 +303,7 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
               width: '100%',
               height: 'auto',
               display: 'block',
+              objectFit: 'contain',
               filter: 'invert(1) sepia(1) saturate(3) hue-rotate(175deg) brightness(0.55) contrast(1.2)',
             }}
           />
@@ -322,8 +327,10 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
           }}>NO SHIP ASSIGNED</div>
         )}
 
-        {/* Layer 2 — nodes container; absolutely positioned over the image bounds. */}
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+        {/* Layer 2 — nodes container; absolutely positioned over the image
+            bounds. `inset: 8` matches the container's padding so nodes align
+            with the padded image content box, not the outer border box. */}
+        <div style={{ position: 'absolute', top: 8, left: 8, right: 8, bottom: 8 }}>
           {(() => {
             const nodePositions = computeNodePositions(roleKeys);
             return roleKeys.map((roleName, roleIndex) => {

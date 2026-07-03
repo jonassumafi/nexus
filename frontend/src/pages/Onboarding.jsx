@@ -451,22 +451,22 @@ function Step6({ formData, update, user, onNext, onBack }) {
 
       {/* Card — pure CSS, no background image */}
       <div style={{ maxWidth: 700, margin: '0 auto 24px', width: '100%', fontFamily: CARD_FONT }}>
-        <div style={{ background: '#06121C', border: '1px solid #2A6A9A' }}>
+        <div style={{ background: '#FFFFFF', border: '1px solid #2A6A9A' }}>
 
           {/* Header */}
           <div style={{
             padding: '14px 20px',
             borderBottom: '1px solid #2A6A9A',
-            background: '#0A1A28',
+            background: '#F0F6FA',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontSize: 16, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: 16, color: '#0D1A24', fontWeight: 'bold', letterSpacing: '0.1em' }}>
                 CITIZEN IDENTIFICATION CARD
               </div>
-              <div style={{ fontSize: 10, color: '#66AADD', letterSpacing: '0.08em', marginTop: 3 }}>
+              <div style={{ fontSize: 10, color: '#2A3A4A', letterSpacing: '0.08em', marginTop: 3 }}>
                 FORM UEE-CIT-001 · OFFICIAL GOVERNMENT DOCUMENT
               </div>
             </div>
@@ -504,7 +504,7 @@ function Step6({ formData, update, user, onNext, onBack }) {
                 width: '100%',
                 aspectRatio: '3/4',
                 border: '1px solid #2A6A9A',
-                background: '#11202F',
+                background: '#1A3A50',
                 overflow: 'hidden',
               }}>
                 {formData.portrait_url && (
@@ -530,10 +530,10 @@ function Step6({ formData, update, user, onNext, onBack }) {
                 { label: 'REG. DATE',      value: regDate },
               ].map((field, i) => (
                 <div key={i}>
-                  <div style={{ fontSize: 11, color: '#66AADD', letterSpacing: '0.12em', marginBottom: 4, fontWeight: 'bold' }}>
+                  <div style={{ fontSize: 11, color: '#2A3A4A', letterSpacing: '0.12em', marginBottom: 4, fontWeight: 'bold' }}>
                     {field.label}
                   </div>
-                  <div style={{ fontSize: 17, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: 17, color: '#0D1A24', fontWeight: 'bold', letterSpacing: '0.04em' }}>
                     {field.value || '—'}
                   </div>
                 </div>
@@ -545,7 +545,7 @@ function Step6({ formData, update, user, onNext, onBack }) {
           <div style={{
             padding: '10px 20px',
             borderTop: '1px solid #2A6A9A',
-            background: '#0A1A28',
+            background: '#F0F6FA',
             fontSize: 10,
             color: '#FFBB33',
             letterSpacing: '0.05em',

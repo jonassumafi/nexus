@@ -70,10 +70,30 @@ router.post('/', isAuthenticated, async (req, res) => {
       queueExpiresAt = new Date(baseTime + parseInt(queue_expires_minutes, 10) * 60 * 1000);
     }
 
-    // Verify all ships are available (not already on an active mission)
+    // Verify ship access + availability for every ship in the payload.
+    // Access = owner OR active (unexpired) loan. Availability = not already
+    // assigned to another active mission.
+    const now = new Date();
+    const userDoc = await User.findById(req.user._id).select('borrowed_ships').lean();
+    const activeBorrowedIds = new Set(
+      (userDoc?.borrowed_ships || [])
+        .filter(b => b.loan_expires_at && new Date(b.loan_expires_at) > now)
+        .map(b => b.ship_id.toString())
+    );
+
     for (const shipId of [primary_ship, ...(supporting_ships || [])]) {
-      const sc = await Ship.findById(shipId).select('ship_name is_mission current_mission_id');
+      const sc = await Ship.findById(shipId).select('ship_name owner_id is_mission current_mission_id');
       if (!sc) return res.status(404).json({ error: `Ship ${shipId} not found` });
+
+      const isOwner = sc.owner_id.equals(req.user._id);
+      const isBorrowed = activeBorrowedIds.has(shipId.toString());
+      if (!isOwner && !isBorrowed) {
+        return res.status(403).json({
+          error: 'SHIP_ACCESS_DENIED',
+          message: `You do not have access to ${sc.ship_name}`,
+        });
+      }
+
       if (sc.is_mission || sc.current_mission_id) {
         return res.status(400).json({
           error: 'SHIP_UNAVAILABLE',
@@ -144,6 +164,21 @@ router.post('/', isAuthenticated, async (req, res) => {
 
     const emit = mission.org_id ? emitToOrg.bind(null, mission.org_id) : emitToAll;
     emit('mission_created', { missionId: mission._id, name: mission.name });
+
+    // Feed entry — visible in the shared activity feed for every operator.
+    emitToAll('activity_event', {
+      event_type: 'mission_created',
+      citizen_name: req.user.citizen_name ?? req.user.username ?? 'UNKNOWN OPERATOR',
+      mission_name: mission.name,
+      timestamp: new Date(),
+    });
+    await MissionLog.create({
+      event_type: 'mission_created',
+      user_id: req.user._id,
+      citizen_name: req.user.citizen_name ?? req.user.username ?? 'UNKNOWN OPERATOR',
+      mission_name: mission.name,
+      timestamp: new Date(),
+    });
 
     res.status(201).json(mission);
   } catch (err) {
@@ -241,6 +276,43 @@ router.get('/types', async (req, res) => {
   try {
     const config = await PlatformConfig.findOne({}, { mission_types: 1 });
     res.json(config ? config.mission_types : []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /:id/my-participation — powers the mission-detail post-log button.
+// Returns two booleans:
+//   was_on_crew    — the caller had a filled slot on this mission (checked
+//                    against MissionArchive.crew_snapshot since the live
+//                    Ship.crew_roles.filled arrays get cleared by
+//                    resetMissionAssociations on completion)
+//   log_submitted  — the caller already POST'd a post_mission_log for this
+//                    mission (dedup guard, mirrors the check that
+//                    POST /:id/post-mission-log runs before insert)
+router.get('/:id/my-participation', isAuthenticated, async (req, res) => {
+  try {
+    const [logExists, archive] = await Promise.all([
+      MissionLog.findOne({
+        mission_id: req.params.id,
+        user_id: req.user._id,
+        event_type: 'post_mission_log',
+      }).select('_id').lean(),
+      MissionArchive.findOne({ original_mission_id: req.params.id })
+        .select('crew_snapshot').lean(),
+    ]);
+    const userId    = req.user._id.toString();
+    const discordId = req.user.discord_id ? String(req.user.discord_id) : null;
+    let wasOnCrew = false;
+    for (const entry of (archive?.crew_snapshot || [])) {
+      const eid  = entry.user_id ? String(entry.user_id) : null;
+      const edid = entry.discord_id ? String(entry.discord_id) : null;
+      if ((eid && eid === userId) || (discordId && edid && edid === discordId)) {
+        wasOnCrew = true;
+        break;
+      }
+    }
+    res.json({ was_on_crew: wasOnCrew, log_submitted: !!logExists });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -370,6 +442,23 @@ router.post('/:id/post-mission-log', isAuthenticated, async (req, res) => {
       mission_name: mission.name,
       rp_earned: 3,
       timestamp: log.timestamp,
+    });
+
+    // Feed entry for the log submission — appears in the shared activity feed.
+    emitToAll('activity_event', {
+      event_type: 'post_mission_log',
+      citizen_name,
+      mission_name: mission.name,
+      rp_earned: 3,
+      timestamp: new Date(),
+    });
+    await MissionLog.create({
+      event_type: 'post_mission_log',
+      user_id: req.user._id,
+      citizen_name,
+      mission_name: mission.name,
+      rp_earned: 3,
+      timestamp: new Date(),
     });
 
     res.status(201).json({ success: true, rp_earned: 3 });

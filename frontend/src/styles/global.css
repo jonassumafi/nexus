@@ -62,20 +62,6 @@ select:focus {
   outline: none;
 }
 
-/* ─── Scanlines overlay ─── */
-.scanlines {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9000;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 2px,
-    rgba(0, 0, 0, 0.08) 2px,
-    rgba(0, 0, 0, 0.08) 4px
-  );
-}
 
 /* ─── Vignette overlay ─── */
 .vignette {

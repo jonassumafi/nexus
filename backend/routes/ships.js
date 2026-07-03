@@ -183,13 +183,24 @@ router.get('/', isAuthenticated, async (req, res) => {
   }
 });
 
-router.get('/all', async (req, res) => {
+// Returns ships assignable to a mission by the requester: their own ships,
+// plus ships they have an active (unexpired) loan for that are not currently
+// on a mission. All other ships are excluded so the fleet picker in Stage 2
+// only surfaces vessels the operator actually has access to.
+router.get('/all', isAuthenticated, async (req, res) => {
   try {
-    const filter = {};
-    if (req.user && req.user._id) {
-      filter.owner_id = { $ne: req.user._id };
+    const now = new Date();
+    const user = await User.findById(req.user._id).select('borrowed_ships').lean();
+    const activeBorrowedIds = (user?.borrowed_ships || [])
+      .filter(b => b.loan_expires_at && new Date(b.loan_expires_at) > now)
+      .map(b => b.ship_id);
+
+    const orClauses = [{ owner_id: req.user._id }];
+    if (activeBorrowedIds.length > 0) {
+      orClauses.push({ _id: { $in: activeBorrowedIds }, is_mission: false });
     }
-    const ships = await Ship.find(filter)
+
+    const ships = await Ship.find({ $or: orClauses })
       .populate('owner_id', 'username citizen_name')
       .sort({ created_at: -1 })
       .limit(50);

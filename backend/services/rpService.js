@@ -1,9 +1,11 @@
 const User = require('../models/User');
+const Ship = require('../models/Ship');
 const RPLedger = require('../models/RPLedger');
 const ShipRPLedger = require('../models/ShipRPLedger');
 const MissionArchive = require('../models/MissionArchive');
 const PlatformConfig = require('../models/PlatformConfig');
-const { emitToUser } = require('./socketManager');
+const MissionLog = require('../models/MissionLog');
+const { emitToUser, emitToAll } = require('./socketManager');
 
 async function getConfig() {
   return PlatformConfig.findOne();
@@ -33,6 +35,20 @@ async function incrementUserRPAndUpdateRank(userId, points) {
 
   if (prevRankTitle && newRank.title !== prevRankTitle) {
     emitToUser(userId, 'rank_advanced', { userId, newRank, total_rp: user.total_rp });
+    // Broadcast rank change into the shared activity feed so every operator
+    // sees the promotion, not just the promoted user.
+    emitToAll('activity_event', {
+      event_type: 'rank_advancement',
+      citizen_name: user.citizen_name ?? user.username ?? 'UNKNOWN OPERATOR',
+      new_rank: newRank.title,
+      timestamp: new Date(),
+    });
+    await MissionLog.create({
+      event_type: 'rank_advancement',
+      citizen_name: user.citizen_name ?? user.username ?? 'UNKNOWN OPERATOR',
+      rank_name: newRank.title,
+      timestamp: new Date(),
+    });
   }
 
   return user;
@@ -118,6 +134,23 @@ async function awardShipFillBonus(shipId, missionId, capacityAtLaunch, filledAtL
     fill_rate: fillRate,
     points_awarded: points,
     threshold_snapshot: { threshold },
+  });
+
+  // Broadcast the bonus into the shared activity feed. Ship name is fetched
+  // once here so the payload is fully-formed without callers needing to know
+  // about the feed.
+  const shipDoc = await Ship.findById(shipId).select('ship_name').lean();
+  emitToAll('activity_event', {
+    event_type: 'ship_fill_bonus',
+    ship_name: shipDoc?.ship_name ?? '—',
+    rp_awarded: points,
+    timestamp: new Date(),
+  });
+  await MissionLog.create({
+    event_type: 'ship_fill_bonus',
+    ship_name: shipDoc?.ship_name ?? '—',
+    rp_earned: points,
+    timestamp: new Date(),
   });
 }
 

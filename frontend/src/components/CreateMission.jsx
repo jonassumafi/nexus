@@ -654,9 +654,13 @@ function VisibilityBtn({ label, active, disabled, tooltip, onClick }) {
 
 // ─── Stage 2: FLEET ─────────────────────────────────────────────────────────
 
-function Stage2({ form, setForm, myShips, allShips, shipImages, specs }) {
+function Stage2({ form, setForm, myShips, allShips, shipImages, specs, me, borrowedShipIds, myRequests, onRequestSent }) {
   const [search, setSearch] = useState('');
   const [mfg, setMfg] = useState('ALL MANUFACTURERS');
+  const ownedShipIds = useMemo(
+    () => new Set((myShips || []).map(s => s._id?.toString())),
+    [myShips]
+  );
 
   const manifest = form.fleet || [];
   const primaryId = manifest.find(m => m.role === 'PRIMARY')?.ship_id || null;
@@ -687,6 +691,9 @@ function Stage2({ form, setForm, myShips, allShips, shipImages, specs }) {
     const q = search.trim().toLowerCase();
     const prefixes = mfg === 'ALL MANUFACTURERS' ? null : MFG_PREFIX[mfg];
     return (allShips || []).filter(s => {
+      // Owned ships are already surfaced in the MY SHIPS section above —
+      // exclude them here so the inventory only lists non-owned vessels.
+      if (ownedShipIds.has(s._id?.toString())) return false;
       if (q && !(s.ship_name || '').toLowerCase().includes(q)) return false;
       if (prefixes) {
         const m = s.ship_model || '';
@@ -694,7 +701,7 @@ function Stage2({ form, setForm, myShips, allShips, shipImages, specs }) {
       }
       return true;
     }).slice(0, 30);
-  }, [allShips, search, mfg]);
+  }, [allShips, search, mfg, ownedShipIds]);
 
   return (
     <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -749,6 +756,9 @@ function Stage2({ form, setForm, myShips, allShips, shipImages, specs }) {
               hasPrimary={!!primaryId}
               onAddPrimary={() => addShip(ship, 'PRIMARY')}
               onAddSupport={() => addShip(ship, 'SUPPORT')}
+              hasActiveLoan={borrowedShipIds?.has(ship._id?.toString())}
+              pendingRequest={myRequests?.[ship._id?.toString()]}
+              onRequestSent={onRequestSent}
             />
           ))
         )}
@@ -777,11 +787,17 @@ function Section({ title, children }) {
   );
 }
 
-function ShipCardRow({ ship, shipImages, specs, showOwner, inManifest, hasPrimary, onAddPrimary, onAddSupport }) {
+function ShipCardRow({
+  ship, shipImages, specs, showOwner, inManifest, hasPrimary, onAddPrimary, onAddSupport,
+  hasActiveLoan, pendingRequest, onRequestSent,
+}) {
   const spec = specs?.[ship.ship_model] || {};
   const displayName = spec.display_name || ship.ship_model || '';
   const img = shipImages?.[ship.ship_model] || null;
   const owner = ship.owner_id?.citizen_name || ship.owner_id?.username || 'UNKNOWN';
+  const [reqLoading, setReqLoading] = useState(false);
+  const [localPending, setLocalPending] = useState(false);
+  const showPending = localPending || pendingRequest?.status === 'pending';
 
   const roleCounts = useMemo(() => {
     const counts = {};
@@ -805,15 +821,20 @@ function ShipCardRow({ ship, shipImages, specs, showOwner, inManifest, hasPrimar
       gap: 12,
     }}>
       {img && (
-        <img
-          src={img}
-          alt=""
-          style={{
-            width: 60, height: 'auto',
-            filter: 'invert(1) sepia(1) saturate(4) hue-rotate(170deg) brightness(0.5) contrast(1.3)',
-            flexShrink: 0,
-          }}
-        />
+        <div style={{
+          width: 76, height: 76, padding: 8, background: '#040D15',
+          boxSizing: 'border-box', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <img
+            src={img}
+            alt=""
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain',
+              filter: 'invert(1) sepia(1) saturate(4) hue-rotate(170deg) brightness(0.5) contrast(1.3)',
+            }}
+          />
+        </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 16, color: '#99CCFF', letterSpacing: '0.08em' }}>{ship.ship_name}</div>
@@ -844,6 +865,49 @@ function ShipCardRow({ ship, shipImages, specs, showOwner, inManifest, hasPrimar
           }}>
             [ ADDED ✓ ]
           </div>
+        ) : showOwner && !hasActiveLoan ? (
+          showPending ? (
+            <div style={{
+              border: '1px solid #FFBB33', color: '#FFBB33',
+              padding: '6px 12px', fontSize: 13, letterSpacing: '0.12em',
+              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+              whiteSpace: 'nowrap',
+            }}>
+              ⏳ REQUEST PENDING
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                if (reqLoading) return;
+                setReqLoading(true);
+                playClick();
+                try {
+                  const { data } = await api.post(`/ships/${ship._id}/request-access`);
+                  setLocalPending(true);
+                  onRequestSent?.(ship._id?.toString(), data?.request?._id);
+                } catch (err) {
+                  // Server will 400 if a duplicate active request exists — treat as pending too.
+                  if (err?.response?.status === 400) setLocalPending(true);
+                } finally {
+                  setReqLoading(false);
+                }
+              }}
+              style={{
+                border: '1px solid #1A3D55',
+                color: '#99CCFF',
+                background: '#000',
+                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                fontSize: 13,
+                letterSpacing: '0.12em',
+                padding: '6px 12px',
+                cursor: reqLoading ? 'wait' : 'pointer',
+                whiteSpace: 'nowrap',
+                opacity: reqLoading ? 0.6 : 1,
+              }}
+            >
+              {reqLoading ? 'SENDING...' : 'REQUEST ACCESS →'}
+            </button>
+          )
         ) : !hasPrimary ? (
           <SmallBtn color="#66AADD" onClick={onAddPrimary}>+ ADD AS PRIMARY</SmallBtn>
         ) : (
@@ -1069,7 +1133,8 @@ function CrewShipCard({ manifestEntry, form, setForm, me, shipImages }) {
             <div style={{
               width: 200, flexShrink: 0,
               alignSelf: 'flex-start',  // ← prevent flex row from stretching wrapper vertically
-              background: '#000',
+              background: '#040D15',
+              padding: 8, boxSizing: 'border-box',
             }}>
               {/* Inner wrapper sizes exactly to the image so the node overlay
                   anchors to the actual rendered image bounds, not a stretched cell. */}
@@ -1295,12 +1360,27 @@ function Wizard({ me, onClose, onSuccess }) {
   const [nameStatus, setNameStatus] = useState('idle');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [borrowedShipIds, setBorrowedShipIds] = useState(new Set());
+  const [myRequests, setMyRequests] = useState({}); // { [shipId]: { _id, status } }
   const nameCheckRef = useRef(null);
 
   useEffect(() => {
     api.get('/missions/types').then(({ data }) => setMissionTypes(Array.isArray(data) ? data : [])).catch(() => {});
     api.get('/ships/mine').then(({ data }) => setMyShips(Array.isArray(data) ? data : [])).catch(() => {});
     api.get('/ships/all').then(({ data }) => setAllShips(Array.isArray(data) ? data : [])).catch(() => {});
+    api.get('/ships/borrowed')
+      .then(({ data }) => setBorrowedShipIds(new Set((data || []).map(s => s._id?.toString()))))
+      .catch(() => {});
+    api.get('/ships/access-requests/mine')
+      .then(({ data }) => {
+        const map = {};
+        for (const r of (data?.as_requester || [])) {
+          const key = r.ship_id?.toString();
+          if (key) map[key] = { _id: r._id, status: r.status };
+        }
+        setMyRequests(map);
+      })
+      .catch(() => {});
     fetch('/images/ships/ship_index_large.json').then(r => r.json()).then(setShipImages).catch(() => {});
     fetch('/images/ships/ship_specs.json').then(r => r.json()).then(setSpecs).catch(() => {});
   }, []);
@@ -1494,6 +1574,12 @@ function Wizard({ me, onClose, onSuccess }) {
             allShips={allShips}
             shipImages={shipImages}
             specs={specs}
+            me={me}
+            borrowedShipIds={borrowedShipIds}
+            myRequests={myRequests}
+            onRequestSent={(shipId, requestId) =>
+              setMyRequests(m => ({ ...m, [shipId]: { _id: requestId, status: 'pending' } }))
+            }
           />
         )}
         {stage === 3 && (
