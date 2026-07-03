@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus Mission Review Screen — Reference Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 30px; }
+  .wrap { max-width: 700px; margin: 0 auto; }
+  .section-label { font-size: 11px; color: #4488BB; letter-spacing: 0.16em; margin-bottom: 12px; }
+
+  .mission-title { font-size: 24px; color: #CCE8FF; font-weight: bold; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .meta-row { font-size: 13px; color: #66AADD; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+  .type-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border: 1px solid #4488BB; color: #99CCFF; font-size: 11px; font-weight: bold; }
+
+  .section { margin-bottom: 8px; }
+  .section-header { padding: 6px 12px; margin-bottom: 10px; }
+  .section-header-text { font-size: 12px; font-weight: bold; letter-spacing: 0.14em; }
+  .section-body { padding: 0 12px 20px; }
+
+  /* OBJECTIVES — blue */
+  .obj-header { background: linear-gradient(90deg, rgba(102,170,221,0.18), rgba(102,170,221,0.02)); border-left: 3px solid #66AADD; }
+  .obj-header .section-header-text { color: #99CCFF; }
+  .obj-body { font-size: 15px; color: #66AADD; line-height: 1.7; }
+
+  /* FLEET MANIFEST — amber */
+  .fleet-header { background: linear-gradient(90deg, rgba(255,187,51,0.18), rgba(255,187,51,0.02)); border-left: 3px solid #FFBB33; }
+  .fleet-header .section-header-text { color: #FFBB33; }
+  .ship-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+  .primary-badge { font-size: 10px; color: #FFBB33; font-weight: bold; border: 1px solid #FFBB33; padding: 1px 6px; }
+  .support-badge { font-size: 10px; color: #66AADD; font-weight: bold; border: 1px solid #66AADD; padding: 1px 6px; }
+  .ship-name { font-size: 15px; color: #CCE8FF; font-weight: bold; }
+
+  /* CREW MANIFEST — lime green */
+  .crew-header { background: linear-gradient(90deg, rgba(68,255,136,0.18), rgba(68,255,136,0.02)); border-left: 3px solid #44FF88; }
+  .crew-header .section-header-text { color: #44FF88; }
+  .crew-ship-block { margin-bottom: 16px; }
+  .crew-ship-block:last-child { margin-bottom: 0; }
+  .crew-ship-name { font-size: 15px; color: #CCE8FF; font-weight: bold; margin-bottom: 8px; }
+  .role-pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .role-pill { font-size: 11px; color: #CCFFE0; background: rgba(68,255,136,0.08); border: 1px solid #44FF88; padding: 3px 8px; }
+  .role-pill b { color: #44FF88; }
+
+  .total-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; margin-top: 10px; border-top: 1px solid #1A3D55; }
+  .total-label { font-size: 12px; color: #4488BB; letter-spacing: 0.1em; font-weight: bold; }
+  .total-value { font-size: 24px; color: #CCE8FF; font-weight: bold; }
+
+  /* SUCCESS SCREEN */
+  .success-block { margin-top: 50px; padding: 30px; border: 1px solid #33DDAA; background: rgba(51,221,170,0.05); text-align: center; }
+  .success-icon { font-size: 13px; color: #33DDAA; letter-spacing: 0.14em; font-weight: bold; margin-bottom: 8px; }
+  .success-name { font-size: 18px; color: #CCE8FF; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="section-label">MISSION REVIEW SCREEN — FULL REFERENCE</div>
+
+  <div class="mission-title">OPERATION TEST MAGNET</div>
+  <div class="meta-row">
+    <span class="type-chip">👁 PATROL</span>
+    <span>7/1/2026, 1:21:00 PM · T-MINUS 00D 23H 58M · PUBLIC</span>
+  </div>
+
+  <div class="section">
+    <div class="section-header obj-header"><span class="section-header-text">OBJECTIVES</span></div>
+    <div class="section-body">
+      <div class="obj-body">A mission to test various parameters in the app. Please reserve a slot.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header fleet-header"><span class="section-header-text">FLEET MANIFEST</span></div>
+    <div class="section-body">
+      <div class="ship-row">
+        <span class="primary-badge">★ PRIMARY</span>
+        <span class="ship-name">HONEYBADGER</span>
+      </div>
+      <div class="ship-row">
+        <span class="support-badge">SUPPORT</span>
+        <span class="ship-name">HCS WARDEN</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header crew-header"><span class="section-header-text">CREW MANIFEST</span></div>
+    <div class="section-body">
+      <div class="crew-ship-block">
+        <div class="crew-ship-name">HONEYBADGER</div>
+        <div class="role-pill-row">
+          <span class="role-pill"><b>Pilot</b> ×1</span>
+          <span class="role-pill"><b>Co-Pilot</b> ×1</span>
+          <span class="role-pill"><b>Remote Turret Operator</b> ×4</span>
+          <span class="role-pill"><b>Engineer</b> ×1</span>
+          <span class="role-pill"><b>Medic</b> ×1</span>
+          <span class="role-pill"><b>Marine</b> ×8</span>
+        </div>
+      </div>
+      <div class="crew-ship-block">
+        <div class="crew-ship-name">HCS WARDEN</div>
+        <div class="role-pill-row">
+          <span class="role-pill"><b>Pilot</b> ×1</span>
+          <span class="role-pill"><b>Gunner</b> ×2</span>
+        </div>
+      </div>
+      <div class="total-row">
+        <span class="total-label">TOTAL CREW SLOTS</span>
+        <span class="total-value">16</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:40px;">SUCCESS / DEPLOY CONFIRMATION SCREEN</div>
+  <div class="success-block">
+    <div class="success-icon">✓ MISSION DEPLOYED</div>
+    <div class="success-name">OPERATION TEST MAGNET</div>
+  </div>
+
+</div>
+
+<!--
+DESIGN NOTES FOR IMPLEMENTATION:
+
+1. SECTION HEADERS — three sections,
+   each with a distinct accent color
+   and a left-border + gradient-tint
+   header bar:
+   - OBJECTIVES: accent #66AADD,
+     header text #99CCFF
+   - FLEET MANIFEST: accent #FFBB33,
+     header text #FFBB33
+   - CREW MANIFEST: accent #44FF88,
+     header text #44FF88
+
+   Header bar CSS pattern (color
+   varies per section, opacity values
+   stay the same):
+     padding: 6px 12px
+     marginBottom: 10px
+     background: linear-gradient(90deg,
+       rgba({R},{G},{B},0.18),
+       rgba({R},{G},{B},0.02))
+     borderLeft: 3px solid {accent}
+
+2. OBJECTIVES BODY — stays in standard
+   readable blue (#66AADD), no special
+   tinting. This is the only section
+   where the color stops at the header.
+
+3. FLEET MANIFEST — one row per ship.
+   PRIMARY badge: amber border/text,
+   "★ PRIMARY" label.
+   SUPPORT badge (for any non-primary
+   ship): blue border/text (#66AADD),
+   "SUPPORT" label.
+   Ship name: white #CCE8FF, bold,
+   15px — same treatment regardless
+   of primary/support status.
+   Render ONE ship-row per ship in
+   the fleet manifest, in order
+   (primary first, then supports).
+
+4. CREW MANIFEST — one block per ship,
+   in the SAME order as Fleet Manifest.
+   Ship name inside this section uses
+   the IDENTICAL styling as Fleet
+   Manifest ship names: #CCE8FF, bold,
+   15px (NOT a different color — this
+   was a previous bug, now corrected).
+   Below each ship name, role pills:
+   green-tinted background, green
+   border, role label in bold green
+   #44FF88, count in lighter green
+   #CCFFE0.
+   Multiple ships render as stacked
+   blocks with marginBottom: 16px
+   between them (last block has no
+   bottom margin).
+
+5. TOTAL CREW SLOTS — appears once,
+   after all ship blocks, with a top
+   border separator. The number value
+   uses the SAME font size and color
+   as ship names (#CCE8FF, bold,
+   24px — larger than the 15px ship
+   names since it's a summary stat,
+   but same color family). Label text
+   stays neutral blue-gray (#4488BB).
+
+6. SUCCESS / DEPLOY CONFIRMATION —
+   when a mission is successfully
+   created (POST /api/missions
+   succeeds), the confirmation message
+   "✓ MISSION DEPLOYED — {NAME}" must
+   remain visible and static on screen
+   for EXACTLY 5000ms (5 seconds)
+   before the wizard closes and
+   returns to the dashboard. No
+   fading, no flicker — a calm,
+   readable hold. This is a TIMING
+   fix, not just visual — find the
+   setTimeout call that currently
+   triggers the transition and change
+   its duration to 5000.
+
+7. Color values are also used
+   elsewhere in the app (amber for
+   navigation, lime for success
+   events) — this reference does not
+   introduce any new palette colors,
+   only reapplies the existing system
+   to this specific screen.
+-->
+
+</body>
+</html>

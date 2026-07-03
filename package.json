@@ -1,0 +1,10 @@
+{
+  "name": "nexus-scripts",
+  "private": true,
+  "description": "One-off enrichment / migration scripts for Nexus.",
+  "scripts": {},
+  "devDependencies": {
+    "axios": "^1.18.1",
+    "cheerio": "^1.2.0"
+  }
+}

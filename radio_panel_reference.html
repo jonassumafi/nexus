@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus Radio Panel — Reference Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 40px; }
+
+  .col { width: 300px; }
+
+  /* PANEL CONTAINER — textured boxed background */
+  .panel {
+    background: #06121C;
+    border: 1px solid #2A6A9A;
+    box-shadow: inset 0 0 0 1px #0D2030;
+  }
+
+  /* HEADER BAR */
+  .panel-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid #2A6A9A;
+    background: #0A1A28;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-title {
+    font-size: 13px;
+    color: #99CCFF;
+    letter-spacing: 0.14em;
+    font-weight: bold;
+  }
+  .live-dot {
+    font-size: 11px;
+    color: #33DDAA;
+    font-weight: bold;
+  }
+  .gear {
+    font-size: 18px;
+    color: #66AADD;
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+
+  /* FREQUENCY DISPLAY BLOCK */
+  .freq-block {
+    padding: 16px;
+    text-align: center;
+    border-bottom: 1px solid #1A3D55;
+    background: #08141F;
+  }
+  .freq-val {
+    font-size: 32px;
+    color: #00EEFF;
+    letter-spacing: 0.18em;
+    font-weight: bold;
+    text-shadow: 0 0 12px rgba(0,238,255,0.5);
+  }
+  .freq-sub {
+    font-size: 12px;
+    color: #66AADD;
+    margin-top: 4px;
+    letter-spacing: 0.12em;
+  }
+  .disconnect-link {
+    font-size: 11px;
+    color: #FF6655;
+    margin-top: 8px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+  }
+
+  /* CREW LIST BLOCK */
+  .crew-block {
+    padding: 12px 16px;
+    border-bottom: 1px solid #1A3D55;
+  }
+  .crew-header {
+    font-size: 11px;
+    color: #99CCFF;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+  .crew-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #2A6A9A;
+    flex-shrink: 0;
+  }
+  .dot.live {
+    background: #FF4455;
+    box-shadow: 0 0 6px rgba(255,68,85,0.6);
+  }
+  .crew-name {
+    font-size: 13px;
+    color: #CCE8FF;
+    font-weight: bold;
+  }
+  .crew-name.idle {
+    color: #99CCFF;
+    font-weight: normal;
+  }
+  .sig {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+  }
+  .sig-bar {
+    width: 3px;
+    background: #1A3D55;
+  }
+  .sig-bar.active {
+    background: #FF4455;
+  }
+
+  /* MIC LEVEL METER BLOCK */
+  .meter-block {
+    padding: 10px 16px;
+    border-bottom: 1px solid #1A3D55;
+  }
+  .meter-label {
+    font-size: 11px;
+    color: #99CCFF;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    font-weight: bold;
+  }
+  .meter-track {
+    width: 100%;
+    height: 8px;
+    background: #06121C;
+    border: 1px solid #2A6A9A;
+    overflow: hidden;
+  }
+  .meter-fill {
+    height: 100%;
+    width: 55%;
+    background: #33DDAA;
+    transition: width 0.05s;
+  }
+  /* meter-fill color states:
+     level <= 30:  #66AADD (blue)
+     level 31-70:  #33DDAA (green)
+     level > 70:   #FF4455 (red, clipping warning) */
+
+  /* PTT BUTTON BLOCK */
+  .ptt-block {
+    padding: 14px 16px;
+  }
+  .ptt-btn {
+    width: 100%;
+    font-size: 14px;
+    padding: 12px 0;
+    text-align: center;
+    border: 2px solid #33DDAA;
+    color: #33DDAA;
+    background: #06121C;
+    letter-spacing: 0.12em;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .ptt-btn.active {
+    border-color: #FF4455;
+    color: #FF4455;
+    background: rgba(255,68,85,0.12);
+  }
+
+  .hint {
+    font-size: 10px;
+    color: #66AADD;
+    text-align: center;
+    padding: 0 16px 14px;
+    letter-spacing: 0.08em;
+  }
+
+  /* STANDBY STATE (no frequency tuned) */
+  .standby-body {
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .standby-text {
+    font-size: 13px;
+    color: #66AADD;
+    letter-spacing: 0.1em;
+    margin-bottom: 14px;
+    font-weight: bold;
+  }
+  .tune-mission-prompt {
+    font-size: 12px;
+    color: #FFBB33;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+  .tune-mission-btn {
+    border: 2px solid #FFBB33;
+    color: #FFBB33;
+    background: #06121C;
+    font-size: 12px;
+    padding: 8px 16px;
+    letter-spacing: 0.1em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 16px;
+  }
+  .manual-tune-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  .freq-input {
+    width: 100px;
+    background: #06121C;
+    border: 1px solid #4488BB;
+    color: #00EEFF;
+    font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+    font-size: 16px;
+    padding: 8px;
+    text-align: center;
+    font-weight: bold;
+  }
+  .tune-btn {
+    border: 2px solid #66AADD;
+    color: #66AADD;
+    background: #06121C;
+    font-size: 12px;
+    padding: 8px 16px;
+    letter-spacing: 0.1em;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  /* SETTINGS STATE */
+  .settings-body {
+    padding: 16px;
+  }
+  .setting-item {
+    margin-bottom: 16px;
+  }
+  .setting-label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .setting-name {
+    font-size: 12px;
+    color: #99CCFF;
+    letter-spacing: 0.1em;
+    font-weight: bold;
+  }
+  .setting-val {
+    font-size: 12px;
+    color: #00EEFF;
+    font-weight: bold;
+  }
+  .slider-track {
+    width: 100%;
+    height: 6px;
+    background: #06121C;
+    border: 1px solid #2A6A9A;
+    position: relative;
+  }
+  .slider-fill {
+    height: 100%;
+    background: #66AADD;
+  }
+  .preview-btn {
+    width: 100%;
+    border: 2px solid #4488BB;
+    color: #99CCFF;
+    background: #06121C;
+    font-size: 12px;
+    padding: 8px 0;
+    letter-spacing: 0.1em;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 12px 0;
+  }
+  .settings-btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .btn-small {
+    flex: 1;
+    font-size: 11px;
+    padding: 8px 0;
+    text-align: center;
+    border: 2px solid;
+    background: #06121C;
+    letter-spacing: 0.08em;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .btn-randomize {
+    border-color: #66AADD;
+    color: #66AADD;
+  }
+  .btn-save {
+    border-color: #33DDAA;
+    color: #33DDAA;
+  }
+
+  .section-label {
+    font-size: 11px;
+    color: #4488BB;
+    letter-spacing: 0.16em;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div style="display: flex; gap: 24px; flex-wrap: wrap;">
+
+  <!-- STATE 1: TUNED (primary reference state) -->
+  <div class="col">
+    <div class="section-label">STATE: TUNED — PRIMARY REFERENCE</div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">NEXUS COMM SYSTEM</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="live-dot">● LIVE</span>
+          <button class="gear">⚙</button>
+        </div>
+      </div>
+
+      <div class="freq-block">
+        <div class="freq-val">127.4</div>
+        <div class="freq-sub">MHz — TUNED</div>
+        <div class="disconnect-link">✕ DISCONNECT</div>
+      </div>
+
+      <div class="crew-block">
+        <div class="crew-header">CREW ON FREQUENCY</div>
+        <div class="crew-row">
+          <div class="dot live"></div>
+          <span class="crew-name">VOSS MARLOWE</span>
+          <div class="sig">
+            <div class="sig-bar active" style="height:5px"></div>
+            <div class="sig-bar active" style="height:10px"></div>
+            <div class="sig-bar active" style="height:7px"></div>
+          </div>
+        </div>
+        <div class="crew-row">
+          <div class="dot"></div>
+          <span class="crew-name idle">RAEL THORNE</span>
+        </div>
+      </div>
+
+      <div class="meter-block">
+        <div class="meter-label">MIC LEVEL</div>
+        <div class="meter-track"><div class="meter-fill"></div></div>
+      </div>
+
+      <div class="ptt-block">
+        <button class="ptt-btn">● HOLD V TO TRANSMIT</button>
+      </div>
+      <div class="hint">PRESS AND HOLD TO SPEAK</div>
+    </div>
+  </div>
+
+  <!-- STATE 2: STANDBY -->
+  <div class="col">
+    <div class="section-label">STATE: STANDBY</div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">NEXUS COMM SYSTEM</span>
+        <button class="gear">⚙</button>
+      </div>
+      <div class="standby-body">
+        <div class="standby-text">NO FREQUENCY TUNED</div>
+
+        <div class="tune-mission-prompt">MISSION FREQUENCY AVAILABLE: 127.4 MHz</div>
+        <button class="tune-mission-btn">TUNE TO MISSION</button>
+
+        <div class="manual-tune-row">
+          <input class="freq-input" placeholder="127.4" />
+          <button class="tune-btn">TUNE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 3: SETTINGS -->
+  <div class="col">
+    <div class="section-label">STATE: SETTINGS</div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">VOICE PROFILE SETTINGS</span>
+        <button class="gear">✕</button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span class="setting-name">HIGHPASS CUTOFF</span>
+            <span class="setting-val">320 Hz</span>
+          </div>
+          <div class="slider-track"><div class="slider-fill" style="width:40%"></div></div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span class="setting-name">LOWPASS CUTOFF</span>
+            <span class="setting-val">3200 Hz</span>
+          </div>
+          <div class="slider-track"><div class="slider-fill" style="width:55%"></div></div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span class="setting-name">RESONANCE</span>
+            <span class="setting-val">1400 Hz · Q 2.5</span>
+          </div>
+          <div class="slider-track"><div class="slider-fill" style="width:45%"></div></div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span class="setting-name">DISTORTION</span>
+            <span class="setting-val">18</span>
+          </div>
+          <div class="slider-track"><div class="slider-fill" style="width:60%"></div></div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label-row">
+            <span class="setting-name">STATIC LEVEL</span>
+            <span class="setting-val">0.006</span>
+          </div>
+          <div class="slider-track"><div class="slider-fill" style="width:35%"></div></div>
+        </div>
+
+        <button class="preview-btn">▶ PREVIEW VOICE</button>
+
+        <div class="settings-btn-row">
+          <button class="btn-small btn-randomize">RANDOMIZE</button>
+          <button class="btn-small btn-save">SAVE PROFILE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!--
+DESIGN NOTES FOR IMPLEMENTATION:
+
+1. PANEL BACKGROUND: #06121C (deep navy, not pure black) with
+   1px solid #2A6A9A border and inset shadow 0 0 0 1px #0D2030
+   for a "boxed instrument panel" texture.
+
+2. HEADER BAR: Slightly lighter navy #0A1A28, separates visually
+   from the panel body below it.
+
+3. NO FADED/DIM TEXT COLORS. Replace all instances of the old
+   dim grays (#2A6A9A, #4488BB used as TEXT color) with:
+   - Primary labels/headers: #99CCFF (bright, bold)
+   - Bright emphasis text: #CCE8FF (e.g. active crew names)
+   - Secondary but still readable: #66AADD (e.g. idle crew names,
+     hints) — this is the DIMMEST text color allowed anywhere
+     in the radio panel. Never go dimmer than #66AADD for any
+     readable text.
+   - #2A6A9A and #4488BB are ONLY acceptable as BORDER colors
+     or background tints, never as text color, anywhere in
+     this component.
+
+4. FONT WEIGHT: bold on all headers, labels, button text, and
+   crew names. Normal weight only for idle/secondary crew names.
+
+5. FONT SIZES increased from previous implementation:
+   - Panel title: 13px (was ~10px)
+   - Frequency value: 32px (was ~22px)
+   - Frequency sub label: 12px (was ~9px)
+   - Crew names: 13px (was ~11px)
+   - Crew header: 11px (was ~9px)
+   - Meter label: 11px (was ~10px)
+   - PTT button: 14px (was ~11px)
+   - Settings labels/values: 12px (was ~10px)
+   - Hint text: 10px minimum anywhere
+
+6. PTT BUTTON: 2px border (not 1px), bold text, larger padding
+   (12px 0 instead of 8px 0).
+
+7. This same color/weight/sizing correction (no text dimmer than
+   #66AADD, bold headers and labels, larger font sizes) should be
+   applied as a broader pass across other Nexus components that
+   currently use #2A6A9A or #4488BB as TEXT color rather than
+   border color — this reference file establishes the new
+   minimum-readability standard for the whole app.
+-->
+
+</body>
+</html>

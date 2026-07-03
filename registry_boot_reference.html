@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus — Ship Registry Boot Sequence Reference</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; padding: 20px; }
+.screen { width: 700px; }
+
+.title { font-size: 13px; color: #99CCFF; font-weight: bold; letter-spacing: 0.16em; text-align: center; margin-bottom: 4px; }
+.subtitle { font-size: 10px; color: #4488BB; letter-spacing: 0.12em; text-align: center; margin-bottom: 20px; }
+
+/* DOS TEXT LOG */
+.dos-log { min-height: 130px; margin-bottom: 16px; }
+.dos-line { font-size: 11px; color: #66AADD; letter-spacing: 0.06em; line-height: 1.9; opacity: 0; transition: opacity 0.3s; }
+.dos-line.visible { opacity: 1; }
+.dos-line.success { color: #33DDAA; }
+.dos-line.warn { color: #FFBB33; }
+.dos-line.dim { color: #2A6A9A; }
+
+/* SIGNAL ROW */
+.signal-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; opacity: 0; transition: opacity 0.5s; }
+.signal-row.visible { opacity: 1; }
+.signal-bars { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
+.sbar { width: 4px; background: #1A3D55; transition: background 0.3s; }
+.sbar.active { background: #00EEFF; }
+.signal-text { font-size: 10px; color: #00EEFF; letter-spacing: 0.1em; }
+
+/* BLOCKCHAIN VIEWPORT */
+.viewport { width: 700px; height: 200px; overflow: hidden; position: relative; border-top: 1px solid #0D2030; border-bottom: 1px solid #0D2030; opacity: 0; transition: opacity 0.5s; }
+.viewport.visible { opacity: 1; }
+svg.chain { position: absolute; top: 0; left: 0; width: 2400px; height: 200px; }
+
+.counter { font-size: 10px; color: #4488BB; text-align: center; margin-top: 8px; letter-spacing: 0.08em; min-height: 14px; }
+.final-line { font-size: 12px; color: #33DDAA; font-weight: bold; letter-spacing: 0.1em; margin-top: 8px; text-align: center; opacity: 0; transition: opacity 0.8s; min-height: 18px; }
+.final-line.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="title">NEXUS INTERSTELLAR TRAFFIC SYSTEM</div>
+  <div class="subtitle">CENTRAL SHIP REGISTRY — OPERATOR ACCESS</div>
+
+  <div class="dos-log" id="doslog"></div>
+
+  <div class="signal-row" id="sigrow">
+    <div class="signal-bars">
+      <div class="sbar" style="height:4px" id="b1"></div>
+      <div class="sbar" style="height:8px" id="b2"></div>
+      <div class="sbar" style="height:12px" id="b3"></div>
+      <div class="sbar" style="height:16px" id="b4"></div>
+      <div class="sbar" style="height:18px" id="b5"></div>
+    </div>
+    <div class="signal-text" id="sigtext">ACQUIRING SIGNAL...</div>
+  </div>
+
+  <div class="viewport" id="vp">
+    <svg class="chain" id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="counter" id="counter"></div>
+  <div class="final-line" id="final"></div>
+</div>
+
+<script>
+/*
+═══════════════════════════════════════════════════════
+IMPLEMENTATION NOTES FOR CLAUDE CODE
+═══════════════════════════════════════════════════════
+
+AUDIO SETUP (do this before building the component):
+  1. ffmpeg -i ~/nexus/signal_resolution_2.* \
+       -ss 0 -t 6.0 \
+       ~/nexus/frontend/public/sounds/signal_resolution.mp3
+     Print the output duration to confirm the 6-second cut.
+
+  2. The existing registry_boot.mp3 cut from various_modem_sounds.mp3
+     (at 5-second mark to end) should already be in
+     ~/nexus/frontend/public/sounds/registry_boot.mp3
+     from the earlier boot prompt. Confirm it exists.
+     registry_boot.mp3 is NOT used in this sequence —
+     signal_resolution.mp3 is the only audio file used here.
+
+SEQUENCE TIMING:
+  Phase 1 — DOS text lines print one by one (see DOS_LINES array below).
+  Lines 0-3 print with fixed delays.
+  Line 3 is "ESTABLISHING UPLINK TO UEE CENTRAL DATABASE..."
+  After line 3 prints:
+    a. Play /sounds/signal_resolution.mp3
+    b. PAUSE all further text and animation until audio.onended fires
+    c. On audio.onended: print line 4 "SIGNAL ACQUIRED — NODE 7 ONLINE"
+    d. Continue remaining lines with fixed delays
+    e. After last DOS line, show signal bars, animate them
+    f. Fade in blockchain viewport, begin scroll
+
+  This audio gate is critical — do NOT use setTimeout for the gap
+  between lines 3 and 4. Use audio.onended exclusively so timing
+  adapts to the actual file duration regardless of environment.
+
+DOS_LINES = [
+  { text: '> INITIALIZING NEXUS REGISTRY ACCESS PROTOCOL...', cls: '', delay: 0 },
+  { text: '> AUTHENTICATING OPERATOR CREDENTIALS...', cls: '', delay: 1200 },
+  { text: '> CREDENTIALS VERIFIED — CLEARANCE LEVEL: OPERATOR', cls: 'success', delay: 2400 },
+  { text: '> ESTABLISHING UPLINK TO UEE CENTRAL DATABASE...', cls: '', delay: 3600 },
+  // ← AUDIO PLAYS HERE. Next line fires only on audio.onended:
+  { text: '> SIGNAL ACQUIRED — NODE 7 ONLINE', cls: 'success', delay: 0 },
+  { text: '> VESSEL MANIFESTS DETECTED: {shipCount} RECORDS', cls: 'warn', delay: 1200 },
+  { text: '> INITIATING BLOCKCHAIN SYNC — DOWNLOADING VESSEL DATA...', cls: '', delay: 2400 },
+  { text: '> VERIFYING MERKLE TREE INTEGRITY...', cls: 'dim', delay: 3600 },
+]
+
+Note: {shipCount} should be the actual count of ships returned
+from GET /api/ships?includeStats=true — not hardcoded.
+
+BLOCKCHAIN ANIMATION:
+  - One group per ship returned from the API (up to the visible
+    scroll window — all ships scroll through even if there are 260)
+  - Each group has 3 sub-tree blocks: CREW, LOGS, CARGO
+  - Sub-tree blocks fill left-to-right individually then merge
+    into the parent VESSEL block
+  - VESSEL block shows: ship.ship_name, hash (generate as
+    '#' + ship._id.toString().slice(-8).toUpperCase()),
+    NTT amount (generate as Math.random() * 30 + 5, fixed 3)
+  - Scroll speed: 0.20px per frame (very slow, readable)
+  - Each group activates when its mainX enters the visible window
+
+GRID COLUMN on completion:
+  After final-line shows "[ REGISTRY READY ]", wait 2 seconds
+  then reveal the ship registry card grid (set bootComplete = true
+  in component state to swap from boot view to grid view).
+
+═══════════════════════════════════════════════════════
+*/
+
+const svg = document.getElementById('svg');
+const vp = document.getElementById('vp');
+const doslog = document.getElementById('doslog');
+const SHIP_COUNT = 8;
+const MID_Y = 100;
+const TX_W = 68, TX_H = 30;
+const MAIN_W = 105, MAIN_H = 64;
+
+const DOS_LINES = [
+  { text: '> INITIALIZING NEXUS REGISTRY ACCESS PROTOCOL...', cls: '' },
+  { text: '> AUTHENTICATING OPERATOR CREDENTIALS...', cls: '' },
+  { text: '> CREDENTIALS VERIFIED — CLEARANCE LEVEL: OPERATOR', cls: 'success' },
+  { text: '> ESTABLISHING UPLINK TO UEE CENTRAL DATABASE...', cls: '' },
+  { text: '> SIGNAL ACQUIRED — NODE 7 ONLINE', cls: 'success' },
+  { text: `> VESSEL MANIFESTS DETECTED: ${SHIP_COUNT} RECORDS`, cls: 'warn' },
+  { text: '> INITIATING BLOCKCHAIN SYNC — DOWNLOADING VESSEL DATA...', cls: '' },
+  { text: '> VERIFYING MERKLE TREE INTEGRITY...', cls: 'dim' },
+];
+
+const groups = [
+  { x: 80,   ship: 'HCS RUDA',     hash: '#A4F2C9E1', ntt: 36.041, subtrees: ['CREW','LOGS','CARGO'] },
+  { x: 420,  ship: 'HCS TEKKE',    hash: '#B91CC3F7', ntt: 26.846, subtrees: ['CREW','LOGS','CARGO'] },
+  { x: 760,  ship: 'OLE ASS',      hash: '#C2D84A12', ntt: 34.426, subtrees: ['CREW','LOGS','CARGO'] },
+  { x: 1100, ship: 'IRIE SPIRIT',  hash: '#D7E13B55', ntt: 18.329, subtrees: ['CREW','LOGS','CARGO'] },
+];
+
+let scrollX = 0, verified = 0;
+const groupVerified = {};
+
+function makeSVGEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function addDosLine(text, cls) {
+  const div = document.createElement('div');
+  div.className = `dos-line ${cls}`;
+  div.textContent = text;
+  doslog.appendChild(div);
+  requestAnimationFrame(() => div.classList.add('visible'));
+}
+
+function runDosPhase() {
+  // Lines 0-3 with fixed delays
+  [0,1,2,3].forEach(i => {
+    setTimeout(() => addDosLine(DOS_LINES[i].text, DOS_LINES[i].cls), i * 1200);
+  });
+
+  // After line 3, play audio then continue
+  setTimeout(() => {
+    const audio = new Audio('/sounds/signal_resolution.mp3');
+    audio.play().catch(() => {});
+    audio.onended = () => {
+      // Line 4 fires only after audio completes
+      addDosLine(DOS_LINES[4].text, DOS_LINES[4].cls);
+      setTimeout(() => addDosLine(DOS_LINES[5].text, DOS_LINES[5].cls), 1200);
+      setTimeout(() => addDosLine(DOS_LINES[6].text, DOS_LINES[6].cls), 2400);
+      setTimeout(() => addDosLine(DOS_LINES[7].text, DOS_LINES[7].cls), 3600);
+      setTimeout(() => {
+        document.getElementById('sigrow').classList.add('visible');
+        animateBars(() => {
+          document.getElementById('vp').classList.add('visible');
+          drawGroups();
+          scroll();
+        });
+      }, 4200);
+    };
+  }, 3 * 1200 + 400);
+}
+
+function drawGroups() {
+  groups.forEach((g, gi) => {
+    const txCount = g.subtrees.length;
+    const sp = 38;
+    const sy = MID_Y - ((txCount-1)/2) * sp;
+    const mainX = g.x + 140;
+
+    g.subtrees.forEach((label, ti) => {
+      const ty = sy + ti * sp - TX_H/2;
+      const tx = `${gi}_${ti}`;
+      const mcx = g.x + TX_W + 24;
+      const path = `M${g.x+TX_W},${ty+TX_H/2} L${mcx},${ty+TX_H/2} L${mcx},${MID_Y} L${mainX},${MID_Y}`;
+      svg.appendChild(makeSVGEl('path', { d:path, fill:'none', stroke:'#1A3D55', 'stroke-width':1, id:`conn_${tx}` }));
+      svg.appendChild(makeSVGEl('rect', { x:g.x, y:ty, width:TX_W, height:TX_H, fill:'#06121C', stroke:'#1A3D55', 'stroke-width':1, id:`txf_${tx}` }));
+      svg.appendChild(makeSVGEl('rect', { x:g.x, y:ty, width:0, height:TX_H, fill:'rgba(0,238,255,0.14)', id:`txp_${tx}` }));
+      const t1 = makeSVGEl('text', { x:g.x+TX_W/2, y:ty+TX_H/2-3, 'text-anchor':'middle', fill:'#2A6A9A', 'font-size':8, 'font-family':'JetBrains Mono,monospace', 'font-weight':'bold', id:`tl1_${tx}` });
+      t1.textContent = label; svg.appendChild(t1);
+      const t2 = makeSVGEl('text', { x:g.x+TX_W/2, y:ty+TX_H/2+7, 'text-anchor':'middle', fill:'#1A3D55', 'font-size':7, 'font-family':'JetBrains Mono,monospace', id:`tl2_${tx}` });
+      t2.textContent = 'PENDING'; svg.appendChild(t2);
+      svg.appendChild(makeSVGEl('circle', { cx:mcx, cy:ty+TX_H/2, r:3, fill:'#1A3D55', id:`dot_${tx}` }));
+    });
+
+    svg.appendChild(makeSVGEl('rect', { x:mainX, y:MID_Y-MAIN_H/2, width:MAIN_W, height:MAIN_H, fill:'#06121C', stroke:'#1A3D55', 'stroke-width':1, id:`mb_${gi}` }));
+    svg.appendChild(makeSVGEl('rect', { x:mainX, y:MID_Y-MAIN_H/2, width:0, height:MAIN_H, fill:'rgba(0,238,255,0.11)', id:`mbp_${gi}` }));
+
+    const vt = makeSVGEl('text', { x:mainX+MAIN_W/2, y:MID_Y-22, 'text-anchor':'middle', fill:'#1A3D55', 'font-size':8, 'font-family':'JetBrains Mono,monospace', 'font-weight':'bold', id:`mbs_${gi}` });
+    vt.textContent = 'VESSEL'; svg.appendChild(vt);
+    const hn = makeSVGEl('text', { x:mainX+MAIN_W/2, y:MID_Y-11, 'text-anchor':'middle', fill:'#1A3D55', 'font-size':7, 'font-family':'JetBrains Mono,monospace', id:`mbh_${gi}` });
+    hn.textContent = g.hash; svg.appendChild(hn);
+    const sn = makeSVGEl('text', { x:mainX+MAIN_W/2, y:MID_Y+2, 'text-anchor':'middle', fill:'#1A3D55', 'font-size':7, 'font-family':'JetBrains Mono,monospace', id:`mbsh_${gi}` });
+    sn.textContent = g.ship; svg.appendChild(sn);
+    const st = makeSVGEl('text', { x:mainX+MAIN_W/2, y:MID_Y+13, 'text-anchor':'middle', fill:'#1A3D55', 'font-size':7, 'font-family':'JetBrains Mono,monospace', id:`mbst_${gi}` });
+    st.textContent = 'PENDING'; svg.appendChild(st);
+    const nt = makeSVGEl('text', { x:mainX+MAIN_W/2, y:MID_Y+24, 'text-anchor':'middle', fill:'#1A3D55', 'font-size':7, 'font-family':'JetBrains Mono,monospace', id:`mbnt_${gi}` });
+    nt.textContent = ''; svg.appendChild(nt);
+
+    if (gi < groups.length-1) {
+      const nx = groups[gi+1].x + 140;
+      svg.insertBefore(makeSVGEl('line', { x1:mainX+MAIN_W, y1:MID_Y, x2:nx, y2:MID_Y, stroke:'#1A3D55', 'stroke-width':1, id:`chl_${gi}` }), svg.firstChild);
+      svg.appendChild(makeSVGEl('circle', { cx:mainX+MAIN_W+10, cy:MID_Y, r:3, fill:'#1A3D55', id:`chd_${gi}` }));
+    }
+  });
+}
+
+function activateGroup(gi) {
+  if (groupVerified[gi]) return;
+  groupVerified[gi] = true;
+  const g = groups[gi];
+  const txCount = g.subtrees.length;
+
+  g.subtrees.forEach((_, ti) => {
+    const tx = `${gi}_${ti}`;
+    setTimeout(() => {
+      document.getElementById(`txf_${tx}`).setAttribute('stroke','#00EEFF');
+      document.getElementById(`tl1_${tx}`).setAttribute('fill','#66AADD');
+      document.getElementById(`tl2_${tx}`).textContent = 'SYNCING';
+      document.getElementById(`tl2_${tx}`).setAttribute('fill','#00EEFF');
+      const prog = document.getElementById(`txp_${tx}`);
+      let w = 0;
+      const t = setInterval(() => {
+        w += 1.8;
+        prog.setAttribute('width', w * TX_W / 100);
+        if (w >= 100) {
+          clearInterval(t);
+          document.getElementById(`txf_${tx}`).setAttribute('stroke','#33DDAA');
+          prog.setAttribute('fill','rgba(51,221,170,0.1)');
+          document.getElementById(`tl1_${tx}`).setAttribute('fill','#33DDAA');
+          document.getElementById(`tl2_${tx}`).textContent = '✓ OK';
+          document.getElementById(`tl2_${tx}`).setAttribute('fill','#33DDAA');
+          document.getElementById(`conn_${tx}`).setAttribute('stroke','#33DDAA');
+          document.getElementById(`dot_${tx}`).setAttribute('fill','#33DDAA');
+        }
+      }, 40);
+    }, ti * 600);
+  });
+
+  setTimeout(() => {
+    document.getElementById(`mb_${gi}`).setAttribute('stroke','#00EEFF');
+    document.getElementById(`mbs_${gi}`).setAttribute('fill','#99CCFF');
+    document.getElementById(`mbh_${gi}`).setAttribute('fill','#4488BB');
+    document.getElementById(`mbsh_${gi}`).setAttribute('fill','#CCE8FF');
+    document.getElementById(`mbst_${gi}`).textContent = 'VERIFYING';
+    document.getElementById(`mbst_${gi}`).setAttribute('fill','#00EEFF');
+    const mbp = document.getElementById(`mbp_${gi}`);
+    let w = 0;
+    const t = setInterval(() => {
+      w += 0.7;
+      mbp.setAttribute('width', w * MAIN_W / 100);
+      if (w >= 100) {
+        clearInterval(t);
+        document.getElementById(`mb_${gi}`).setAttribute('stroke','#33DDAA');
+        document.getElementById(`mb_${gi}`).setAttribute('fill','#040D15');
+        mbp.setAttribute('fill','rgba(51,221,170,0.13)');
+        document.getElementById(`mbs_${gi}`).setAttribute('fill','#CCE8FF');
+        document.getElementById(`mbh_${gi}`).setAttribute('fill','#33DDAA');
+        document.getElementById(`mbsh_${gi}`).setAttribute('fill','#CCE8FF');
+        document.getElementById(`mbst_${gi}`).textContent = '✓ VERIFIED';
+        document.getElementById(`mbst_${gi}`).setAttribute('fill','#33DDAA');
+        document.getElementById(`mbnt_${gi}`).textContent = g.ntt.toFixed(3) + ' NTT';
+        document.getElementById(`mbnt_${gi}`).setAttribute('fill','#33DDAA');
+        if (gi < groups.length-1) {
+          document.getElementById(`chl_${gi}`).setAttribute('stroke','#33DDAA');
+          document.getElementById(`chd_${gi}`).setAttribute('fill','#33DDAA');
+        }
+        verified++;
+        document.getElementById('counter').textContent = `VESSEL MANIFESTS VERIFIED: ${verified} / ${groups.length}`;
+        if (verified === groups.length) {
+          setTimeout(() => {
+            addDosLine(`> VESSEL MANIFESTS SYNCHRONIZED — ${SHIP_COUNT} RECORDS LOADED`, 'success');
+            document.getElementById('final').textContent = '[ REGISTRY READY ]';
+            document.getElementById('final').classList.add('visible');
+            // In production: wait 2s then set bootComplete = true
+          }, 800);
+        }
+      }
+    }, 45);
+  }, txCount * 600 + 800);
+}
+
+function animateBars(cb) {
+  const ids = ['b1','b2','b3','b4','b5'];
+  let i = 0;
+  const t = setInterval(() => {
+    if (i < ids.length) { document.getElementById(ids[i]).classList.add('active'); i++; }
+    else {
+      clearInterval(t);
+      document.getElementById('sigtext').textContent = 'SIGNAL LOCKED · UEE NODE 7';
+      setTimeout(cb, 500);
+    }
+  }, 220);
+}
+
+function scroll() {
+  scrollX += 0.20;
+  vp.scrollLeft = scrollX;
+  groups.forEach((g, gi) => {
+    const screenX = g.x + 140 - scrollX;
+    if (screenX < 460 && screenX > -300) activateGroup(gi);
+  });
+  if (scrollX < 1400) requestAnimationFrame(scroll);
+}
+
+runDosPhase();
+</script>
+</body>
+</html>

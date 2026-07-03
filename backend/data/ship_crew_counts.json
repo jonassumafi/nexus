@@ -1,0 +1,2418 @@
+{
+  "origin_100i": {
+    "wiki_title": "100i",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Starter / Pathfinder",
+    "size": "Small (S1)"
+  },
+  "origin_125a": {
+    "wiki_title": "125a",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Light Fighter",
+    "size": "Small (S1)"
+  },
+  "origin_135c": {
+    "wiki_title": "135c",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Light Freight",
+    "size": "Small (S1)"
+  },
+  "origin_300i": {
+    "wiki_title": "300i",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Luxury Touring",
+    "size": "Small (S2)"
+  },
+  "origin_315p": {
+    "wiki_title": "315p",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)"
+  },
+  "origin_325a": {
+    "wiki_title": "325a",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Interceptor",
+    "size": "Small (S2)"
+  },
+  "origin_350r": {
+    "wiki_title": "350r",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)"
+  },
+  "origin_400i": {
+    "wiki_title": "400i",
+    "crew_min": 1,
+    "crew_max": 3,
+    "crew_raw": "1–3",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S4)"
+  },
+  "origin_600i_executive": {
+    "wiki_title": "600i_Executive",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "origin_600i_explorer": {
+    "wiki_title": "600i_Explorer",
+    "crew_min": 2,
+    "crew_max": 5,
+    "crew_raw": "2–5",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S5)"
+  },
+  "origin_600i_touring": {
+    "wiki_title": "600i_Touring",
+    "crew_min": 3,
+    "crew_max": 5,
+    "crew_raw": "3–5",
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Large (S5)"
+  },
+  "origin_85x": {
+    "wiki_title": "85x",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Exploration",
+    "role": "Touring",
+    "size": "Snub (S1)"
+  },
+  "origin_890_jump": {
+    "wiki_title": "890_Jump",
+    "crew_min": 3,
+    "crew_max": 8,
+    "crew_raw": "3–8",
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Capital (S6)"
+  },
+  "crusader_a1_spirit": {
+    "wiki_title": "A1_Spirit",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Bomber",
+    "size": "Medium (S3)"
+  },
+  "crusader_a2_hercules": {
+    "wiki_title": "A2_Hercules",
+    "crew_min": 1,
+    "crew_max": 8,
+    "crew_raw": "1–8",
+    "career": "Combat",
+    "role": "Heavy Bomber",
+    "size": "Large (S5)"
+  },
+  "rsi_apollo_medivac": {
+    "wiki_title": "Apollo_Medivac",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Support",
+    "role": "Medical",
+    "size": "Large (S5)"
+  },
+  "rsi_apollo_triage": {
+    "wiki_title": "Apollo_Triage",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Support",
+    "role": "Medical",
+    "size": "Large (S5)"
+  },
+  "crusader_ares_inferno": {
+    "wiki_title": "Ares_Inferno",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S3)"
+  },
+  "crusader_ares_ion": {
+    "wiki_title": "Ares_Ion",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S3)"
+  },
+  "rsi_arrastra": {
+    "wiki_title": "Arrastra",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "anvil_arrow": {
+    "wiki_title": "Arrow",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "anvil_asgard": {
+    "wiki_title": "Asgard",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S4)"
+  },
+  "argo_atls": {
+    "wiki_title": "Atls",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "argo_atls_geo": {
+    "wiki_title": "Atls_Geo",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_aurora_mk_i_cl": {
+    "wiki_title": "Aurora_Mk_I_Cl",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_aurora_mk_i_es": {
+    "wiki_title": "Aurora_Mk_I_Es",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_aurora_mk_i_ln": {
+    "wiki_title": "Aurora_Mk_I_Ln",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_aurora_mk_i_lx": {
+    "wiki_title": "Aurora_Mk_I_Lx",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_aurora_mk_i_mr": {
+    "wiki_title": "Aurora_Mk_I_Mr",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_aurora_mk_i_se": {
+    "wiki_title": "Aurora_Mk_I_Se",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_aurora_mk_ii": {
+    "wiki_title": "Aurora_Mk_Ii",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "aegis_avenger_stalker": {
+    "wiki_title": "Avenger_Stalker",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Interceptor",
+    "size": "Small (S2)"
+  },
+  "aegis_avenger_titan": {
+    "wiki_title": "Avenger_Titan",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)"
+  },
+  "aegis_avenger_titan_renegade": {
+    "wiki_title": "Avenger_Titan_Renegade",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)"
+  },
+  "aegis_avenger_warlock": {
+    "wiki_title": "Avenger_Warlock",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Small (S2)"
+  },
+  "anvil_ballista": {
+    "wiki_title": "Ballista",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)"
+  },
+  "anvil_ballista_dunestalker": {
+    "wiki_title": "Ballista_Dunestalker",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)"
+  },
+  "anvil_ballista_snowblind": {
+    "wiki_title": "Ballista_Snowblind",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)"
+  },
+  "esperia_blade": {
+    "wiki_title": "Blade",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "drake_buccaneer": {
+    "wiki_title": "Buccaneer",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "crusader_c1_spirit": {
+    "wiki_title": "C1_Spirit",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Medium (S3)"
+  },
+  "crusader_c2_hercules": {
+    "wiki_title": "C2_Hercules",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)"
+  },
+  "anvil_c8_pisces": {
+    "wiki_title": "C8_Pisces",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S1)"
+  },
+  "anvil_c8r_pisces": {
+    "wiki_title": "C8r_Pisces",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_c8x_pisces_expedition": {
+    "wiki_title": "C8x_Pisces_Expedition",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_carrack": {
+    "wiki_title": "Carrack",
+    "crew_min": 4,
+    "crew_max": 6,
+    "crew_raw": "4–6",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S5)"
+  },
+  "anvil_carrack_expedition": {
+    "wiki_title": "Carrack_Expedition",
+    "crew_min": 4,
+    "crew_max": 6,
+    "crew_raw": "4–6",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S5)"
+  },
+  "anvil_carrack_expedition_w_c8x": {
+    "wiki_title": "Carrack_Expedition_W_C8x",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_carrack_w_c8x": {
+    "wiki_title": "Carrack_W_C8x",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "drake_caterpillar": {
+    "wiki_title": "Caterpillar",
+    "crew_min": 1,
+    "crew_max": 4,
+    "crew_raw": "1–4",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)"
+  },
+  "drake_caterpillar_best_in_show_edition_2949": {
+    "wiki_title": "Caterpillar_Best_In_Show_Edition_2949",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "drake_caterpillar_pirate_edition": {
+    "wiki_title": "Caterpillar_Pirate_Edition",
+    "crew_min": 1,
+    "crew_max": 4,
+    "crew_raw": "1–4",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)"
+  },
+  "anvil_centurion": {
+    "wiki_title": "Centurion",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Ground",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)"
+  },
+  "drake_clipper": {
+    "wiki_title": "Clipper",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Exploration",
+    "role": "Generalist",
+    "size": "Small (S2)"
+  },
+  "rsi_constellation_andromeda": {
+    "wiki_title": "Constellation_Andromeda",
+    "crew_min": 3,
+    "crew_max": 4,
+    "crew_raw": "3–4",
+    "career": "Multi-role",
+    "role": "Medium Freight / Gun Ship",
+    "size": "Large (S4)"
+  },
+  "rsi_constellation_aquila": {
+    "wiki_title": "Constellation_Aquila",
+    "crew_min": 3,
+    "crew_max": 4,
+    "crew_raw": "3–4",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S4)"
+  },
+  "rsi_constellation_phoenix": {
+    "wiki_title": "Constellation_Phoenix",
+    "crew_min": 3,
+    "crew_max": 4,
+    "crew_raw": "3–4",
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Large (S4)"
+  },
+  "rsi_constellation_phoenix_emerald": {
+    "wiki_title": "Constellation_Phoenix_Emerald",
+    "crew_min": 3,
+    "crew_max": 4,
+    "crew_raw": "3–4",
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Large (S4)"
+  },
+  "rsi_constellation_taurus": {
+    "wiki_title": "Constellation_Taurus",
+    "crew_min": 3,
+    "crew_max": 4,
+    "crew_raw": "3–4",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S4)"
+  },
+  "drake_corsair": {
+    "wiki_title": "Corsair",
+    "crew_min": 1,
+    "crew_max": 4,
+    "crew_raw": "1–4",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S4)"
+  },
+  "anvil_crucible": {
+    "wiki_title": "Crucible",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "argo_csv_sm": {
+    "wiki_title": "Csv_Sm",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "drake_cutlass_black": {
+    "wiki_title": "Cutlass_Black",
+    "crew_min": 2,
+    "crew_max": 3,
+    "crew_raw": "2–3",
+    "career": "Multi-role",
+    "role": "Light Freight / Medium Fighter",
+    "size": "Medium (S3)"
+  },
+  "drake_cutlass_black_best_in_show_edition_2949": {
+    "wiki_title": "Cutlass_Black_Best_In_Show_Edition_2949",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "drake_cutlass_blue": {
+    "wiki_title": "Cutlass_Blue",
+    "crew_min": 2,
+    "crew_max": 3,
+    "crew_raw": "2–3",
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Medium (S3)"
+  },
+  "drake_cutlass_red": {
+    "wiki_title": "Cutlass_Red",
+    "crew_min": 2,
+    "crew_max": 2,
+    "crew_raw": "2",
+    "career": "Support",
+    "role": "Medical",
+    "size": "Medium (S3)"
+  },
+  "drake_cutlass_steel": {
+    "wiki_title": "Cutlass_Steel",
+    "crew_min": 1,
+    "crew_max": 3,
+    "crew_raw": "1–3",
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S3)"
+  },
+  "drake_cutter": {
+    "wiki_title": "Cutter",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Transport",
+    "role": "Starter / Pathfinder",
+    "size": "Small (S2)"
+  },
+  "drake_cutter_rambler": {
+    "wiki_title": "Cutter_Rambler",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Small (S2)"
+  },
+  "drake_cutter_scout": {
+    "wiki_title": "Cutter_Scout",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)"
+  },
+  "tumbril_cyclone": {
+    "wiki_title": "Cyclone",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Ground",
+    "role": "Passenger",
+    "size": "Vehicle (S1)"
+  },
+  "tumbril_cyclone_aa": {
+    "wiki_title": "Cyclone_Aa",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "tumbril_cyclone_mt": {
+    "wiki_title": "Cyclone_Mt",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "tumbril_cyclone_rc": {
+    "wiki_title": "Cyclone_Rc",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "tumbril_cyclone_rn": {
+    "wiki_title": "Cyclone_Rn",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "tumbril_cyclone_tr": {
+    "wiki_title": "Cyclone_Tr",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "banu_defender": {
+    "wiki_title": "Defender",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "drake_dragonfly_black": {
+    "wiki_title": "Dragonfly_Black",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)"
+  },
+  "drake_dragonfly_star_kitten": {
+    "wiki_title": "Dragonfly_Star_Kitten",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)"
+  },
+  "drake_dragonfly_yellowjacket": {
+    "wiki_title": "Dragonfly_Yellowjacket",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)"
+  },
+  "crusader_e1_spirit": {
+    "wiki_title": "E1_Spirit",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "aegis_eclipse": {
+    "wiki_title": "Eclipse",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Stealth Bomber",
+    "size": "Small (S2)"
+  },
+  "misc_endeavor": {
+    "wiki_title": "Endeavor",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "misc_expanse": {
+    "wiki_title": "Expanse",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "anvil_f7a_hornet_mk_i": {
+    "wiki_title": "F7a_Hornet_Mk_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7a_hornet_mk_ii": {
+    "wiki_title": "F7a_Hornet_Mk_Ii",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_hornet_mk_i": {
+    "wiki_title": "F7c_Hornet_Mk_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_hornet_mk_ii": {
+    "wiki_title": "F7c_Hornet_Mk_Ii",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_hornet_wildfire_mk_i": {
+    "wiki_title": "F7c_Hornet_Wildfire_Mk_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_m_super_hornet_heartseeker_mk_i": {
+    "wiki_title": "F7c_M_Super_Hornet_Heartseeker_Mk_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_m_super_hornet_mk_i": {
+    "wiki_title": "F7c_M_Super_Hornet_Mk_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_m_super_hornet_mk_ii": {
+    "wiki_title": "F7c_M_Super_Hornet_Mk_Ii",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_r_hornet_tracker_mk_i": {
+    "wiki_title": "F7c_R_Hornet_Tracker_Mk_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_r_hornet_tracker_mk_ii": {
+    "wiki_title": "F7c_R_Hornet_Tracker_Mk_Ii",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_s_hornet_ghost_mk_i": {
+    "wiki_title": "F7c_S_Hornet_Ghost_Mk_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f7c_s_hornet_ghost_mk_ii": {
+    "wiki_title": "F7c_S_Hornet_Ghost_Mk_Ii",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f8c_lightning": {
+    "wiki_title": "F8c_Lightning",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_f8c_lightning_executive_edition": {
+    "wiki_title": "F8c_Lightning_Executive_Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "misc_fortune": {
+    "wiki_title": "Fortune",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Industrial",
+    "role": "Light Salvage",
+    "size": "Small (S2)"
+  },
+  "misc_freelancer": {
+    "wiki_title": "Freelancer",
+    "crew_min": 2,
+    "crew_max": 4,
+    "crew_raw": "2–4",
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Medium (S3)"
+  },
+  "misc_freelancer_dur": {
+    "wiki_title": "Freelancer_Dur",
+    "crew_min": 2,
+    "crew_max": 4,
+    "crew_raw": "2–4",
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Medium (S3)"
+  },
+  "misc_freelancer_max": {
+    "wiki_title": "Freelancer_Max",
+    "crew_min": 2,
+    "crew_max": 4,
+    "crew_raw": "2–4",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S3)"
+  },
+  "misc_freelancer_mis": {
+    "wiki_title": "Freelancer_Mis",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "mirai_fury": {
+    "wiki_title": "Fury",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Snub Fighter",
+    "size": "Snub (S1)"
+  },
+  "mirai_fury_lx": {
+    "wiki_title": "Fury_Lx",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "mirai_fury_mx": {
+    "wiki_title": "Fury_Mx",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "origin_g12": {
+    "wiki_title": "G12",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "origin_g12a": {
+    "wiki_title": "G12a",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "origin_g12r": {
+    "wiki_title": "G12r",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "rsi_galaxy": {
+    "wiki_title": "Galaxy",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "crusader_genesis": {
+    "wiki_title": "Genesis",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "anvil_gladiator": {
+    "wiki_title": "Gladiator",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Bomber",
+    "size": "Small (S2)"
+  },
+  "aegis_gladius": {
+    "wiki_title": "Gladius",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "aegis_gladius_pirate_edition": {
+    "wiki_title": "Gladius_Pirate_Edition",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "aegis_gladius_valiant": {
+    "wiki_title": "Gladius_Valiant",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "esperia_glaive": {
+    "wiki_title": "Glaive",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "drake_golem": {
+    "wiki_title": "Golem",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Industrial",
+    "role": "Starter / Light Mining",
+    "size": "Small (S2)"
+  },
+  "drake_golem_ox": {
+    "wiki_title": "Golem_Ox",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)"
+  },
+  "mirai_guardian": {
+    "wiki_title": "Guardian",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)"
+  },
+  "mirai_guardian_mx": {
+    "wiki_title": "Guardian_Mx",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "mirai_guardian_qi": {
+    "wiki_title": "Guardian_Qi",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "aegis_hammerhead": {
+    "wiki_title": "Hammerhead",
+    "crew_min": 1,
+    "crew_max": 9,
+    "crew_raw": "1–9",
+    "career": "Combat",
+    "role": "Heavy Gunship",
+    "size": "Large (S5)"
+  },
+  "aegis_hammerhead_best_in_show_edition_2949": {
+    "wiki_title": "Hammerhead_Best_In_Show_Edition_2949",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_hawk": {
+    "wiki_title": "Hawk",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "drake_herald": {
+    "wiki_title": "Herald",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Transport",
+    "role": "Medium Data",
+    "size": "Small (S2)"
+  },
+  "rsi_hermes": {
+    "wiki_title": "Hermes",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S5)"
+  },
+  "consolidated_outland_hoverquad": {
+    "wiki_title": "Hoverquad",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Ground",
+    "role": "Passenger",
+    "size": "Snub (S1)"
+  },
+  "misc_hull_a": {
+    "wiki_title": "Hull_A",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)"
+  },
+  "misc_hull_b": {
+    "wiki_title": "Hull_B",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S4)"
+  },
+  "misc_hull_c": {
+    "wiki_title": "Hull_C",
+    "crew_min": 2,
+    "crew_max": 4,
+    "crew_raw": "2–4",
+    "career": "Transport",
+    "role": "Heavy Freight",
+    "size": "Large (S5)"
+  },
+  "misc_hull_d": {
+    "wiki_title": "Hull_D",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "misc_hull_e": {
+    "wiki_title": "Hull_E",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "anvil_hurricane": {
+    "wiki_title": "Hurricane",
+    "crew_min": 2,
+    "crew_max": 2,
+    "crew_raw": "2",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)"
+  },
+  "aegis_idris_k": {
+    "wiki_title": "Idris_K",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "aegis_idris_m": {
+    "wiki_title": "Idris_M",
+    "crew_min": 8,
+    "crew_max": 28,
+    "crew_raw": "8–28",
+    "career": "Combat",
+    "role": "Frigate",
+    "size": "Capital (S6)"
+  },
+  "aegis_idris_p": {
+    "wiki_title": "Idris_P",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "crusader_intrepid": {
+    "wiki_title": "Intrepid",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Transport",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)"
+  },
+  "drake_ironclad": {
+    "wiki_title": "Ironclad",
+    "crew_min": 1,
+    "crew_max": 7,
+    "crew_raw": "1–7",
+    "career": "Transport",
+    "role": "Heavy Freight",
+    "size": "Large (S5)"
+  },
+  "drake_ironclad_assault": {
+    "wiki_title": "Ironclad_Assault",
+    "crew_min": 1,
+    "crew_max": 9,
+    "crew_raw": "1–9",
+    "career": "Combat",
+    "role": "Heavy Dropship",
+    "size": "Large (S5)"
+  },
+  "aegis_javelin": {
+    "wiki_title": "Javelin",
+    "crew_min": 12,
+    "crew_max": 80,
+    "crew_raw": "12–80",
+    "career": "Combat",
+    "role": "Destroyer",
+    "size": "Capital (S6)"
+  },
+  "aopoa_khartu_al": {
+    "wiki_title": "Khartu_Al",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "drake_kraken": {
+    "wiki_title": "Kraken",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "drake_kraken_privateer": {
+    "wiki_title": "Kraken_Privateer",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "kruger_l_21_wolf": {
+    "wiki_title": "L_21_Wolf",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "kruger_l_22_alpha_wolf": {
+    "wiki_title": "L_22_Alpha_Wolf",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_legionnaire": {
+    "wiki_title": "Legionnaire",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "anvil_liberator": {
+    "wiki_title": "Liberator",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "rsi_lynx": {
+    "wiki_title": "Lynx",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Ground",
+    "role": "Luxury Touring",
+    "size": "Vehicle (S3)"
+  },
+  "crusader_m2_hercules": {
+    "wiki_title": "M2_Hercules",
+    "crew_min": 1,
+    "crew_max": 3,
+    "crew_raw": "1–3",
+    "career": "Combat",
+    "role": "Medium Freight",
+    "size": "Large (S5)"
+  },
+  "origin_m50": {
+    "wiki_title": "M50",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S1)"
+  },
+  "origin_m80": {
+    "wiki_title": "M80",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)"
+  },
+  "rsi_mantis": {
+    "wiki_title": "Mantis",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Small (S2)"
+  },
+  "greycat_mdc": {
+    "wiki_title": "Mdc",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "banu_merchantman": {
+    "wiki_title": "Merchantman",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "crusader_mercury": {
+    "wiki_title": "Mercury",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "rsi_meteor": {
+    "wiki_title": "Meteor",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Medium Fighter",
+    "size": "Small (S2)"
+  },
+  "argo_mole": {
+    "wiki_title": "Mole",
+    "crew_min": 1,
+    "crew_max": 4,
+    "crew_raw": "1–4",
+    "career": "Industrial",
+    "role": "Medium Mining",
+    "size": "Medium (S3)"
+  },
+  "argo_mole_carbon_edition": {
+    "wiki_title": "Mole_Carbon_Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "argo_mole_talus_edition": {
+    "wiki_title": "Mole_Talus_Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "argo_moth": {
+    "wiki_title": "Moth",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "argo_mpuv_cargo": {
+    "wiki_title": "Mpuv_Cargo",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "argo_mpuv_personnel": {
+    "wiki_title": "Mpuv_Personnel",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "argo_mpuv_tractor": {
+    "wiki_title": "Mpuv_Tractor",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "greycat_mtc": {
+    "wiki_title": "Mtc",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "drake_mule": {
+    "wiki_title": "Mule",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Ground",
+    "role": "Light Freight",
+    "size": "Vehicle (S1)"
+  },
+  "consolidated_outland_mustang_alpha": {
+    "wiki_title": "Mustang_Alpha",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)"
+  },
+  "consolidated_outland_mustang_alpha_vindicator": {
+    "wiki_title": "Mustang_Alpha_Vindicator",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)"
+  },
+  "consolidated_outland_mustang_beta": {
+    "wiki_title": "Mustang_Beta",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)"
+  },
+  "consolidated_outland_mustang_delta": {
+    "wiki_title": "Mustang_Delta",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)"
+  },
+  "consolidated_outland_mustang_gamma": {
+    "wiki_title": "Mustang_Gamma",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)"
+  },
+  "consolidated_outland_mustang_omega": {
+    "wiki_title": "Mustang_Omega",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)"
+  },
+  "aegis_nautilus": {
+    "wiki_title": "Nautilus",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "aegis_nautilus_solstice_edition": {
+    "wiki_title": "Nautilus_Solstice_Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "consolidated_outland_nomad": {
+    "wiki_title": "Nomad",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)"
+  },
+  "tumbril_nova": {
+    "wiki_title": "Nova",
+    "crew_min": 1,
+    "crew_max": 3,
+    "crew_raw": "1–3",
+    "career": "Ground",
+    "role": "Heavy Tank",
+    "size": "Vehicle (S4)"
+  },
+  "aopoa_nox": {
+    "wiki_title": "Nox",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)"
+  },
+  "aopoa_nox_kue": {
+    "wiki_title": "Nox_Kue",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)"
+  },
+  "anvil_odin": {
+    "wiki_title": "Odin",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "misc_odyssey": {
+    "wiki_title": "Odyssey",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "rsi_orion": {
+    "wiki_title": "Orion",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "kruger_p_52_merlin": {
+    "wiki_title": "P_52_Merlin",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "kruger_p_72_archimedes": {
+    "wiki_title": "P_72_Archimedes",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "kruger_p_72_archimedes_emerald": {
+    "wiki_title": "P_72_Archimedes_Emerald",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_paladin": {
+    "wiki_title": "Paladin",
+    "crew_min": 1,
+    "crew_max": 4,
+    "crew_raw": "1–4",
+    "career": "Combat",
+    "role": "Gunship",
+    "size": "Medium (S4)"
+  },
+  "rsi_perseus": {
+    "wiki_title": "Perseus",
+    "crew_min": 1,
+    "crew_max": 7,
+    "crew_raw": "1–7",
+    "career": "Combat",
+    "role": "Heavy Gunship",
+    "size": "Large (S5)"
+  },
+  "consolidated_outland_pioneer": {
+    "wiki_title": "Pioneer",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "drake_pitbull": {
+    "wiki_title": "Pitbull",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Snub Fighter",
+    "size": "Snub (S1)"
+  },
+  "rsi_polaris": {
+    "wiki_title": "Polaris",
+    "crew_min": 6,
+    "crew_max": 12,
+    "crew_raw": "6–12",
+    "career": "Combat",
+    "role": "Corvette",
+    "size": "Capital (S6)"
+  },
+  "misc_prospector": {
+    "wiki_title": "Prospector",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Industrial",
+    "role": "Light Mining",
+    "size": "Small (S2)"
+  },
+  "esperia_prowler": {
+    "wiki_title": "Prowler",
+    "crew_min": 2,
+    "crew_max": 2,
+    "crew_raw": "2",
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S3)"
+  },
+  "esperia_prowler_utility": {
+    "wiki_title": "Prowler_Utility",
+    "crew_min": 1,
+    "crew_max": 5,
+    "crew_raw": "1–5",
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Medium (S3)"
+  },
+  "greycat_ptv": {
+    "wiki_title": "Ptv",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "mirai_pulse": {
+    "wiki_title": "Pulse",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Ground",
+    "role": "Pathfinder",
+    "size": "Snub (S1)"
+  },
+  "mirai_pulse_lx": {
+    "wiki_title": "Pulse_Lx",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "argo_raft": {
+    "wiki_title": "Raft",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S3)"
+  },
+  "gatac_railen": {
+    "wiki_title": "Railen",
+    "crew_min": 1,
+    "crew_max": 4,
+    "crew_raw": "1–4",
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)"
+  },
+  "tumbril_ranger_cv": {
+    "wiki_title": "Ranger_Cv",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "tumbril_ranger_rc": {
+    "wiki_title": "Ranger_Rc",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "tumbril_ranger_tr": {
+    "wiki_title": "Ranger_Tr",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "mirai_razor": {
+    "wiki_title": "Razor",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S1)"
+  },
+  "mirai_razor_ex": {
+    "wiki_title": "Razor_Ex",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "mirai_razor_lx": {
+    "wiki_title": "Razor_Lx",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "aegis_reclaimer": {
+    "wiki_title": "Reclaimer",
+    "crew_min": 4,
+    "crew_max": 5,
+    "crew_raw": "4–5",
+    "career": "Industrial",
+    "role": "Heavy Salvage",
+    "size": "Capital (S6)"
+  },
+  "aegis_reclaimer_best_in_show_edition_2949": {
+    "wiki_title": "Reclaimer_Best_In_Show_Edition_2949",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "aegis_redeemer": {
+    "wiki_title": "Redeemer",
+    "crew_min": 3,
+    "crew_max": 4,
+    "crew_raw": "3–4",
+    "career": "Combat",
+    "role": "Gunship",
+    "size": "Large (S4)"
+  },
+  "misc_reliant_kore": {
+    "wiki_title": "Reliant_Kore",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Medium (S3)"
+  },
+  "misc_reliant_mako": {
+    "wiki_title": "Reliant_Mako",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Support",
+    "role": "Reporting",
+    "size": "Medium (S3)"
+  },
+  "misc_reliant_sen": {
+    "wiki_title": "Reliant_Sen",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Industrial",
+    "role": "Light Science",
+    "size": "Medium (S3)"
+  },
+  "misc_reliant_tana": {
+    "wiki_title": "Reliant_Tana",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Medium (S3)"
+  },
+  "aegis_retaliator": {
+    "wiki_title": "Retaliator",
+    "crew_min": 4,
+    "crew_max": 7,
+    "crew_raw": "4–7",
+    "career": "Combat",
+    "role": "Modular",
+    "size": "Large (S4)"
+  },
+  "aegis_retaliator_bomber": {
+    "wiki_title": "Retaliator_Bomber",
+    "crew_min": 4,
+    "crew_max": 7,
+    "crew_raw": "4–7",
+    "career": "Combat",
+    "role": "Modular",
+    "size": "Large (S4)"
+  },
+  "greycat_roc": {
+    "wiki_title": "Roc",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Industrial",
+    "role": "Light Mining",
+    "size": "Vehicle (S1)"
+  },
+  "greycat_roc_ds": {
+    "wiki_title": "Roc_Ds",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "aegis_sabre": {
+    "wiki_title": "Sabre",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Stealth Fighter",
+    "size": "Small (S2)"
+  },
+  "aegis_sabre_comet": {
+    "wiki_title": "Sabre_Comet",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Stealth Fighter",
+    "size": "Small (S2)"
+  },
+  "aegis_sabre_firebird": {
+    "wiki_title": "Sabre_Firebird",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Stealth Fighter",
+    "size": "Small (S2)"
+  },
+  "aegis_sabre_peregrine": {
+    "wiki_title": "Sabre_Peregrine",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)"
+  },
+  "aegis_sabre_raven": {
+    "wiki_title": "Sabre_Raven",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Small (S2)"
+  },
+  "rsi_salvation": {
+    "wiki_title": "Salvation",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Industrial",
+    "role": "Starter / Light Salvage",
+    "size": "Small (S2)"
+  },
+  "aopoa_san_039_tok_y_i": {
+    "wiki_title": "San_039_Tok_Y_I",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_scorpius": {
+    "wiki_title": "Scorpius",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)"
+  },
+  "rsi_scorpius_antares": {
+    "wiki_title": "Scorpius_Antares",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)"
+  },
+  "vanduul_scythe": {
+    "wiki_title": "Scythe",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "shiv": {
+    "wiki_title": "Shiv",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Medium (S3)"
+  },
+  "anvil_spartan": {
+    "wiki_title": "Spartan",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Ground",
+    "role": "Passenger",
+    "size": "Vehicle (S4)"
+  },
+  "argo_srv": {
+    "wiki_title": "Srv",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Support",
+    "role": "Recovery",
+    "size": "Small (S3)"
+  },
+  "misc_starfarer": {
+    "wiki_title": "Starfarer",
+    "crew_min": 4,
+    "crew_max": 8,
+    "crew_raw": "4–8",
+    "career": "Support",
+    "role": "Heavy Refueling",
+    "size": "Large (S5)"
+  },
+  "misc_starfarer_gemini": {
+    "wiki_title": "Starfarer_Gemini",
+    "crew_min": 4,
+    "crew_max": 8,
+    "crew_raw": "4–8",
+    "career": "Support",
+    "role": "Heavy Refueling",
+    "size": "Large (S5)"
+  },
+  "misc_starlancer_max": {
+    "wiki_title": "Starlancer_Max",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "misc_starlancer_tac": {
+    "wiki_title": "Starlancer_Tac",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "misc_starlite": {
+    "wiki_title": "Starlite",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Support",
+    "role": "Light Refueling",
+    "size": "Small (S2)"
+  },
+  "esperia_stinger": {
+    "wiki_title": "Stinger",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "tumbril_storm": {
+    "wiki_title": "Storm",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Ground",
+    "role": "Light Tank",
+    "size": "Vehicle (S4)"
+  },
+  "tumbril_storm_aa": {
+    "wiki_title": "Storm_Aa",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "greycat_stv": {
+    "wiki_title": "Stv",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "gatac_syulen": {
+    "wiki_title": "Syulen",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Multi-role",
+    "role": "Starter / Pathfinder",
+    "size": "Small (S3)"
+  },
+  "esperia_talon": {
+    "wiki_title": "Talon",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S1)"
+  },
+  "esperia_talon_shrike": {
+    "wiki_title": "Talon_Shrike",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S1)"
+  },
+  "anvil_terrapin": {
+    "wiki_title": "Terrapin",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)"
+  },
+  "anvil_terrapin_medic": {
+    "wiki_title": "Terrapin_Medic",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Support",
+    "role": "Medical",
+    "size": "Small (S2)"
+  },
+  "aegis_tiburon": {
+    "wiki_title": "Tiburon",
+    "crew_min": 1,
+    "crew_max": 9,
+    "crew_raw": "1–9",
+    "career": "Combat",
+    "role": "Heavy Gunship",
+    "size": "Large (S5)"
+  },
+  "gatac_tyilui": {
+    "wiki_title": "Tyilui",
+    "crew_min": 1,
+    "crew_max": 4,
+    "crew_raw": "1–4",
+    "career": "Transport",
+    "role": "Carrier",
+    "size": "Large (S5)"
+  },
+  "rsi_ursa": {
+    "wiki_title": "Ursa",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Ground",
+    "role": "Pathfinder",
+    "size": "Vehicle (S3)"
+  },
+  "rsi_ursa_fortuna": {
+    "wiki_title": "Ursa_Fortuna",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Ground",
+    "role": "Pathfinder",
+    "size": "Vehicle (S3)"
+  },
+  "rsi_ursa_medivac": {
+    "wiki_title": "Ursa_Medivac",
+    "crew_min": 1,
+    "crew_max": 3,
+    "crew_raw": "1–3",
+    "career": "Support",
+    "role": "Medical",
+    "size": "Vehicle (S3)"
+  },
+  "greycat_utv": {
+    "wiki_title": "Utv",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "anvil_valkyrie": {
+    "wiki_title": "Valkyrie",
+    "crew_min": 1,
+    "crew_max": 5,
+    "crew_raw": "1–5",
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Large (S4)"
+  },
+  "anvil_valkyrie_liberator_edition": {
+    "wiki_title": "Valkyrie_Liberator_Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "aegis_vanguard_harbinger": {
+    "wiki_title": "Vanguard_Harbinger",
+    "crew_min": 2,
+    "crew_max": 2,
+    "crew_raw": "2",
+    "career": "Combat",
+    "role": "Heavy Fighter / Bomber",
+    "size": "Medium (S3)"
+  },
+  "aegis_vanguard_hoplite": {
+    "wiki_title": "Vanguard_Hoplite",
+    "crew_min": 1,
+    "crew_max": 2,
+    "crew_raw": "1–2",
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S3)"
+  },
+  "aegis_vanguard_sentinel": {
+    "wiki_title": "Vanguard_Sentinel",
+    "crew_min": 2,
+    "crew_max": 2,
+    "crew_raw": "2",
+    "career": "Combat",
+    "role": "Heavy Fighter / Bomber",
+    "size": "Medium (S3)"
+  },
+  "aegis_vanguard_warden": {
+    "wiki_title": "Vanguard_Warden",
+    "crew_min": 2,
+    "crew_max": 2,
+    "crew_raw": "2",
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Medium (S3)"
+  },
+  "aegis_vulcan": {
+    "wiki_title": "Vulcan",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null
+  },
+  "drake_vulture": {
+    "wiki_title": "Vulture",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Industrial",
+    "role": "Light Salvage",
+    "size": "Small (S2)"
+  },
+  "origin_x1": {
+    "wiki_title": "X1",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Exploration",
+    "role": "Passenger",
+    "size": "Snub (S1)"
+  },
+  "origin_x1_force": {
+    "wiki_title": "X1_Force",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Combat",
+    "role": "Passenger",
+    "size": "Snub (S1)"
+  },
+  "origin_x1_velocity": {
+    "wiki_title": "X1_Velocity",
+    "crew_min": 1,
+    "crew_max": 1,
+    "crew_raw": "1",
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)"
+  },
+  "rsi_zeus_mk_ii_cl": {
+    "wiki_title": "Zeus_Mk_Ii_Cl",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_zeus_mk_ii_es": {
+    "wiki_title": "Zeus_Mk_Ii_Es",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  },
+  "rsi_zeus_mk_ii_mr": {
+    "wiki_title": "Zeus_Mk_Ii_Mr",
+    "crew_min": null,
+    "crew_max": null,
+    "crew_raw": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "error": "HTTP 404"
+  }
+}

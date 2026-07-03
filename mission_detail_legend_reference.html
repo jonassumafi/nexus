@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus Mission Detail — Schematic Legend Reference</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 30px; }
+  .wrap { max-width: 700px; margin: 0 auto; }
+  .section-label { font-size: 11px; color: #4488BB; letter-spacing: 0.16em; margin-bottom: 12px; }
+
+  .mission-title { font-size: 24px; color: #99CCFF; font-weight: bold; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .status-chip { display: inline-block; font-size: 12px; color: #FFBB33; border: 1px solid #FFBB33; padding: 3px 10px; margin-bottom: 14px; }
+  .commander { font-size: 14px; color: #66AADD; margin-bottom: 10px; }
+  .type-chip { display: inline-block; font-size: 11px; color: #44FF88; border: 1px solid #44FF88; padding: 2px 10px; margin-bottom: 14px; }
+  .obj-label { font-size: 12px; color: #66AADD; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .obj-text { font-size: 14px; color: #FFBB33; margin-bottom: 20px; }
+  .divider { border-top: 1px solid #1A3D55; margin-bottom: 30px; }
+
+  .schematic-area { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; }
+  .ship-placeholder { width: 380px; height: 280px; display: flex; align-items: center; justify-content: center; color: #1A3D55; font-size: 11px; border: 1px dashed #1A3D55; margin-bottom: 16px; }
+
+  .warning-line { font-size: 12px; color: #FF5544; text-align: center; margin-bottom: 14px; }
+
+  .legend-row { display: flex; gap: 24px; align-items: center; justify-content: center; margin-top: 14px; margin-bottom: 20px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-open { color: #44FF88; }
+  .legend-open .legend-dot { background: #44FF88; }
+  .legend-occupied { color: #FFBB33; }
+  .legend-occupied .legend-dot { background: #FFBB33; }
+  .legend-yours { color: #FF5544; }
+  .legend-yours .legend-dot { background: #FF5544; }
+
+  .crew-section { margin-top: 24px; }
+  .crew-header { font-size: 13px; color: #66AADD; margin-bottom: 12px; }
+  .crew-header b { color: #FFBB33; }
+  .crew-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #0D2030; }
+  .role-name { font-size: 14px; color: #66AADD; }
+  .filled-name { font-size: 13px; color: #FF5544; }
+  .withdraw-btn { font-size: 11px; color: #FF5544; border: 1px solid #FF5544; padding: 2px 8px; margin-left: 10px; }
+  .reserve-btn { font-size: 11px; color: #44FF88; border: 1px solid #44FF88; padding: 2px 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="section-label">MISSION DETAIL — SCHEMATIC + LEGEND PLACEMENT REFERENCE</div>
+
+  <div class="mission-title">OPERATION TEST MAGNET</div>
+  <div class="status-chip">■ WAITING FOR CREW</div>
+  <div class="commander">COMMANDER: Peter Tork</div>
+  <div class="type-chip">PATROL</div>
+
+  <div class="obj-label">OBJECTIVES</div>
+  <div class="obj-text">A dangerous mission to test the app's functionality. Join here.</div>
+
+  <div class="divider"></div>
+
+  <div class="schematic-area">
+    <div class="ship-placeholder">[ SHIP SCHEMATIC — maxWidth: 520px ]</div>
+    <div class="warning-line">MIN. CREW NOT MET — PILOT + 1 REQUIRED</div>
+    <div class="legend-row">
+      <div class="legend-item legend-open"><div class="legend-dot"></div>OPEN</div>
+      <div class="legend-item legend-occupied"><div class="legend-dot"></div>OCCUPIED</div>
+      <div class="legend-item legend-yours"><div class="legend-dot"></div>YOUR SLOT</div>
+    </div>
+  </div>
+
+  <div class="crew-section">
+    <div class="crew-header">CREW MANIFEST — <b>HCS RUDA</b> 50% FILLED</div>
+    <div class="crew-row">
+      <span class="role-name">Pilot</span>
+      <span class="filled-name">Peter Tork <span class="withdraw-btn">WITHDRAW</span></span>
+    </div>
+    <div class="crew-row">
+      <span class="role-name">Turret Operator</span>
+      <span class="reserve-btn">OPEN — CLICK TO RESERVE</span>
+    </div>
+  </div>
+
+</div>
+
+<!--
+DESIGN NOTES FOR IMPLEMENTATION:
+
+1. VERTICAL ORDER (top to bottom) in
+   the mission detail center panel,
+   below the objectives/divider:
+
+   a. Ship schematic image with node
+      overlays (maxWidth: 520px,
+      margin: 0 auto, centered)
+   b. Warning text (only rendered if
+      min crew not met):
+      "MIN. CREW NOT MET — {ROLE} + N
+      REQUIRED"
+      fontSize: 12px, color: #FF5544,
+      textAlign: center,
+      marginTop: 14px
+   c. Legend row — OPEN / OCCUPIED /
+      YOUR SLOT
+   d. CREW MANIFEST header + role
+      list
+
+2. LEGEND ROW must NOT use absolute
+   positioning. It is a normal block
+   element in document flow,
+   positioned strictly between the
+   warning text and the crew manifest
+   header — it can never visually
+   overlap the ship image or the
+   warning text regardless of
+   schematic size.
+
+   display: flex
+   justifyContent: center
+   gap: 24px
+   alignItems: center
+   marginTop: 14px
+   marginBottom: 20px
+
+3. LEGEND ITEM colors (dot + text
+   match):
+   OPEN — #44FF88 (lime green,
+     matches the success category
+     from the typography brand kit)
+   OCCUPIED — #FFBB33 (amber)
+   YOUR SLOT — #FF5544 (red/danger —
+     this is intentionally red per
+     the user's existing convention,
+     signaling "this is committed,
+     handle with care" rather than
+     literal danger)
+
+   Each item: 10px circular dot +
+   12px label text, same color.
+
+4. This legend row replaces whatever
+   positioning (likely absolute) was
+   previously used. The fix is
+   structural — moving it into
+   normal flow — not just a color
+   or spacing tweak.
+
+5. The schematic container itself
+   should use maxWidth: 520px (not
+   a percentage of an unconstrained
+   parent), margin: 0 auto to center
+   it, consistent with the fix
+   already applied in a previous
+   session. This reference confirms
+   that sizing decision and shows
+   how the legend relates to it
+   spatially.
+-->
+
+</body>
+</html>

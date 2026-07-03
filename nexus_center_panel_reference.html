@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — Center Panel Reference</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #000;
+  font-family: 'Courier New', Courier, monospace;
+  color: #66AADD;
+  padding: 0;
+}
+
+/* ── MISSION HEADER ─────────────────────────── */
+.mission-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #0D2030;
+}
+.mission-name {
+  font-size: 28px;
+  color: #CCE8FF;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.mission-commander {
+  font-size: 16px;
+  color: #2A6A9A;
+  margin-bottom: 4px;
+}
+.mission-commander span { color: #66AADD; }
+.mission-type {
+  font-size: 16px;
+  color: #4488BB;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+.objectives-label {
+  font-size: 13px;
+  color: #1A3D55;
+  letter-spacing: 0.16em;
+  margin-bottom: 6px;
+}
+.objectives-text {
+  font-size: 15px;
+  color: #B88000;
+  line-height: 1.75;
+}
+
+/* ── SHIP NAVIGATION ────────────────────────── */
+.ship-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid #0D2030;
+}
+.ship-nav-arrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  color: #66AADD;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  user-select: none;
+  transition: color 0.15s;
+}
+.ship-nav-arrow:hover { color: #CCE8FF; }
+.ship-nav-arrow .arrow-icon {
+  font-size: 28px;
+  line-height: 1;
+  color: #66AADD;
+}
+.ship-nav-arrow:hover .arrow-icon { color: #CCE8FF; }
+.ship-nav-arrow.hidden { visibility: hidden; }
+.ship-nav-name {
+  font-size: 32px;
+  color: #99CCFF;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-align: center;
+  flex: 1;
+}
+
+/* ── SCHEMATIC ──────────────────────────────── */
+.schematic-wrap {
+  position: relative;
+  width: 100%;
+  padding-bottom: 50%;
+  background: #000;
+  border-bottom: 1px solid #0D2030;
+}
+.schematic-inner {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('/images/ships/polaris_schematic.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: #000;
+}
+/* Placeholder when image not loaded */
+.schematic-placeholder {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+.schematic-placeholder svg {
+  opacity: 0.35;
+  width: 88%;
+  height: 88%;
+}
+
+/* ── NODES ──────────────────────────────────── */
+.node {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.node.open {
+  border: 2px solid #00FF66;
+  background: rgba(0,255,102,0.2);
+  animation: nodeP 1.5s ease-in-out infinite;
+}
+.node.open:hover { background: rgba(0,255,102,0.4); }
+.node.mine {
+  border: 2px solid #00EEFF;
+  background: rgba(0,238,255,0.2);
+}
+.node.taken {
+  border: 2px solid #FF5544;
+  background: rgba(255,85,68,0.2);
+  cursor: default;
+}
+.node.highlighted { box-shadow: 0 0 0 3px rgba(0,238,255,0.4); }
+
+@keyframes nodeP {
+  0%,100% { transform: translate(-50%,-50%) scale(1); }
+  50%      { transform: translate(-50%,-50%) scale(1.18); }
+}
+
+/* ── TOOLTIP ────────────────────────────────── */
+.node-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0D2030;
+  border: 1px solid #1A3D55;
+  color: #99CCFF;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+}
+.node:hover .node-tooltip { display: block; }
+
+/* ── LEGEND ─────────────────────────────────── */
+.legend {
+  position: absolute;
+  bottom: 10px;
+  left: 14px;
+  display: flex;
+  gap: 18px;
+  z-index: 10;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.legend-sq {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.legend-label {
+  font-size: 12px;
+  color: #2A6A9A;
+  letter-spacing: 0.08em;
+}
+
+/* ── CREW MANIFEST ──────────────────────────── */
+.manifest {
+  padding: 14px 24px;
+  border-bottom: 1px solid #0D2030;
+}
+.manifest-header {
+  font-size: 13px;
+  color: #1A3D55;
+  letter-spacing: 0.16em;
+  margin-bottom: 10px;
+}
+.manifest-header span { color: #FFBB33; margin-left: 8px; }
+.slot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  border-bottom: 1px solid #080F18;
+  font-size: 15px;
+  transition: background 0.1s, border 0.1s;
+  cursor: default;
+}
+.slot-row:hover { background: rgba(0,238,255,0.03); }
+.slot-row.highlighted {
+  border: 1px solid #00EEFF;
+  background: rgba(0,238,255,0.05);
+  margin: 0 -4px;
+  padding: 6px 8px;
+}
+.slot-role { color: #2A6A9A; }
+.slot-filled { color: #66AADD; }
+.slot-open {
+  color: #00FF66;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border: 1px solid rgba(0,255,102,0.3);
+  font-size: 13px;
+  transition: all 0.1s;
+}
+.slot-open:hover {
+  background: rgba(0,255,102,0.1);
+  border-color: #00FF66;
+  color: #CCE8FF;
+}
+.slot-mine { color: #00EEFF; }
+.slot-withdraw {
+  font-size: 12px;
+  color: #FF5544;
+  cursor: pointer;
+  margin-left: 10px;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(255,85,68,0.3);
+  padding: 2px 6px;
+  transition: all 0.1s;
+}
+.slot-withdraw:hover {
+  background: rgba(255,85,68,0.1);
+  border-color: #FF5544;
+}
+</style>
+</head>
+<body>
+
+<!-- MISSION HEADER -->
+<div class="mission-header">
+  <div class="mission-name">TERMINUS RUN</div>
+  <div class="mission-commander">COMMANDER: <span>Voss Marlowe</span></div>
+  <div class="mission-type">Escort</div>
+  <div class="objectives-label">OBJECTIVES</div>
+  <div class="objectives-text">
+    Escort cargo freighter from Pyro V to Terminus.<br>
+    Full crew assigned. Ready to launch.<br>
+    Avoid Rough and Ready patrols in sector 7.
+  </div>
+</div>
+
+<!-- SHIP NAVIGATION -->
+<div class="ship-nav">
+  <div class="ship-nav-arrow" onclick="prevShip()">
+    <span class="arrow-icon">◀</span>
+    <span>PREV: HCS WARDEN</span>
+  </div>
+  <div class="ship-nav-name" id="ship-name">HCS CHIMERA</div>
+  <div class="ship-nav-arrow" onclick="nextShip()">
+    <span>NEXT: HCS PALE ANCHOR</span>
+    <span class="arrow-icon">▶</span>
+  </div>
+</div>
+
+<!-- SCHEMATIC -->
+<div class="schematic-wrap">
+  <div class="schematic-inner" id="schematic-bg">
+    <!-- Placeholder SVG until real schematic loads -->
+    <div class="schematic-placeholder" id="placeholder">
+      <svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20,140 L75,75 L190,55 L410,50 L530,95 L558,140 L530,185 L410,230 L190,225 L75,205 Z"
+              fill="none" stroke="#2A6A9A" stroke-width="1.5"/>
+        <rect x="95" y="95" width="115" height="65" fill="none" stroke="#1A3D55" stroke-width="1"/>
+        <rect x="375" y="170" width="95" height="55" fill="none" stroke="#1A3D55" stroke-width="1"/>
+        <line x1="190" y1="55" x2="190" y2="225" stroke="#0D2030" stroke-width="0.5"/>
+        <line x1="340" y1="50" x2="340" y2="230" stroke="#0D2030" stroke-width="0.5"/>
+        <line x1="75" y1="140" x2="558" y2="140" stroke="#0D2030" stroke-width="0.5"/>
+        <text x="300" y="260" fill="#1A3D55" font-family="Courier New" font-size="11"
+              text-anchor="middle" letter-spacing="3">
+          SCHEMATIC ASSET PENDING — POLARIS_SCHEMATIC.PNG
+        </text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- CREW NODES -->
+  <div class="node open"  style="left:11%;top:50%" data-idx="0"  data-role="Pilot"><div class="node-tooltip">Pilot</div></div>
+  <div class="node taken" style="left:15%;top:50%" data-idx="1"  data-role="Co-Pilot"><div class="node-tooltip">Co-Pilot</div></div>
+  <div class="node open"  style="left:22%;top:40%" data-idx="2"  data-role="Remote Turret Op 1"><div class="node-tooltip">Remote Turret Op 1</div></div>
+  <div class="node open"  style="left:22%;top:60%" data-idx="3"  data-role="Remote Turret Op 2"><div class="node-tooltip">Remote Turret Op 2</div></div>
+  <div class="node taken" style="left:38%;top:34%" data-idx="4"  data-role="Top Turret Gunner 1"><div class="node-tooltip">Top Turret Gunner 1</div></div>
+  <div class="node open"  style="left:45%;top:30%" data-idx="5"  data-role="Top Turret Gunner 2"><div class="node-tooltip">Top Turret Gunner 2</div></div>
+  <div class="node open"  style="left:40%;top:40%" data-idx="6"  data-role="Side Turret Port"><div class="node-tooltip">Side Turret Port</div></div>
+  <div class="node mine"  style="left:40%;top:60%" data-idx="7"  data-role="Side Turret Starboard"><div class="node-tooltip">Side Turret Starboard</div></div>
+  <div class="node open"  style="left:48%;top:40%" data-idx="8"  data-role="Torpedo Op 1"><div class="node-tooltip">Torpedo Op 1</div></div>
+  <div class="node taken" style="left:48%;top:60%" data-idx="9"  data-role="Torpedo Op 2"><div class="node-tooltip">Torpedo Op 2</div></div>
+  <div class="node open"  style="left:53%;top:50%" data-idx="10" data-role="Rear Turret Gunner"><div class="node-tooltip">Rear Turret Gunner</div></div>
+  <div class="node taken" style="left:66%;top:37%" data-idx="11" data-role="Engineer 1"><div class="node-tooltip">Engineer 1</div></div>
+  <div class="node open"  style="left:66%;top:50%" data-idx="12" data-role="Engineer 2"><div class="node-tooltip">Engineer 2</div></div>
+  <div class="node open"  style="left:76%;top:40%" data-idx="13" data-role="Hangar Controller"><div class="node-tooltip">Hangar Controller</div></div>
+  <div class="node taken" style="left:80%;top:50%" data-idx="14" data-role="Fighter Pilot"><div class="node-tooltip">Fighter Pilot</div></div>
+  <div class="node open"  style="left:76%;top:60%" data-idx="15" data-role="Hangar Support"><div class="node-tooltip">Hangar Support</div></div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-sq" style="background:#00FF66"></div>
+      <span class="legend-label">OPEN</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-sq" style="background:#FF5544"></div>
+      <span class="legend-label">OCCUPIED</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-sq" style="background:#00EEFF"></div>
+      <span class="legend-label">YOUR SLOT</span>
+    </div>
+  </div>
+</div>
+
+<!-- CREW MANIFEST -->
+<div class="manifest">
+  <div class="manifest-header">
+    CREW MANIFEST — HCS CHIMERA
+    <span>63% FILLED</span>
+  </div>
+  <div class="slot-row" data-idx="0"  onmouseenter="hlRow(0)"  onmouseleave="unhl()"><span class="slot-role">Pilot</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="1"  onmouseenter="hlRow(1)"  onmouseleave="unhl()"><span class="slot-role">Co-Pilot</span><span class="slot-filled">Rael Thorne</span></div>
+  <div class="slot-row" data-idx="2"  onmouseenter="hlRow(2)"  onmouseleave="unhl()"><span class="slot-role">Remote Turret Op 1</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="3"  onmouseenter="hlRow(3)"  onmouseleave="unhl()"><span class="slot-role">Remote Turret Op 2</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="4"  onmouseenter="hlRow(4)"  onmouseleave="unhl()"><span class="slot-role">Top Turret Gunner 1</span><span class="slot-filled">Corvin Ash</span></div>
+  <div class="slot-row" data-idx="5"  onmouseenter="hlRow(5)"  onmouseleave="unhl()"><span class="slot-role">Top Turret Gunner 2</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="6"  onmouseenter="hlRow(6)"  onmouseleave="unhl()"><span class="slot-role">Side Turret Port</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="7"  onmouseenter="hlRow(7)"  onmouseleave="unhl()"><span class="slot-role">Side Turret Starboard</span><span class="slot-mine">YOU <span class="slot-withdraw">[ WITHDRAW ]</span></span></div>
+  <div class="slot-row" data-idx="8"  onmouseenter="hlRow(8)"  onmouseleave="unhl()"><span class="slot-role">Torpedo Op 1</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="9"  onmouseenter="hlRow(9)"  onmouseleave="unhl()"><span class="slot-role">Torpedo Op 2</span><span class="slot-filled">Voss Marlowe</span></div>
+  <div class="slot-row" data-idx="10" onmouseenter="hlRow(10)" onmouseleave="unhl()"><span class="slot-role">Rear Turret Gunner</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="11" onmouseenter="hlRow(11)" onmouseleave="unhl()"><span class="slot-role">Engineer 1</span><span class="slot-filled">Corvin Ash</span></div>
+  <div class="slot-row" data-idx="12" onmouseenter="hlRow(12)" onmouseleave="unhl()"><span class="slot-role">Engineer 2</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="13" onmouseenter="hlRow(13)" onmouseleave="unhl()"><span class="slot-role">Hangar Controller</span><span class="slot-open">[ OPEN ]</span></div>
+  <div class="slot-row" data-idx="14" onmouseenter="hlRow(14)" onmouseleave="unhl()"><span class="slot-role">Fighter Pilot</span><span class="slot-filled">Rael Thorne</span></div>
+  <div class="slot-row" data-idx="15" onmouseenter="hlRow(15)" onmouseleave="unhl()"><span class="slot-role">Hangar Support</span><span class="slot-open">[ OPEN ]</span></div>
+</div>
+
+<script>
+function hlRow(idx) {
+  document.querySelectorAll('.slot-row').forEach(r => r.classList.remove('highlighted'));
+  const row = document.querySelector('.slot-row[data-idx="' + idx + '"]');
+  if (row) row.classList.add('highlighted');
+  document.querySelectorAll('.node').forEach(n => {
+    n.classList.toggle('highlighted', parseInt(n.dataset.idx) === idx);
+  });
+}
+function unhl() {
+  document.querySelectorAll('.slot-row').forEach(r => r.classList.remove('highlighted'));
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('highlighted'));
+}
+document.querySelectorAll('.node').forEach(n => {
+  n.addEventListener('mouseenter', () => hlRow(parseInt(n.dataset.idx)));
+  n.addEventListener('mouseleave', unhl);
+});
+function prevShip() { alert('Navigate to previous ship'); }
+function nextShip() { alert('Navigate to next ship'); }
+
+const bg = document.getElementById('schematic-bg');
+const img = new Image();
+img.onload = () => {
+  bg.style.backgroundImage = "url('/images/ships/polaris_schematic.png')";
+  document.getElementById('placeholder').style.display = 'none';
+};
+img.src = '/images/ships/polaris_schematic.png';
+</script>
+</body>
+</html>

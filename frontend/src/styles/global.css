@@ -1,0 +1,203 @@
+/* ─── Nexus 1.0 Terminal Design System — RSI Blue Palette ─── */
+
+:root {
+  --color-bg:        #000000;
+  --color-deep:      #0D2030;
+  --color-dark:      #1A3D55;
+  --color-mid:       #2A6A9A;
+  --color-label:     #4488BB;
+  --color-primary:   #66AADD;
+  --color-bright:    #99CCFF;
+  --color-highlight: #CCE8FF;
+  --color-success:   #33DDAA;
+  --color-danger:    #FF5544;
+  --color-warning:   #FFBB33;
+  --color-selection: #00EEFF;
+
+  /* legacy aliases for backward compat */
+  --bg:       #000000;
+  --amber:    #66AADD;
+  --amber-dim:#2A6A9A;
+  --amber-hi: #99CCFF;
+  --green:    #33DDAA;
+  --border:   #1A3D55;
+  --danger:   #FF5544;
+  --font:     'JetBrains Mono', 'Courier New', Courier, monospace;
+  --size:     20px;
+  --lh:       1.6;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--amber);
+  font-family: var(--font);
+  font-size: var(--size);
+  line-height: var(--lh);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+/* No gradients, no rounded corners; box-shadow allowed for selection glow */
+* {
+  border-radius: 0 !important;
+}
+
+a { color: var(--amber-hi); text-decoration: none; }
+a:hover { color: var(--amber); }
+
+/* ─── Focus ring — Nexus Cyan ─── */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #00EEFF !important;
+  outline: none;
+}
+
+/* ─── Scanlines overlay ─── */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9000;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+}
+
+/* ─── Vignette overlay ─── */
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9001;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 55%,
+    rgba(0, 0, 0, 0.72) 100%
+  );
+}
+
+/* ─── Blinking cursor ─── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.cursor {
+  display: inline-block;
+  animation: blink 0.8s step-start infinite;
+}
+
+/* ─── Pulsing prompt ─── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+/* ─── Crew slot node pulse ─── */
+@keyframes nodeP {
+  0%,100% { transform: translate(-50%,-50%) scale(1); }
+  50%     { transform: translate(-50%,-50%) scale(1.18); }
+}
+.prompt-pulse {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* ─── Utility: dim secondary text ─── */
+.dim   { color: var(--amber-dim); }
+.hi    { color: var(--amber-hi); }
+.green { color: var(--green); }
+.danger{ color: var(--danger); }
+
+/* ─── Gate screen — button decorative border + pulse ─── */
+.gate-btn {
+  position: relative;
+}
+.gate-btn::before {
+  content: '';
+  position: absolute;
+  top: -6px; left: -6px; right: -6px; bottom: -6px;
+  border: 1px solid #0D2030;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes gatePulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+.gate-pulse {
+  animation: gatePulse 2.4s ease-in-out infinite;
+}
+
+/* ─── Crew slot node — force circle over global border-radius:0 rule ─── */
+.nexus-node { border-radius: 50% !important; }
+
+/* ─── Registration node pulse (box-shadow ripple) ─── */
+@keyframes nodePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,102,0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(0,255,102,0); }
+}
+
+/* ─── MY SHIPS panel column fade-in ─── */
+@keyframes fadeInCols {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Global thin scrollbar ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #1A3D55; }
+::-webkit-scrollbar-thumb:hover { background: #2A6A9A; }
+
+/* ─── Scrollable terminal body ─── */
+.terminal-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg);
+}
+
+/* ─── Status dot pulse ─── */
+@keyframes pulse-dot {
+  0%,100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+/* ─── Creator control button glows ─── */
+@keyframes pulse-btn-blue {
+  0%,100% {
+    box-shadow: 0 0 6px rgba(153,204,255,0.4), 0 0 12px rgba(102,170,221,0.3);
+    border-color: #99CCFF; color: #CCE8FF;
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(153,204,255,0.9), 0 0 32px rgba(102,170,221,0.6);
+    border-color: #CCE8FF; color: #FFFFFF;
+  }
+}
+@keyframes pulse-btn-green {
+  0%,100% {
+    box-shadow: 0 0 6px rgba(51,221,170,0.4), 0 0 12px rgba(51,221,170,0.3);
+    border-color: #33DDAA; color: #66EEBB;
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(51,221,170,0.9), 0 0 32px rgba(51,221,170,0.6);
+    border-color: #AAFFEE; color: #FFFFFF;
+  }
+}
+
+@keyframes freqPulse {
+  0%,100% { text-shadow: 0 0 8px rgba(0,238,255,0.6); }
+  50%      { text-shadow: 0 0 20px rgba(0,238,255,1), 0 0 40px rgba(0,238,255,0.4); }
+}

@@ -1,0 +1,3173 @@
+{
+  "origin_100i": {
+    "display_name": "Origin Jumpworks 100i",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Starter / Pathfinder",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_125a": {
+    "display_name": "Origin Jumpworks 125a",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Light Fighter",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_135c": {
+    "display_name": "Origin Jumpworks 135c",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Light Freight",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_300i": {
+    "display_name": "Origin Jumpworks 300i",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Luxury Touring",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_315p": {
+    "display_name": "Origin Jumpworks 315p",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_325a": {
+    "display_name": "Origin Jumpworks 325a",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Interceptor",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_350r": {
+    "display_name": "Origin Jumpworks 350r",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_400i": {
+    "display_name": "Origin Jumpworks 400i",
+    "crew_min": 1,
+    "crew_max": 3,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Remote Turret Operator 1"
+    ]
+  },
+  "origin_600i_executive": {
+    "display_name": "Origin Jumpworks 600i Executive",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_600i_explorer": {
+    "display_name": "Origin Jumpworks 600i Explorer",
+    "crew_min": 2,
+    "crew_max": 5,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2",
+      "Crew Member 3"
+    ]
+  },
+  "origin_600i_touring": {
+    "display_name": "Origin Jumpworks 600i Touring",
+    "crew_min": 3,
+    "crew_max": 5,
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2",
+      "Crew Member 3"
+    ]
+  },
+  "origin_85x": {
+    "display_name": "Origin Jumpworks 85x",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Exploration",
+    "role": "Touring",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "origin_890_jump": {
+    "display_name": "Origin Jumpworks 890 Jump",
+    "crew_min": 3,
+    "crew_max": 8,
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Capital (S6)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Remote Turret Operator 1",
+      "Remote Turret Operator 2"
+    ]
+  },
+  "crusader_a1_spirit": {
+    "display_name": "Crusader Industries A1 Spirit",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Bomber",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "crusader_a2_hercules": {
+    "display_name": "Crusader Industries A2 Hercules",
+    "crew_min": 1,
+    "crew_max": 8,
+    "career": "Combat",
+    "role": "Heavy Bomber",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5",
+      "Gunner 6"
+    ]
+  },
+  "rsi_apollo_medivac": {
+    "display_name": "RSI Apollo Medivac",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Support",
+    "role": "Medical",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "rsi_apollo_triage": {
+    "display_name": "RSI Apollo Triage",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Support",
+    "role": "Medical",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "crusader_ares_inferno": {
+    "display_name": "Crusader Industries Ares Inferno",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S3)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "crusader_ares_ion": {
+    "display_name": "Crusader Industries Ares Ion",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S3)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_arrastra": {
+    "display_name": "RSI Arrastra",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_arrow": {
+    "display_name": "Anvil Aerospace Arrow",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_asgard": {
+    "display_name": "Anvil Aerospace Asgard",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "argo_atls": {
+    "display_name": "ARGO Astronautics ATLS",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_atls_geo": {
+    "display_name": "ARGO Astronautics ATLS GEO",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_aurora_mk_i_cl": {
+    "display_name": "RSI Aurora Mk I CL",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_aurora_mk_i_es": {
+    "display_name": "RSI Aurora Mk I ES",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_aurora_mk_i_ln": {
+    "display_name": "RSI Aurora Mk I LN",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_aurora_mk_i_lx": {
+    "display_name": "RSI Aurora Mk I LX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_aurora_mk_i_mr": {
+    "display_name": "RSI Aurora Mk I MR",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_aurora_mk_i_se": {
+    "display_name": "RSI Aurora Mk I SE",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_aurora_mk_ii": {
+    "display_name": "RSI Aurora Mk II",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_avenger_stalker": {
+    "display_name": "Aegis Dynamics Avenger Stalker",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Interceptor",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_avenger_titan": {
+    "display_name": "Aegis Dynamics Avenger Titan",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_avenger_titan_renegade": {
+    "display_name": "Aegis Dynamics Avenger Titan Renegade",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_avenger_warlock": {
+    "display_name": "Aegis Dynamics Avenger Warlock",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_ballista": {
+    "display_name": "Anvil Aerospace Ballista",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "anvil_ballista_dunestalker": {
+    "display_name": "Anvil Aerospace Ballista Dunestalker",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "anvil_ballista_snowblind": {
+    "display_name": "Anvil Aerospace Ballista Snowblind",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "esperia_blade": {
+    "display_name": "Esperia Blade",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_buccaneer": {
+    "display_name": "Drake Interplanetary Buccaneer",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "crusader_c1_spirit": {
+    "display_name": "Crusader Industries C1 Spirit",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "crusader_c2_hercules": {
+    "display_name": "Crusader Industries C2 Hercules",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "anvil_c8_pisces": {
+    "display_name": "Anvil Aerospace C8 Pisces",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_c8r_pisces": {
+    "display_name": "Anvil Aerospace C8R Pisces",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_c8x_pisces_expedition": {
+    "display_name": "Anvil Aerospace C8X Pisces Expedition",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_carrack": {
+    "display_name": "Anvil Aerospace Carrack",
+    "crew_min": 4,
+    "crew_max": 6,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2",
+      "Crew Member 3",
+      "Crew Member 4"
+    ]
+  },
+  "anvil_carrack_expedition": {
+    "display_name": "Anvil Aerospace Carrack Expedition",
+    "crew_min": 4,
+    "crew_max": 6,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2",
+      "Crew Member 3",
+      "Crew Member 4"
+    ]
+  },
+  "anvil_carrack_expedition_w_c8x": {
+    "display_name": "Anvil Aerospace Carrack Expedition W C8X",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_carrack_w_c8x": {
+    "display_name": "Anvil Aerospace Carrack W C8X",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_caterpillar": {
+    "display_name": "Drake Interplanetary Caterpillar",
+    "crew_min": 1,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2"
+    ]
+  },
+  "drake_caterpillar_best_in_show_edition_2949": {
+    "display_name": "Drake Interplanetary Caterpillar Best In Show Edition 2949",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_caterpillar_pirate_edition": {
+    "display_name": "Drake Interplanetary Caterpillar Pirate Edition",
+    "crew_min": 1,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2"
+    ]
+  },
+  "anvil_centurion": {
+    "display_name": "Anvil Aerospace Centurion",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Ground",
+    "role": "Anti-Air",
+    "size": "Vehicle (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "drake_clipper": {
+    "display_name": "Drake Interplanetary Clipper",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Exploration",
+    "role": "Generalist",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_constellation_andromeda": {
+    "display_name": "RSI Constellation Andromeda",
+    "crew_min": 3,
+    "crew_max": 4,
+    "career": "Multi-role",
+    "role": "Medium Freight / Gun Ship",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2"
+    ]
+  },
+  "rsi_constellation_aquila": {
+    "display_name": "RSI Constellation Aquila",
+    "crew_min": 3,
+    "crew_max": 4,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Turret Gunner 2"
+    ]
+  },
+  "rsi_constellation_phoenix": {
+    "display_name": "RSI Constellation Phoenix",
+    "crew_min": 3,
+    "crew_max": 4,
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1"
+    ]
+  },
+  "rsi_constellation_phoenix_emerald": {
+    "display_name": "RSI Constellation Phoenix Emerald",
+    "crew_min": 3,
+    "crew_max": 4,
+    "career": "Exploration",
+    "role": "Luxury Touring",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2"
+    ]
+  },
+  "rsi_constellation_taurus": {
+    "display_name": "RSI Constellation Taurus",
+    "crew_min": 3,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Turret Gunner 2"
+    ]
+  },
+  "drake_corsair": {
+    "display_name": "Drake Interplanetary Corsair",
+    "crew_min": 1,
+    "crew_max": 4,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2"
+    ]
+  },
+  "anvil_crucible": {
+    "display_name": "Anvil Aerospace Crucible",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_csv_sm": {
+    "display_name": "ARGO Astronautics CSV SM",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_cutlass_black": {
+    "display_name": "Drake Interplanetary Cutlass Black",
+    "crew_min": 2,
+    "crew_max": 3,
+    "career": "Multi-role",
+    "role": "Light Freight / Medium Fighter",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1"
+    ]
+  },
+  "drake_cutlass_black_best_in_show_edition_2949": {
+    "display_name": "Drake Interplanetary Cutlass Black Best In Show Edition 2949",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_cutlass_blue": {
+    "display_name": "Drake Interplanetary Cutlass Blue",
+    "crew_min": 2,
+    "crew_max": 3,
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1"
+    ]
+  },
+  "drake_cutlass_red": {
+    "display_name": "Drake Interplanetary Cutlass Red",
+    "crew_min": 2,
+    "crew_max": 2,
+    "career": "Support",
+    "role": "Medical",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "drake_cutlass_steel": {
+    "display_name": "Drake Interplanetary Cutlass Steel",
+    "crew_min": 1,
+    "crew_max": 3,
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1"
+    ]
+  },
+  "drake_cutter": {
+    "display_name": "Drake Interplanetary Cutter",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Transport",
+    "role": "Starter / Pathfinder",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_cutter_rambler": {
+    "display_name": "Drake Interplanetary Cutter Rambler",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_cutter_scout": {
+    "display_name": "Drake Interplanetary Cutter Scout",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_cyclone": {
+    "display_name": "Tumbril Land Systems Cyclone",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Ground",
+    "role": "Passenger",
+    "size": "Vehicle (S1)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "tumbril_cyclone_aa": {
+    "display_name": "Tumbril Land Systems Cyclone AA",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_cyclone_mt": {
+    "display_name": "Tumbril Land Systems Cyclone MT",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_cyclone_rc": {
+    "display_name": "Tumbril Land Systems Cyclone RC",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_cyclone_rn": {
+    "display_name": "Tumbril Land Systems Cyclone RN",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_cyclone_tr": {
+    "display_name": "Tumbril Land Systems Cyclone TR",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "banu_defender": {
+    "display_name": "Banu Defender",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "drake_dragonfly_black": {
+    "display_name": "Drake Interplanetary Dragonfly Black",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "drake_dragonfly_star_kitten": {
+    "display_name": "Drake Interplanetary Dragonfly Star Kitten",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "drake_dragonfly_yellowjacket": {
+    "display_name": "Drake Interplanetary Dragonfly Yellowjacket",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "crusader_e1_spirit": {
+    "display_name": "Crusader Industries E1 Spirit",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_eclipse": {
+    "display_name": "Aegis Dynamics Eclipse",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Stealth Bomber",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_endeavor": {
+    "display_name": "MISC Endeavor",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_expanse": {
+    "display_name": "MISC Expanse",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7a_hornet_mk_i": {
+    "display_name": "Anvil Aerospace F7A Hornet Mk I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7a_hornet_mk_ii": {
+    "display_name": "Anvil Aerospace F7A Hornet Mk II",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_hornet_mk_i": {
+    "display_name": "Anvil Aerospace F7C Hornet Mk I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_hornet_mk_ii": {
+    "display_name": "Anvil Aerospace F7C Hornet Mk II",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_hornet_wildfire_mk_i": {
+    "display_name": "Anvil Aerospace F7C Hornet Wildfire Mk I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_m_super_hornet_heartseeker_mk_i": {
+    "display_name": "Anvil Aerospace F7C M Super Hornet Heartseeker Mk I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_m_super_hornet_mk_i": {
+    "display_name": "Anvil Aerospace F7C M Super Hornet Mk I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_m_super_hornet_mk_ii": {
+    "display_name": "Anvil Aerospace F7C M Super Hornet Mk II",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_r_hornet_tracker_mk_i": {
+    "display_name": "Anvil Aerospace F7C R Hornet Tracker Mk I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_r_hornet_tracker_mk_ii": {
+    "display_name": "Anvil Aerospace F7C R Hornet Tracker Mk II",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_s_hornet_ghost_mk_i": {
+    "display_name": "Anvil Aerospace F7C S Hornet Ghost Mk I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f7c_s_hornet_ghost_mk_ii": {
+    "display_name": "Anvil Aerospace F7C S Hornet Ghost Mk II",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f8c_lightning": {
+    "display_name": "Anvil Aerospace F8C Lightning",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_f8c_lightning_executive_edition": {
+    "display_name": "Anvil Aerospace F8C Lightning Executive Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_fortune": {
+    "display_name": "MISC Fortune",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Industrial",
+    "role": "Light Salvage",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_freelancer": {
+    "display_name": "MISC Freelancer",
+    "crew_min": 2,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Engineer 1"
+    ]
+  },
+  "misc_freelancer_dur": {
+    "display_name": "MISC Freelancer DUR",
+    "crew_min": 2,
+    "crew_max": 4,
+    "career": "Exploration",
+    "role": "Expedition",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1",
+      "Crew Member 2"
+    ]
+  },
+  "misc_freelancer_max": {
+    "display_name": "MISC Freelancer MAX",
+    "crew_min": 2,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2"
+    ]
+  },
+  "misc_freelancer_mis": {
+    "display_name": "MISC Freelancer MIS",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_fury": {
+    "display_name": "Mirai Fury",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Snub Fighter",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_fury_lx": {
+    "display_name": "Mirai Fury LX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_fury_mx": {
+    "display_name": "Mirai Fury MX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_g12": {
+    "display_name": "Origin Jumpworks G12",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_g12a": {
+    "display_name": "Origin Jumpworks G12A",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_g12r": {
+    "display_name": "Origin Jumpworks G12R",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_galaxy": {
+    "display_name": "RSI Galaxy",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "crusader_genesis": {
+    "display_name": "Crusader Industries Genesis",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_gladiator": {
+    "display_name": "Anvil Aerospace Gladiator",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Bomber",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "aegis_gladius": {
+    "display_name": "Aegis Dynamics Gladius",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_gladius_pirate_edition": {
+    "display_name": "Aegis Dynamics Gladius Pirate Edition",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_gladius_valiant": {
+    "display_name": "Aegis Dynamics Gladius Valiant",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "esperia_glaive": {
+    "display_name": "Esperia Glaive",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_golem": {
+    "display_name": "Drake Interplanetary Golem",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Industrial",
+    "role": "Starter / Light Mining",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_golem_ox": {
+    "display_name": "Drake Interplanetary Golem OX",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_guardian": {
+    "display_name": "Mirai Guardian",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_guardian_mx": {
+    "display_name": "Mirai Guardian MX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_guardian_qi": {
+    "display_name": "Mirai Guardian QI",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_hammerhead": {
+    "display_name": "Aegis Dynamics Hammerhead",
+    "crew_min": 1,
+    "crew_max": 9,
+    "career": "Combat",
+    "role": "Heavy Gunship",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5",
+      "Gunner 6",
+      "Gunner 7"
+    ]
+  },
+  "aegis_hammerhead_best_in_show_edition_2949": {
+    "display_name": "Aegis Dynamics Hammerhead Best In Show Edition 2949",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_hawk": {
+    "display_name": "Anvil Aerospace Hawk",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_herald": {
+    "display_name": "Drake Interplanetary Herald",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Transport",
+    "role": "Medium Data",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_hermes": {
+    "display_name": "RSI Hermes",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "consolidated_outland_hoverquad": {
+    "display_name": "Consolidated Outland Hoverquad",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Ground",
+    "role": "Passenger",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_hull_a": {
+    "display_name": "MISC Hull A",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_hull_b": {
+    "display_name": "MISC Hull B",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "misc_hull_c": {
+    "display_name": "MISC Hull C",
+    "crew_min": 2,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Heavy Freight",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2"
+    ]
+  },
+  "misc_hull_d": {
+    "display_name": "MISC Hull D",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_hull_e": {
+    "display_name": "MISC Hull E",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_hurricane": {
+    "display_name": "Anvil Aerospace Hurricane",
+    "crew_min": 2,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "aegis_idris_k": {
+    "display_name": "Aegis Dynamics Idris K",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_idris_m": {
+    "display_name": "Aegis Dynamics Idris M",
+    "crew_min": 8,
+    "crew_max": 28,
+    "career": "Combat",
+    "role": "Frigate",
+    "size": "Capital (S6)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5",
+      "Gunner 6",
+      "Gunner 7",
+      "Gunner 8",
+      "Gunner 9",
+      "Gunner 10",
+      "Gunner 11",
+      "Gunner 12",
+      "Gunner 13",
+      "Gunner 14",
+      "Gunner 15",
+      "Gunner 16",
+      "Gunner 17",
+      "Gunner 18",
+      "Gunner 19",
+      "Gunner 20",
+      "Gunner 21",
+      "Gunner 22",
+      "Gunner 23",
+      "Gunner 24",
+      "Gunner 25",
+      "Gunner 26"
+    ]
+  },
+  "aegis_idris_p": {
+    "display_name": "Aegis Dynamics Idris P",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "crusader_intrepid": {
+    "display_name": "Crusader Industries Intrepid",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Transport",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_ironclad": {
+    "display_name": "Drake Interplanetary Ironclad",
+    "crew_min": 1,
+    "crew_max": 7,
+    "career": "Transport",
+    "role": "Heavy Freight",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2",
+      "Engineer 3",
+      "Engineer 4",
+      "Engineer 5"
+    ]
+  },
+  "drake_ironclad_assault": {
+    "display_name": "Drake Interplanetary Ironclad Assault",
+    "crew_min": 1,
+    "crew_max": 9,
+    "career": "Combat",
+    "role": "Heavy Dropship",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5",
+      "Gunner 6",
+      "Gunner 7"
+    ]
+  },
+  "aegis_javelin": {
+    "display_name": "Aegis Dynamics Javelin",
+    "crew_min": 12,
+    "crew_max": 80,
+    "career": "Combat",
+    "role": "Destroyer",
+    "size": "Capital (S6)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5",
+      "Gunner 6",
+      "Gunner 7",
+      "Gunner 8",
+      "Gunner 9",
+      "Gunner 10",
+      "Gunner 11",
+      "Gunner 12",
+      "Gunner 13",
+      "Gunner 14",
+      "Gunner 15",
+      "Gunner 16",
+      "Gunner 17",
+      "Gunner 18",
+      "Gunner 19",
+      "Gunner 20",
+      "Gunner 21",
+      "Gunner 22",
+      "Gunner 23",
+      "Gunner 24",
+      "Gunner 25",
+      "Gunner 26",
+      "Gunner 27",
+      "Gunner 28",
+      "Gunner 29",
+      "Gunner 30",
+      "Gunner 31",
+      "Gunner 32",
+      "Gunner 33",
+      "Gunner 34",
+      "Gunner 35",
+      "Gunner 36",
+      "Gunner 37",
+      "Gunner 38",
+      "Gunner 39",
+      "Gunner 40",
+      "Gunner 41",
+      "Gunner 42",
+      "Gunner 43",
+      "Gunner 44",
+      "Gunner 45",
+      "Gunner 46",
+      "Gunner 47",
+      "Gunner 48",
+      "Gunner 49",
+      "Gunner 50",
+      "Gunner 51",
+      "Gunner 52",
+      "Gunner 53",
+      "Gunner 54",
+      "Gunner 55",
+      "Gunner 56",
+      "Gunner 57",
+      "Gunner 58",
+      "Gunner 59",
+      "Gunner 60",
+      "Gunner 61",
+      "Gunner 62",
+      "Gunner 63",
+      "Gunner 64",
+      "Gunner 65",
+      "Gunner 66",
+      "Gunner 67",
+      "Gunner 68",
+      "Gunner 69",
+      "Gunner 70",
+      "Gunner 71",
+      "Gunner 72",
+      "Gunner 73",
+      "Gunner 74",
+      "Gunner 75",
+      "Gunner 76",
+      "Gunner 77",
+      "Gunner 78"
+    ]
+  },
+  "aopoa_khartu_al": {
+    "display_name": "Aopoa Khartu Al",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_kraken": {
+    "display_name": "Drake Interplanetary Kraken",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_kraken_privateer": {
+    "display_name": "Drake Interplanetary Kraken Privateer",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "kruger_l_21_wolf": {
+    "display_name": "Kruger Intergalactic L 21 Wolf",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "kruger_l_22_alpha_wolf": {
+    "display_name": "Kruger Intergalactic L 22 Alpha Wolf",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_legionnaire": {
+    "display_name": "Anvil Aerospace Legionnaire",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_liberator": {
+    "display_name": "Anvil Aerospace Liberator",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_lynx": {
+    "display_name": "RSI Lynx",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Ground",
+    "role": "Luxury Touring",
+    "size": "Vehicle (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "crusader_m2_hercules": {
+    "display_name": "Crusader Industries M2 Hercules",
+    "crew_min": 1,
+    "crew_max": 3,
+    "career": "Combat",
+    "role": "Medium Freight",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1"
+    ]
+  },
+  "origin_m50": {
+    "display_name": "Origin Jumpworks M50",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_m80": {
+    "display_name": "Origin Jumpworks M80",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_mantis": {
+    "display_name": "RSI Mantis",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "greycat_mdc": {
+    "display_name": "GREYCAT Industrial MDC",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "banu_merchantman": {
+    "display_name": "Banu Merchantman",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "crusader_mercury": {
+    "display_name": "Crusader Industries Mercury",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_meteor": {
+    "display_name": "RSI Meteor",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Medium Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_mole": {
+    "display_name": "ARGO Astronautics Mole",
+    "crew_min": 1,
+    "crew_max": 4,
+    "career": "Industrial",
+    "role": "Medium Mining",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Engineer 1"
+    ]
+  },
+  "argo_mole_carbon_edition": {
+    "display_name": "ARGO Astronautics Mole Carbon Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_mole_talus_edition": {
+    "display_name": "ARGO Astronautics Mole Talus Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_moth": {
+    "display_name": "ARGO Astronautics Moth",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_mpuv_cargo": {
+    "display_name": "ARGO Astronautics Mpuv Cargo",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_mpuv_personnel": {
+    "display_name": "ARGO Astronautics Mpuv Personnel",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_mpuv_tractor": {
+    "display_name": "ARGO Astronautics Mpuv Tractor",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "greycat_mtc": {
+    "display_name": "GREYCAT Industrial MTC",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_mule": {
+    "display_name": "Drake Interplanetary Mule",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Ground",
+    "role": "Light Freight",
+    "size": "Vehicle (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "consolidated_outland_mustang_alpha": {
+    "display_name": "Consolidated Outland Mustang Alpha",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "consolidated_outland_mustang_alpha_vindicator": {
+    "display_name": "Consolidated Outland Mustang Alpha Vindicator",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "consolidated_outland_mustang_beta": {
+    "display_name": "Consolidated Outland Mustang Beta",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "consolidated_outland_mustang_delta": {
+    "display_name": "Consolidated Outland Mustang Delta",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "consolidated_outland_mustang_gamma": {
+    "display_name": "Consolidated Outland Mustang Gamma",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "consolidated_outland_mustang_omega": {
+    "display_name": "Consolidated Outland Mustang Omega",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_nautilus": {
+    "display_name": "Aegis Dynamics Nautilus",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_nautilus_solstice_edition": {
+    "display_name": "Aegis Dynamics Nautilus Solstice Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "consolidated_outland_nomad": {
+    "display_name": "Consolidated Outland Nomad",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_nova": {
+    "display_name": "Tumbril Land Systems Nova",
+    "crew_min": 1,
+    "crew_max": 3,
+    "career": "Ground",
+    "role": "Heavy Tank",
+    "size": "Vehicle (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1"
+    ]
+  },
+  "aopoa_nox": {
+    "display_name": "Aopoa Nox",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aopoa_nox_kue": {
+    "display_name": "Aopoa Nox Kue",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_odin": {
+    "display_name": "Anvil Aerospace Odin",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_odyssey": {
+    "display_name": "MISC Odyssey",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_orion": {
+    "display_name": "RSI Orion",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "kruger_p_52_merlin": {
+    "display_name": "Kruger Intergalactic P 52 Merlin",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "kruger_p_72_archimedes": {
+    "display_name": "Kruger Intergalactic P 72 Archimedes",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "kruger_p_72_archimedes_emerald": {
+    "display_name": "Kruger Intergalactic P 72 Archimedes Emerald",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_paladin": {
+    "display_name": "Anvil Aerospace Paladin",
+    "crew_min": 1,
+    "crew_max": 4,
+    "career": "Combat",
+    "role": "Gunship",
+    "size": "Medium (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2"
+    ]
+  },
+  "rsi_perseus": {
+    "display_name": "RSI Perseus",
+    "crew_min": 1,
+    "crew_max": 7,
+    "career": "Combat",
+    "role": "Heavy Gunship",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Remote Turret Operator 1",
+      "Remote Turret Operator 2",
+      "Remote Turret Operator 3"
+    ]
+  },
+  "consolidated_outland_pioneer": {
+    "display_name": "Consolidated Outland Pioneer",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_pitbull": {
+    "display_name": "Drake Interplanetary Pitbull",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Snub Fighter",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_polaris": {
+    "display_name": "RSI Polaris",
+    "crew_min": 6,
+    "crew_max": 12,
+    "career": "Combat",
+    "role": "Corvette",
+    "size": "Capital (S6)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Turret Gunner 2",
+      "Turret Gunner 3",
+      "Remote Turret Operator 1",
+      "Remote Turret Operator 2",
+      "Remote Turret Operator 3",
+      "Remote Turret Operator 4",
+      "Remote Turret Operator 5"
+    ]
+  },
+  "misc_prospector": {
+    "display_name": "MISC Prospector",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Industrial",
+    "role": "Light Mining",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "esperia_prowler": {
+    "display_name": "Esperia Prowler",
+    "crew_min": 2,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "esperia_prowler_utility": {
+    "display_name": "Esperia Prowler Utility",
+    "crew_min": 1,
+    "crew_max": 5,
+    "career": "Transport",
+    "role": "Light Freight",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2",
+      "Engineer 3"
+    ]
+  },
+  "greycat_ptv": {
+    "display_name": "GREYCAT Industrial PTV",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_pulse": {
+    "display_name": "Mirai Pulse",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Ground",
+    "role": "Pathfinder",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_pulse_lx": {
+    "display_name": "Mirai Pulse LX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_raft": {
+    "display_name": "ARGO Astronautics Raft",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "gatac_railen": {
+    "display_name": "Gatac Manufacture Railen",
+    "crew_min": 1,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Medium Freight",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2"
+    ]
+  },
+  "tumbril_ranger_cv": {
+    "display_name": "Tumbril Land Systems Ranger CV",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_ranger_rc": {
+    "display_name": "Tumbril Land Systems Ranger RC",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_ranger_tr": {
+    "display_name": "Tumbril Land Systems Ranger TR",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_razor": {
+    "display_name": "Mirai Razor",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_razor_ex": {
+    "display_name": "Mirai Razor EX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "mirai_razor_lx": {
+    "display_name": "Mirai Razor LX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_reclaimer": {
+    "display_name": "Aegis Dynamics Reclaimer",
+    "crew_min": 4,
+    "crew_max": 5,
+    "career": "Industrial",
+    "role": "Heavy Salvage",
+    "size": "Capital (S6)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2",
+      "Engineer 3"
+    ]
+  },
+  "aegis_reclaimer_best_in_show_edition_2949": {
+    "display_name": "Aegis Dynamics Reclaimer Best In Show Edition 2949",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_redeemer": {
+    "display_name": "Aegis Dynamics Redeemer",
+    "crew_min": 3,
+    "crew_max": 4,
+    "career": "Combat",
+    "role": "Gunship",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Remote Turret Operator 1"
+    ]
+  },
+  "misc_reliant_kore": {
+    "display_name": "MISC Reliant Kore",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Multi-role",
+    "role": "Starter / Light Freight",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "misc_reliant_mako": {
+    "display_name": "MISC Reliant Mako",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Support",
+    "role": "Reporting",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "misc_reliant_sen": {
+    "display_name": "MISC Reliant Sen",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Industrial",
+    "role": "Light Science",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "misc_reliant_tana": {
+    "display_name": "MISC Reliant Tana",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "aegis_retaliator": {
+    "display_name": "Aegis Dynamics Retaliator",
+    "crew_min": 4,
+    "crew_max": 7,
+    "career": "Combat",
+    "role": "Modular",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5"
+    ]
+  },
+  "aegis_retaliator_bomber": {
+    "display_name": "Aegis Dynamics Retaliator Bomber",
+    "crew_min": 4,
+    "crew_max": 7,
+    "career": "Combat",
+    "role": "Modular",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5"
+    ]
+  },
+  "greycat_roc": {
+    "display_name": "GREYCAT Industrial ROC",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Industrial",
+    "role": "Light Mining",
+    "size": "Vehicle (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "greycat_roc_ds": {
+    "display_name": "GREYCAT Industrial ROC DS",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_sabre": {
+    "display_name": "Aegis Dynamics Sabre",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Stealth Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_sabre_comet": {
+    "display_name": "Aegis Dynamics Sabre Comet",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Stealth Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_sabre_firebird": {
+    "display_name": "Aegis Dynamics Sabre Firebird",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Stealth Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_sabre_peregrine": {
+    "display_name": "Aegis Dynamics Sabre Peregrine",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_sabre_raven": {
+    "display_name": "Aegis Dynamics Sabre Raven",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Interdiction",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_salvation": {
+    "display_name": "RSI Salvation",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Industrial",
+    "role": "Starter / Light Salvage",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aopoa_san_039_tok_y_i": {
+    "display_name": "Aopoa San 039 Tok Y I",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_scorpius": {
+    "display_name": "RSI Scorpius",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "rsi_scorpius_antares": {
+    "display_name": "RSI Scorpius Antares",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "vanduul_scythe": {
+    "display_name": "Vanduul Scythe",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "shiv": {
+    "display_name": "Grey's Shiv",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "anvil_spartan": {
+    "display_name": "Anvil Aerospace Spartan",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Ground",
+    "role": "Passenger",
+    "size": "Vehicle (S4)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "argo_srv": {
+    "display_name": "ARGO Astronautics SRV",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Support",
+    "role": "Recovery",
+    "size": "Small (S3)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_starfarer": {
+    "display_name": "MISC Starfarer",
+    "crew_min": 4,
+    "crew_max": 8,
+    "career": "Support",
+    "role": "Heavy Refueling",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Turret Gunner 2"
+    ]
+  },
+  "misc_starfarer_gemini": {
+    "display_name": "MISC Starfarer Gemini",
+    "crew_min": 4,
+    "crew_max": 8,
+    "career": "Support",
+    "role": "Heavy Refueling",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Turret Gunner 1",
+      "Turret Gunner 2"
+    ]
+  },
+  "misc_starlancer_max": {
+    "display_name": "MISC Starlancer MAX",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_starlancer_tac": {
+    "display_name": "MISC Starlancer TAC",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "misc_starlite": {
+    "display_name": "MISC Starlite",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Support",
+    "role": "Light Refueling",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "esperia_stinger": {
+    "display_name": "Esperia Stinger",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_storm": {
+    "display_name": "Tumbril Land Systems Storm",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Ground",
+    "role": "Light Tank",
+    "size": "Vehicle (S4)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "tumbril_storm_aa": {
+    "display_name": "Tumbril Land Systems Storm AA",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "greycat_stv": {
+    "display_name": "GREYCAT Industrial STV",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "gatac_syulen": {
+    "display_name": "Gatac Manufacture Syulen",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Multi-role",
+    "role": "Starter / Pathfinder",
+    "size": "Small (S3)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "esperia_talon": {
+    "display_name": "Esperia Talon",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "esperia_talon_shrike": {
+    "display_name": "Esperia Talon Shrike",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Light Fighter",
+    "size": "Small (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_terrapin": {
+    "display_name": "Anvil Aerospace Terrapin",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Exploration",
+    "role": "Pathfinder",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "anvil_terrapin_medic": {
+    "display_name": "Anvil Aerospace Terrapin Medic",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Support",
+    "role": "Medical",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_tiburon": {
+    "display_name": "Aegis Dynamics Tiburon",
+    "crew_min": 1,
+    "crew_max": 9,
+    "career": "Combat",
+    "role": "Heavy Gunship",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3",
+      "Gunner 4",
+      "Gunner 5",
+      "Gunner 6",
+      "Gunner 7"
+    ]
+  },
+  "gatac_tyilui": {
+    "display_name": "Gatac Manufacture Tyilui",
+    "crew_min": 1,
+    "crew_max": 4,
+    "career": "Transport",
+    "role": "Carrier",
+    "size": "Large (S5)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Engineer 1",
+      "Engineer 2"
+    ]
+  },
+  "rsi_ursa": {
+    "display_name": "RSI Ursa",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Ground",
+    "role": "Pathfinder",
+    "size": "Vehicle (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "rsi_ursa_fortuna": {
+    "display_name": "RSI Ursa Fortuna",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Ground",
+    "role": "Pathfinder",
+    "size": "Vehicle (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "rsi_ursa_medivac": {
+    "display_name": "RSI Ursa Medivac",
+    "crew_min": 1,
+    "crew_max": 3,
+    "career": "Support",
+    "role": "Medical",
+    "size": "Vehicle (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Crew Member 1"
+    ]
+  },
+  "greycat_utv": {
+    "display_name": "GREYCAT Industrial UTV",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "anvil_valkyrie": {
+    "display_name": "Anvil Aerospace Valkyrie",
+    "crew_min": 1,
+    "crew_max": 5,
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Large (S4)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot",
+      "Gunner 1",
+      "Gunner 2",
+      "Gunner 3"
+    ]
+  },
+  "anvil_valkyrie_liberator_edition": {
+    "display_name": "Anvil Aerospace Valkyrie Liberator Edition",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "aegis_vanguard_harbinger": {
+    "display_name": "Aegis Dynamics Vanguard Harbinger",
+    "crew_min": 2,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Heavy Fighter / Bomber",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "aegis_vanguard_hoplite": {
+    "display_name": "Aegis Dynamics Vanguard Hoplite",
+    "crew_min": 1,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Dropship",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "aegis_vanguard_sentinel": {
+    "display_name": "Aegis Dynamics Vanguard Sentinel",
+    "crew_min": 2,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Heavy Fighter / Bomber",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "aegis_vanguard_warden": {
+    "display_name": "Aegis Dynamics Vanguard Warden",
+    "crew_min": 2,
+    "crew_max": 2,
+    "career": "Combat",
+    "role": "Heavy Fighter",
+    "size": "Medium (S3)",
+    "roles": [
+      "Pilot",
+      "Co-Pilot"
+    ]
+  },
+  "aegis_vulcan": {
+    "display_name": "Aegis Dynamics Vulcan",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "drake_vulture": {
+    "display_name": "Drake Interplanetary Vulture",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Industrial",
+    "role": "Light Salvage",
+    "size": "Small (S2)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_x1": {
+    "display_name": "Origin Jumpworks X1",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Exploration",
+    "role": "Passenger",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_x1_force": {
+    "display_name": "Origin Jumpworks X1 Force",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Combat",
+    "role": "Passenger",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "origin_x1_velocity": {
+    "display_name": "Origin Jumpworks X1 Velocity",
+    "crew_min": 1,
+    "crew_max": 1,
+    "career": "Competition",
+    "role": "Racing",
+    "size": "Snub (S1)",
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_zeus_mk_ii_cl": {
+    "display_name": "RSI Zeus Mk II CL",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_zeus_mk_ii_es": {
+    "display_name": "RSI Zeus Mk II ES",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  },
+  "rsi_zeus_mk_ii_mr": {
+    "display_name": "RSI Zeus Mk II MR",
+    "crew_min": null,
+    "crew_max": null,
+    "career": null,
+    "role": null,
+    "size": null,
+    "roles": [
+      "Pilot"
+    ]
+  }
+}

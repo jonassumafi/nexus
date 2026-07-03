@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus Radio Panel — Retune Reference</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 30px; display: flex; gap: 24px; }
+
+.panel { width: 280px; background: #06121C; border: 1px solid #2A6A9A; }
+.panel-header { padding: 10px 16px; border-bottom: 1px solid #2A6A9A; background: #0A1A28; display: flex; justify-content: space-between; align-items: center; }
+.panel-title { font-size: 13px; color: #99CCFF; font-weight: bold; letter-spacing: 0.14em; }
+.live { font-size: 11px; color: #33DDAA; font-weight: bold; }
+.gear { font-size: 24px; color: #66AADD; background: none; border: none; cursor: pointer; font-family: inherit; }
+.state-label { font-size: 10px; color: #FFBB33; letter-spacing: 0.12em; padding: 6px 16px; background: #0A1A28; border-bottom: 1px solid #1A3D55; }
+
+/* STATE 1 — TUNED (default) */
+.freq-block { padding: 16px 16px 10px; text-align: center; border-bottom: 1px solid #1A3D55; background: #08141F; }
+.freq-val { font-size: 32px; color: #00EEFF; font-weight: bold; letter-spacing: 0.16em; }
+.freq-sub { font-size: 12px; color: #66AADD; margin-top: 2px; }
+.action-row { display: flex; justify-content: center; gap: 20px; padding: 10px 16px; border-bottom: 1px solid #1A3D55; }
+.action-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+.action-icon { font-size: 18px; }
+.action-label { font-size: 9px; letter-spacing: 0.1em; font-weight: bold; }
+.retune-item .action-icon { color: #66AADD; }
+.retune-item .action-label { color: #66AADD; }
+.disc-item .action-icon { color: #FF5544; }
+.disc-item .action-label { color: #FF5544; }
+
+/* STATE 2 — RETUNING (after clicking RETUNE) */
+.freq-edit-block {
+  padding: 14px 16px;
+  border-bottom: 1px solid #1A3D55;
+  background: #08141F;
+}
+.freq-edit-label {
+  font-size: 10px;
+  color: #4488BB;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.freq-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.freq-input {
+  width: 130px;
+  background: #000;
+  border: 2px solid #00EEFF;
+  color: #00EEFF;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  padding: 6px 8px;
+  letter-spacing: 0.1em;
+  outline: none;
+}
+.freq-input:focus {
+  border-color: #CCE8FF;
+}
+.freq-mhz {
+  font-size: 12px;
+  color: #66AADD;
+  letter-spacing: 0.08em;
+}
+.tune-confirm-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.btn-confirm {
+  font-size: 11px;
+  color: #33DDAA;
+  border: 1px solid #33DDAA;
+  background: #000;
+  padding: 6px 16px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  font-weight: bold;
+  font-family: inherit;
+}
+.btn-confirm:hover { background: #33DDAA; color: #000; }
+.btn-cancel {
+  font-size: 11px;
+  color: #66AADD;
+  border: 1px solid #4488BB;
+  background: #000;
+  padding: 6px 16px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  font-family: inherit;
+}
+.btn-cancel:hover { background: #4488BB; color: #000; }
+
+.section-note {
+  font-size: 10px;
+  color: #4488BB;
+  padding: 8px 16px;
+  line-height: 1.6;
+  border-top: 1px solid #0D2030;
+}
+</style>
+</head>
+<body>
+
+<!-- STATE 1: TUNED — default view -->
+<div class="panel">
+  <div class="state-label">STATE 1 — TUNED (default)</div>
+  <div class="panel-header">
+    <span class="panel-title">NEXUS COMM SYSTEM</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="live">● LIVE</span>
+      <button class="gear">⚙</button>
+    </div>
+  </div>
+  <div class="freq-block">
+    <div class="freq-val">131.3</div>
+    <div class="freq-sub">MHz — TUNED</div>
+  </div>
+  <div class="action-row">
+    <div class="action-item retune-item">
+      <span class="action-icon">⇄</span>
+      <span class="action-label">RETUNE</span>
+    </div>
+    <div class="action-item disc-item">
+      <span class="action-icon">⏏</span>
+      <span class="action-label">DISCONNECT</span>
+    </div>
+  </div>
+  <div class="section-note">
+    Clicking RETUNE transitions to State 2 below. The panel stays open — no standby screen is shown.
+  </div>
+</div>
+
+<!-- STATE 2: RETUNING — inline edit mode -->
+<div class="panel">
+  <div class="state-label">STATE 2 — RETUNING (after clicking RETUNE)</div>
+  <div class="panel-header">
+    <span class="panel-title">NEXUS COMM SYSTEM</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="live">● LIVE</span>
+      <button class="gear">⚙</button>
+    </div>
+  </div>
+  <div class="freq-edit-block">
+    <div class="freq-edit-label">ENTER NEW FREQUENCY</div>
+    <div class="freq-input-row">
+      <input
+        class="freq-input"
+        type="text"
+        value="131.3"
+        maxlength="5"
+        placeholder="000.0"
+      />
+      <span class="freq-mhz">MHz</span>
+    </div>
+    <div class="tune-confirm-row">
+      <button class="btn-confirm">[ ✓ TUNE ]</button>
+      <button class="btn-cancel">[ CANCEL ]</button>
+    </div>
+  </div>
+  <div class="action-row">
+    <div class="action-item retune-item">
+      <span class="action-icon">⇄</span>
+      <span class="action-label">RETUNE</span>
+    </div>
+    <div class="action-item disc-item">
+      <span class="action-icon">⏏</span>
+      <span class="action-label">DISCONNECT</span>
+    </div>
+  </div>
+  <div class="section-note">
+    Input pre-populated with current frequency. Player edits inline and confirms. CANCEL returns to State 1 without changing frequency.
+  </div>
+</div>
+
+<!--
+IMPLEMENTATION NOTES FOR CLAUDE CODE:
+
+1. RETUNE BUTTON BEHAVIOR
+   onClick: set radioState to 'retuning'
+   (new state between 'tuned' and 'standby')
+   Do NOT call leaveFrequency() yet —
+   player is still connected while editing.
+
+2. FREQUENCY INPUT
+   - Pre-populate with current tuned frequency
+   - maxLength: 5 characters (format: XXX.X)
+   - Validate on confirm: must match /^\d{3}\.\d$/
+     and be in range 118.0–136.9
+   - Auto-focus the input when State 2 opens
+   - Allow typing directly — do not require
+     clearing the field first
+
+3. [ ✓ TUNE ] BUTTON
+   onClick:
+   a. Validate frequency format and range
+   b. If invalid: show small error below input
+      "INVALID FREQUENCY — USE FORMAT XXX.X"
+      color: #FF5544, fontSize: 10px
+   c. If valid:
+      - Call leaveFrequency() (leave current room)
+      - Call joinFrequency(newFreq, missionId)
+      - Set radioState to 'tuned' with new frequency
+
+4. [ CANCEL ] BUTTON
+   onClick: set radioState back to 'tuned'
+   No frequency change, no disconnect.
+
+5. RETUNE AND DISCONNECT ICONS
+   Remain visible in both State 1 and State 2
+   so the player can always disconnect if needed.
+
+6. FREQUENCY FORMAT
+   Valid range: 118.0 to 136.9 MHz
+   Format: XXX.X (e.g. 127.4, 136.9, 118.0)
+   5 characters max including decimal point.
+-->
+
+</body>
+</html>

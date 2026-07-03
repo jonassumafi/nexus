@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus — Ship Access Request System Reference</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 30px; }
+.section { margin-bottom: 40px; }
+.section-lbl { font-size: 10px; color: #FFBB33; letter-spacing: 0.14em; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #1A3D55; }
+.row { display: flex; gap: 20px; flex-wrap: wrap; }
+
+/* ── SHIP REGISTRY CARD ── */
+.card { width: 220px; background: #06121C; border: 1px solid #1A3D55; }
+.card-top { padding: 12px; }
+.thumb { width: 100%; height: 70px; background: #040D15; border: 1px solid #0D2030; display: flex; align-items: center; justify-content: center; color: #1A3D55; font-size: 10px; margin-bottom: 8px; object-fit: contain; }
+.ship-name { font-size: 13px; color: #CCE8FF; font-weight: bold; margin-bottom: 2px; }
+.ship-model { font-size: 10px; color: #4488BB; margin-bottom: 6px; }
+.meta { display: flex; justify-content: space-between; }
+.owner-lbl { font-size: 10px; color: #66AADD; }
+.status-docked { font-size: 10px; color: #44FF88; font-weight: bold; }
+.stats { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid #0D2030; margin-top: 8px; }
+.stat { text-align: center; }
+.stat-val { font-size: 12px; color: #00EEFF; font-weight: bold; }
+.stat-lbl { font-size: 9px; color: #4488BB; }
+
+/* Card buttons */
+.req-btn { width: 100%; font-size: 10px; color: #99CCFF; border: none; border-top: 1px solid #1A3D55; background: #040D15; padding: 7px 12px; cursor: pointer; text-align: left; letter-spacing: 0.08em; display: flex; justify-content: space-between; font-family: inherit; }
+.req-btn:hover { color: #CCE8FF; }
+.pending-btn { width: 100%; font-size: 10px; color: #FFBB33; border: none; border-top: 1px solid #FFBB33; background: rgba(255,187,51,0.06); padding: 7px 12px; font-family: inherit; letter-spacing: 0.08em; display: flex; justify-content: space-between; align-items: center; }
+.cancel-link { font-size: 9px; color: #4488BB; text-decoration: underline; cursor: pointer; text-align: center; padding: 4px 12px; border-top: 1px solid #0D2030; background: #040D15; display: block; }
+.hist-btn { width: 100%; font-size: 10px; color: #66AADD; border: none; border-top: 1px solid #1A3D55; background: #040D15; padding: 7px 12px; cursor: pointer; text-align: left; letter-spacing: 0.08em; display: flex; justify-content: space-between; font-family: inherit; }
+
+/* ── OWNER POPUP (expanded) ── */
+.popup {
+  width: 340px;
+  background: #06121C;
+  border: 2px solid #00EEFF;
+  animation: glow 2s ease-in-out infinite;
+}
+@keyframes glow {
+  0%,100% { box-shadow: 0 0 12px rgba(0,238,255,0.3), 0 0 24px rgba(0,238,255,0.1); }
+  50%      { box-shadow: 0 0 24px rgba(0,238,255,0.6), 0 0 48px rgba(0,238,255,0.25); }
+}
+.popup-header {
+  background: #0A1A28;
+  border-bottom: 1px solid #00EEFF;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.popup-title { font-size: 11px; color: #00EEFF; font-weight: bold; letter-spacing: 0.14em; }
+.minimize-btn { font-size: 14px; color: #4488BB; background: none; border: none; cursor: pointer; }
+.popup-thumb { width: 100%; height: 80px; background: #040D15; border-bottom: 1px solid #1A3D55; display: flex; align-items: center; justify-content: center; color: #1A3D55; font-size: 10px; object-fit: contain; }
+.popup-body { padding: 14px; }
+.popup-ship { font-size: 15px; color: #CCE8FF; font-weight: bold; margin-bottom: 2px; }
+.popup-model { font-size: 10px; color: #4488BB; margin-bottom: 10px; }
+.popup-msg { font-size: 12px; color: #66AADD; line-height: 1.7; margin-bottom: 12px; }
+.popup-msg b { color: #99CCFF; }
+.info-block { background: #040D15; border: 1px solid #1A3D55; padding: 8px 12px; margin-bottom: 14px; }
+.info-row { font-size: 10px; color: #66AADD; padding: 3px 0; display: flex; justify-content: space-between; }
+.info-row span:last-child { color: #99CCFF; font-weight: bold; }
+.warning-row { font-size: 10px; color: #FFBB33; padding-top: 6px; margin-top: 4px; border-top: 1px solid #1A3D55; }
+.popup-btns { display: flex; gap: 8px; }
+.btn-approve { flex: 1; font-size: 12px; color: #33DDAA; border: 1px solid #33DDAA; background: #000; padding: 8px 0; cursor: pointer; font-family: inherit; font-weight: bold; letter-spacing: 0.1em; text-align: center; }
+.btn-approve:hover { background: #33DDAA; color: #000; }
+.btn-deny { flex: 1; font-size: 12px; color: #FF5544; border: 1px solid #FF5544; background: #000; padding: 8px 0; cursor: pointer; font-family: inherit; letter-spacing: 0.1em; text-align: center; }
+.btn-deny:hover { background: #FF5544; color: #000; }
+
+/* ── MINIMIZED STATE ── */
+.popup-mini {
+  width: 280px;
+  background: #06121C;
+  border: 2px solid #00EEFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  cursor: pointer;
+  animation: glow 2s ease-in-out infinite;
+}
+.mini-text { font-size: 11px; color: #00EEFF; font-weight: bold; letter-spacing: 0.1em; }
+.mini-sub { font-size: 9px; color: #4488BB; margin-top: 2px; }
+
+/* ── LESSEE NOTIFICATIONS ── */
+.notif { width: 300px; background: #06121C; }
+.notif.approved { border: 1px solid #33DDAA; box-shadow: 0 0 10px rgba(51,221,170,0.15); }
+.notif.denied { border: 1px solid #FF5544; box-shadow: 0 0 10px rgba(255,85,68,0.15); }
+.notif.expired { border: 1px solid #4488BB; }
+.notif.recalled { border: 1px solid #FFBB33; box-shadow: 0 0 10px rgba(255,187,51,0.15); }
+.notif-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid; }
+.notif.approved .notif-header { border-color: #33DDAA; background: #0A1A28; }
+.notif.denied .notif-header { border-color: #FF5544; background: #0A1A28; }
+.notif.expired .notif-header { border-color: #4488BB; background: #0A1A28; }
+.notif.recalled .notif-header { border-color: #FFBB33; background: #0A1A28; }
+.notif-title-approved { font-size: 11px; color: #33DDAA; font-weight: bold; letter-spacing: 0.12em; }
+.notif-title-denied { font-size: 11px; color: #FF5544; font-weight: bold; letter-spacing: 0.12em; }
+.notif-title-expired { font-size: 11px; color: #4488BB; font-weight: bold; letter-spacing: 0.12em; }
+.notif-title-recalled { font-size: 11px; color: #FFBB33; font-weight: bold; letter-spacing: 0.12em; }
+.notif-close { font-size: 12px; color: #4488BB; background: none; border: none; cursor: pointer; }
+.notif-minimize { font-size: 12px; color: #4488BB; background: none; border: none; cursor: pointer; margin-right: 4px; }
+.notif-minimize:hover { color: #99CCFF; }
+.notif-close:hover { color: #FF5544; }
+.notif-thumb { width: 100%; height: 60px; background: #040D15; border-bottom: 1px solid #0D2030; display: flex; align-items: center; justify-content: center; color: #1A3D55; font-size: 10px; }
+.notif-body { padding: 12px; }
+.notif-ship { font-size: 13px; color: #CCE8FF; font-weight: bold; margin-bottom: 4px; }
+.notif-msg { font-size: 11px; color: #66AADD; line-height: 1.7; margin-bottom: 8px; }
+.notif-msg b { color: #99CCFF; }
+.notif-info { background: #040D15; border: 1px solid #1A3D55; padding: 8px 10px; }
+.notif-row { font-size: 10px; color: #66AADD; padding: 2px 0; display: flex; justify-content: space-between; }
+.notif-row span:last-child { color: #99CCFF; font-weight: bold; }
+.notif-warn { font-size: 10px; color: #FFBB33; padding-top: 5px; margin-top: 4px; border-top: 1px solid #1A3D55; }
+</style>
+</head>
+<body>
+
+<!-- SECTION 1: REGISTRY CARD STATES -->
+<div class="section">
+  <div class="section-lbl">1. SHIP REGISTRY CARD — REQUEST BUTTON STATES</div>
+  <div class="row">
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">DEFAULT — REQUEST AVAILABLE</div>
+      <div class="card">
+        <div class="card-top">
+          <div class="thumb">[ SHIP IMAGE ]</div>
+          <div class="ship-name">OLE ASS</div>
+          <div class="ship-model">Drake Interplanetary Caterpillar</div>
+          <div class="meta"><span class="owner-lbl">Grauto</span><span class="status-docked">● DOCKED</span></div>
+          <div class="stats">
+            <div class="stat"><div class="stat-val">3</div><div class="stat-lbl">SHIP RP</div></div>
+            <div class="stat"><div class="stat-val">85%</div><div class="stat-lbl">AVG FILL</div></div>
+            <div class="stat"><div class="stat-val">1</div><div class="stat-lbl">MISSIONS</div></div>
+          </div>
+        </div>
+        <button class="req-btn"><span>REQUEST ACCESS</span><span>→</span></button>
+        <button class="hist-btn"><span>SHIP HISTORY</span><span>▶</span></button>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">PENDING — AFTER REQUEST SENT</div>
+      <div class="card">
+        <div class="card-top">
+          <div class="thumb">[ SHIP IMAGE ]</div>
+          <div class="ship-name">OLE ASS</div>
+          <div class="ship-model">Drake Interplanetary Caterpillar</div>
+          <div class="meta"><span class="owner-lbl">Grauto</span><span class="status-docked">● DOCKED</span></div>
+          <div class="stats">
+            <div class="stat"><div class="stat-val">3</div><div class="stat-lbl">SHIP RP</div></div>
+            <div class="stat"><div class="stat-val">85%</div><div class="stat-lbl">AVG FILL</div></div>
+            <div class="stat"><div class="stat-val">1</div><div class="stat-lbl">MISSIONS</div></div>
+          </div>
+        </div>
+        <div class="pending-btn"><span>⏳ REQUEST PENDING</span><span style="font-size:9px;color:#4488BB;">58 min</span></div>
+        <span class="cancel-link">cancel request</span>
+        <button class="hist-btn"><span>SHIP HISTORY</span><span>▶</span></button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SECTION 2: OWNER POPUP -->
+<div class="section">
+  <div class="section-lbl">2. OWNER POPUP — EXPANDED & MINIMIZED</div>
+  <div class="row">
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">EXPANDED (glowing cyan border, pulsing)</div>
+      <div class="popup">
+        <div class="popup-header">
+          <span class="popup-title">⚑ SHIP ACCESS REQUEST</span>
+          <button class="minimize-btn">─</button>
+        </div>
+        <div class="popup-thumb">[ SHIP IMAGE ]</div>
+        <div class="popup-body">
+          <div class="popup-ship">OLE ASS</div>
+          <div class="popup-model">Drake Interplanetary Caterpillar</div>
+          <div class="popup-msg"><b>Peter Tork</b> is requesting access to your vessel for mission assignment.</div>
+          <div class="info-block">
+            <div class="info-row"><span>REQUEST EXPIRES</span><span>in 1 hour</span></div>
+            <div class="info-row"><span>LOAN DURATION</span><span>4 hours</span></div>
+            <div class="info-row"><span>BORROWER</span><span>Peter Tork</span></div>
+            <div class="warning-row">⚠ Recalling a ship mid-mission forfeits ship RP. Crew RP is unaffected.</div>
+          </div>
+          <div class="popup-btns">
+            <button class="btn-approve">[ ✓ APPROVE ]</button>
+            <button class="btn-deny">[ ✕ DENY ]</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">MINIMIZED (click to expand)</div>
+      <div class="popup-mini">
+        <div>
+          <div class="mini-text">⚑ ACCESS REQUEST PENDING</div>
+          <div class="mini-sub">OLE ASS · expires in 58 min</div>
+        </div>
+        <span style="font-size:14px;color:#4488BB;">▲</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SECTION 3: LESSEE NOTIFICATIONS -->
+<div class="section">
+  <div class="section-lbl">3. LESSEE NOTIFICATIONS — ALL FOUR STATES</div>
+  <div class="row">
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">APPROVED</div>
+      <div class="notif approved">
+        <div class="notif-header"><span class="notif-title-approved">✓ ACCESS GRANTED</span><div><button class="notif-minimize">─</button><button class="notif-close">✕</button></div></div>
+        <div class="notif-thumb">[ SHIP IMAGE ]</div>
+        <div class="notif-body">
+          <div class="notif-ship">OLE ASS</div>
+          <div class="notif-msg"><b>Grauto</b> approved your request. Ship is now in your MY SHIPS.</div>
+          <div class="notif-info">
+            <div class="notif-row"><span>ACCESS EXPIRES</span><span>in 4 hours</span></div>
+            <div class="notif-row"><span>OWNER</span><span>Grauto</span></div>
+            <div class="notif-warn">⚠ Owner may recall at any time.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">DENIED</div>
+      <div class="notif denied">
+        <div class="notif-header"><span class="notif-title-denied">✕ ACCESS DENIED</span><div><button class="notif-minimize">─</button><button class="notif-close">✕</button></div></div>
+        <div class="notif-thumb">[ SHIP IMAGE ]</div>
+        <div class="notif-body">
+          <div class="notif-ship">OLE ASS</div>
+          <div class="notif-msg"><b>Grauto</b> denied your access request.</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">EXPIRED</div>
+      <div class="notif expired">
+        <div class="notif-header"><span class="notif-title-expired">⏱ REQUEST EXPIRED</span><div><button class="notif-minimize">─</button><button class="notif-close">✕</button></div></div>
+        <div class="notif-thumb">[ SHIP IMAGE ]</div>
+        <div class="notif-body">
+          <div class="notif-ship">OLE ASS</div>
+          <div class="notif-msg">Your request was not answered within 1 hour and has expired.</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:9px;color:#66AADD;margin-bottom:6px;">RECALLED</div>
+      <div class="notif recalled">
+        <div class="notif-header"><span class="notif-title-recalled">⚠ SHIP RECALLED</span><div><button class="notif-minimize">─</button><button class="notif-close">✕</button></div></div>
+        <div class="notif-thumb">[ SHIP IMAGE ]</div>
+        <div class="notif-body">
+          <div class="notif-ship">OLE ASS</div>
+          <div class="notif-msg"><b>Grauto</b> has recalled this vessel. Access has been revoked.</div>
+          <div class="notif-info">
+            <div class="notif-warn">⚠ If recalled mid-mission, ship RP is forfeited. Crew RP is unaffected.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!--
+IMPLEMENTATION NOTES FOR CLAUDE CODE:
+
+1. NEW MODEL: ShipAccessRequest
+   Fields: requester_id (ObjectId ref User),
+   owner_id (ObjectId ref User),
+   ship_id (ObjectId ref Ship),
+   status: enum ['pending','approved',
+     'denied','expired','withdrawn'],
+   requested_at: Date,
+   expires_at: Date (requested_at + 1hr),
+   loan_expires_at: Date (approved_at + 4hr)
+
+2. NEW MODEL FIELD ON USER:
+   borrowed_ships: [{ ship_id: ObjectId,
+     owner_id: ObjectId,
+     loan_expires_at: Date }]
+
+3. SOCKET EVENTS:
+   ship:access_requested → owner only
+   ship:access_approved → requester only
+   ship:access_denied → requester only
+   ship:access_expired → requester only
+   ship:access_recalled → requester only
+
+4. REQUEST EXPIRY:
+   On server: check expires_at on each
+   ship:access_requested emit. A background
+   job (setInterval every 60s) should mark
+   expired requests and notify requesters.
+
+5. RECALL / WITHDRAW:
+   Owner clicks WITHDRAW ACCESS in MY SHIPS.
+   If ship.is_mission === true at time of
+   recall: set a recalled_mid_mission flag
+   on the ShipAccessRequest. At mission
+   completion, check this flag and skip
+   SHIP_FILL_BONUS for that ship only.
+   All other ships receive RP normally.
+   Crew members on the recalled ship still
+   receive CREW_SLOT_FILLED RP.
+
+6. RETURN SHIP:
+   Lessee clicks RETURN SHIP in their
+   MY SHIPS. Terminates loan immediately.
+   Removes ship from user.borrowed_ships.
+   Emits confirmation to both parties.
+
+7. LOAN DURATION:
+   Default 4 hours. Set loan_expires_at
+   on approval. A background check removes
+   expired loans from user.borrowed_ships.
+
+8. MY SHIPS DISPLAY:
+   Owner: borrowed-out ships show
+     "● ON LOAN · LENT TO: {name} · Xh remaining"
+     + [ WITHDRAW ACCESS ] button
+   Lessee: borrowed ships show
+     "● ON LOAN · BORROWED FROM: {name} · Xh remaining"
+     + [ RETURN SHIP ] button
+
+9. REGISTRY CARD:
+   REQUEST ACCESS button hidden for:
+   - The ship's own owner
+   - Ships already on active missions
+     (is_mission === true)
+   - Ships the requester already has
+     an active loan for
+   Shows PENDING state with countdown
+   if a request is already pending.
+-->
+
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus — Mission In-Progress Screen Reference</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 30px; }
+.screen { max-width: 900px; margin: 0 auto; }
+
+/* ── TIMER BANNER ── */
+.timer-banner {
+  text-align: center;
+  padding: 20px 0 10px;
+  border-bottom: 1px solid #1A3D55;
+  margin-bottom: 28px;
+}
+.timer-label {
+  font-size: 11px;
+  color: #4488BB;
+  letter-spacing: 0.16em;
+  margin-bottom: 6px;
+}
+.timer-val {
+  font-size: 48px;
+  color: #00EEFF;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  /* Live counter: Date.now() - mission.launched_at, updated every second */
+  /* Format: HH:MM:SS */
+}
+.mission-name {
+  font-size: 14px;
+  color: #99CCFF;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  margin-top: 6px;
+}
+.mission-meta {
+  font-size: 11px;
+  color: #4488BB;
+  margin-top: 3px;
+}
+
+/* ── SHIP GRID ──
+   Layout rules:
+   1 ship  → grid-template-columns: repeat(1, 240px), justify-content: center
+   2 ships → grid-template-columns: repeat(2, 240px), justify-content: center
+   3 ships → grid-template-columns: repeat(3, 240px), justify-content: center
+   4 ships → grid-template-columns: repeat(2, 240px), justify-content: center
+   5 ships → grid-template-columns: repeat(3, 240px), justify-content: center
+             (last 2 cards left-align in row 2)
+   6 ships → grid-template-columns: repeat(3, 240px), justify-content: center
+*/
+.ship-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 240px); /* example: 4-ship 2x2 */
+  gap: 16px;
+  justify-content: center;
+}
+
+/* ── SHIP CARD ── */
+.ship-card {
+  background: #06121C;
+  border: 1px solid #1A3D55;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.badge {
+  font-size: 9px;
+  padding: 1px 6px;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  border: 1px solid;
+  font-weight: bold;
+}
+.badge.primary { color: #FFBB33; border-color: #FFBB33; }
+.badge.support { color: #66AADD; border-color: #66AADD; }
+
+.ship-card-name {
+  font-size: 12px;
+  color: #CCE8FF;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.ship-card-model {
+  font-size: 10px;
+  color: #4488BB;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* Ship schematic thumbnail — actual ship image rendered here */
+.schematic-sm {
+  width: 160px;
+  height: 110px;
+  border: 1px solid #1A3D55;
+  background: #040D15;
+  overflow: hidden;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.schematic-sm img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ── CREW LIST ── */
+.crew-sm { width: 100%; }
+.crew-sm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #0D2030;
+}
+.role-sm {
+  font-size: 10px;
+  color: #4488BB;
+  letter-spacing: 0.06em;
+}
+.player-sm {
+  font-size: 11px;
+  color: #CCE8FF;
+  font-weight: bold;
+}
+.open-sm {
+  font-size: 10px;
+  color: #44FF88;
+}
+
+/* ── COMMANDER ACTIONS (visible only to mission.created_by) ── */
+.commander-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+.complete-btn {
+  font-size: 14px;
+  color: #33DDAA;
+  border: 2px solid #33DDAA;
+  background: #000;
+  padding: 12px 36px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+}
+.complete-btn:hover { background: #33DDAA; color: #000; }
+.abort-btn {
+  font-size: 12px;
+  color: #FF5544;
+  border: 1px solid #FF5544;
+  background: #000;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.1em;
+}
+.abort-btn:hover { background: #FF5544; color: #000; }
+
+/* ── CREW NOTICE (visible to all non-commander crew) ── */
+.crew-notice {
+  margin-top: 28px;
+  border: 1px solid #1A3D55;
+  background: #06121C;
+  padding: 14px 20px;
+  text-align: center;
+}
+.notice-line1 {
+  font-size: 12px;
+  color: #FFBB33;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+.notice-line2 {
+  font-size: 11px;
+  color: #66AADD;
+}
+
+.section-label {
+  font-size: 10px;
+  color: #FFBB33;
+  letter-spacing: 0.12em;
+  margin-bottom: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #1A3D55;
+  margin-top: 28px;
+}
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <!-- TIMER BANNER — always centered, always full width -->
+  <div class="timer-banner">
+    <div class="timer-label">MISSION ELAPSED TIME</div>
+    <div class="timer-val">01:12:44</div>
+    <div class="mission-name">OPERATION TEST MAGNET</div>
+    <div class="mission-meta">PATROL · LAUNCHED Jul 04, 20:30 · COMMANDER: Peter Tork</div>
+  </div>
+
+  <!-- SHIP GRID — 4 ships, 2x2 example -->
+  <div class="ship-grid">
+
+    <div class="ship-card">
+      <div class="badge primary">★ PRIMARY</div>
+      <div class="ship-card-name">HCS RUDA</div>
+      <div class="ship-card-model">Anvil Aerospace Gladiator</div>
+      <div class="schematic-sm">[ SHIP IMAGE ]</div>
+      <div class="crew-sm">
+        <div class="crew-sm-row"><span class="role-sm">PILOT</span><span class="player-sm">Peter Tork</span></div>
+        <div class="crew-sm-row"><span class="role-sm">CO-PILOT</span><span class="player-sm">Joe Tekke</span></div>
+        <div class="crew-sm-row"><span class="role-sm">TURRET OP.</span><span class="player-sm">Obi-Wagwan</span></div>
+        <div class="crew-sm-row"><span class="role-sm">ENGINEER</span><span class="open-sm">— OPEN —</span></div>
+      </div>
+    </div>
+
+    <div class="ship-card">
+      <div class="badge support">SUPPORT</div>
+      <div class="ship-card-name">HCS TEKKE</div>
+      <div class="ship-card-model">Aegis Dynamics Eclipse</div>
+      <div class="schematic-sm">[ SHIP IMAGE ]</div>
+      <div class="crew-sm">
+        <div class="crew-sm-row"><span class="role-sm">PILOT</span><span class="player-sm">Grauto</span></div>
+        <div class="crew-sm-row"><span class="role-sm">NAVIGATOR</span><span class="player-sm">Eric Dawnstar</span></div>
+        <div class="crew-sm-row"><span class="role-sm">GUNNER</span><span class="open-sm">— OPEN —</span></div>
+      </div>
+    </div>
+
+    <div class="ship-card">
+      <div class="badge support">SUPPORT</div>
+      <div class="ship-card-name">HCS WARDEN</div>
+      <div class="ship-card-model">Crusader Industries C1</div>
+      <div class="schematic-sm">[ SHIP IMAGE ]</div>
+      <div class="crew-sm">
+        <div class="crew-sm-row"><span class="role-sm">PILOT</span><span class="player-sm">liltekke</span></div>
+        <div class="crew-sm-row"><span class="role-sm">MEDIC</span><span class="open-sm">— OPEN —</span></div>
+      </div>
+    </div>
+
+    <div class="ship-card">
+      <div class="badge support">SUPPORT</div>
+      <div class="ship-card-name">OLE ASS</div>
+      <div class="ship-card-model">Drake Interplanetary Caterpillar</div>
+      <div class="schematic-sm">[ SHIP IMAGE ]</div>
+      <div class="crew-sm">
+        <div class="crew-sm-row"><span class="role-sm">PILOT</span><span class="player-sm">Grauto</span></div>
+        <div class="crew-sm-row"><span class="role-sm">PILOT 2</span><span class="open-sm">— OPEN —</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- COMMANDER VIEW -->
+  <div class="section-label">COMMANDER VIEW ONLY (mission.created_by === currentUser._id)</div>
+  <div class="commander-actions">
+    <button class="complete-btn">[ ✓ COMPLETE MISSION ]</button>
+    <button class="abort-btn">[ ABORT ]</button>
+  </div>
+
+  <!-- CREW MEMBER VIEW -->
+  <div class="section-label">CREW MEMBER VIEW (all non-commanders)</div>
+  <div class="crew-notice">
+    <div class="notice-line1">RP WILL BE DISTRIBUTED TO ALL CREW UPON MISSION COMPLETION</div>
+    <div class="notice-line2">Submit your post-mission log afterward to earn an additional +3 RP</div>
+  </div>
+
+</div>
+
+<!--
+IMPLEMENTATION NOTES FOR CLAUDE CODE:
+
+1. TIMER
+   - Record mission.launched_at (Date) when LAUNCH MISSION fires on the backend
+   - Frontend: setInterval every 1000ms computing
+     Math.floor((Date.now() - new Date(mission.launched_at).getTime()) / 1000)
+     Format as HH:MM:SS
+   - On COMPLETE MISSION: backend calculates
+     elapsed_seconds = Math.floor((Date.now() - mission.launched_at) / 1000)
+     and stores it on the MissionArchive document
+
+2. GRID COLUMN COUNT by fleet size:
+   1 ship  → repeat(1, 240px)
+   2 ships → repeat(2, 240px)
+   3 ships → repeat(3, 240px)
+   4 ships → repeat(2, 240px)
+   5 ships → repeat(3, 240px)
+   6 ships → repeat(3, 240px)
+   Always justify-content: center
+
+3. SHIP IMAGE
+   Use the existing thumbnail image lookup
+   (ship_index.json → /images/ships/thumbnails/{filename})
+   objectFit: contain inside the 160x110 schematic box
+
+4. COMMANDER vs CREW VIEW
+   if (mission.created_by === currentUser._id) → show commander actions
+   else → show crew notice only
+   No buttons of any kind visible to non-commanders
+
+5. COMPLETE MISSION triggers:
+   a. PUT /api/missions/:id/complete
+   b. Backend awards RP in order:
+      - Commander: MISSION_LAUNCHED +1
+      - Per ship: SHIP_FILL_BONUS +3 if fill >= threshold
+      - Per crew member: CREW_SLOT_FILLED 0/1/2 by fill %
+   c. elapsed_seconds stored on MissionArchive
+   d. Socket emits mission_complete to all clients
+   e. Post-mission log modal fires for all crew via socket
+
+6. POST-MISSION LOG MODAL
+   Fires for all crew (not commander) via socket event
+   Single textarea, max 1000 characters
+   Submit → POST /api/missions/:id/post-mission-log
+   Awards +3 RP (POST_MISSION_LOG event) to submitter
+   Duplicate check — one submission per player per mission
+-->
+
+</body>
+</html>
