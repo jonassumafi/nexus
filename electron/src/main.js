@@ -340,6 +340,59 @@ ipcMain.handle('nexus:maxToggle', () => {
 });
 ipcMain.handle('nexus:close', () => mainWindow?.close());
 
+// ─── Chat popout window ────────────────────────────────────────────────
+// Detachable Global Chat — a separate frameless BrowserWindow that
+// loads the /chat-popout route. Supports pin-on-top (so it floats over
+// Star Citizen) and runtime opacity adjustment.
+let chatPopout = null;
+
+function openChatPopout() {
+  if (chatPopout && !chatPopout.isDestroyed()) {
+    try { chatPopout.show(); chatPopout.focus(); } catch {}
+    return;
+  }
+  const area = screen.getPrimaryDisplay().workArea;
+  chatPopout = new BrowserWindow({
+    width: 420, height: 520,
+    x: Math.max(area.x, area.x + area.width - 460),
+    y: Math.max(area.y, area.y + 60),
+    minWidth: 280, minHeight: 220,
+    frame: false,
+    transparent: true,     // required so setOpacity gives true transparency over games
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    autoHideMenuBar: true,
+    title: 'Nexus Chat',
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
+    alwaysOnTop: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      backgroundThrottling: false,
+    },
+  });
+  chatPopout.loadURL(NEXUS_URL + '/chat-popout');
+  chatPopout.on('closed', () => { chatPopout = null; });
+}
+
+ipcMain.handle('nexus:chatPopout:open',    () => { openChatPopout(); return true; });
+ipcMain.handle('nexus:chatPopout:close',   () => { try { chatPopout?.close(); } catch {}; return true; });
+ipcMain.handle('nexus:chatPopout:setOpacity', (_e, value) => {
+  const v = Math.max(0.15, Math.min(1, Number(value) || 1));
+  try { chatPopout?.setOpacity(v); } catch {}
+  return v;
+});
+ipcMain.handle('nexus:chatPopout:togglePin', () => {
+  if (!chatPopout) return false;
+  const next = !chatPopout.isAlwaysOnTop();
+  chatPopout.setAlwaysOnTop(next, 'screen-saver');
+  return next;
+});
+ipcMain.handle('nexus:chatPopout:minimize', () => { try { chatPopout?.minimize(); } catch {} });
+ipcMain.handle('nexus:chatPopout:isOpen',   () => !!chatPopout && !chatPopout.isDestroyed());
+
 // ─── Safe-mode recovery ───────────────────────────────────────────────────
 // If a user ends up stuck in a broken mode (e.g. the renderer errors out
 // in a non-full mode), this hard-coded global shortcut forces the window

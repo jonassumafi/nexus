@@ -18,7 +18,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   companion: {
     platform: process.platform,
-    version: '0.6.5',
+    version: '0.6.6',
   },
 
   // PTT bridge from the native OS-level key hook.
@@ -47,5 +47,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (_e, state) => handler(state);
     ipcRenderer.on('nexus:window-state', listener);
     return () => ipcRenderer.removeListener('nexus:window-state', listener);
+  },
+
+  // Detachable Global Chat popout (frameless, pinnable, adjustable opacity).
+  chatPopout: {
+    open:        () => ipcRenderer.invoke('nexus:chatPopout:open'),
+    close:       () => ipcRenderer.invoke('nexus:chatPopout:close'),
+    setOpacity:  (v) => ipcRenderer.invoke('nexus:chatPopout:setOpacity', v),
+    togglePin:   () => ipcRenderer.invoke('nexus:chatPopout:togglePin'),
+    minimize:    () => ipcRenderer.invoke('nexus:chatPopout:minimize'),
+    isOpen:      () => ipcRenderer.invoke('nexus:chatPopout:isOpen'),
   },
 });

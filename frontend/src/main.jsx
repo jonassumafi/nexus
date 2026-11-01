@@ -17,6 +17,7 @@ import Disconnect   from './pages/Disconnect.jsx';
 import Admin        from './pages/Admin.jsx';
 import RadioWidget  from './pages/RadioWidget.jsx';
 import Companion    from './pages/Companion.jsx';
+import GlobalChatPopout from './pages/GlobalChatPopout.jsx';
 import RootErrorBoundary from './components/RootErrorBoundary.jsx';
 
 // Apply persisted theme + density before React mounts so there's no FOUC.
@@ -61,7 +62,7 @@ function RouteGuard({ children }) {
   // redirected to /dashboard when auth wasn't ready, which caused the
   // dashboard to render cramped at 320×44 showing only the giant
   // "Nexus Interstellar" title.
-  if (location.pathname === '/radio' || location.pathname === '/companion') return children;
+  if (location.pathname === '/radio' || location.pathname === '/companion' || location.pathname === '/chat-popout') return children;
   // Unauthenticated users access everything else freely (Splash, etc.)
   if (!isAuthenticated) return children;
 
@@ -99,6 +100,7 @@ createRoot(document.getElementById('root')).render(
                 <Route path="/admin"          element={<Admin />} />
                 <Route path="/radio"          element={<RadioWidget />} />
                 <Route path="/companion"      element={<Companion />} />
+                <Route path="/chat-popout"    element={<GlobalChatPopout />} />
               </Routes>
             </RouteGuard>
           } />
