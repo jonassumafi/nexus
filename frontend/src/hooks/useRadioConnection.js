@@ -169,6 +169,18 @@ export function useRadioConnection({
       }
     }
 
+    // FM pre-emphasis — if MY rig is on the FM band, boost highs on
+    // outbound. Pairs with the matching de-emphasis the listener's FM
+    // receiver applies on rx (see attachPeerRxGraph). Non-FM rigs skip.
+    if (srsBandRef.current === 'FM') {
+      const preEmphasis = ctx.createBiquadFilter();
+      preEmphasis.type = 'highshelf';
+      preEmphasis.frequency.value = 2122;  // 75 µs time constant
+      preEmphasis.gain.value = 6;
+      srsOutput.connect(preEmphasis);
+      srsOutput = preEmphasis;
+    }
+
     // 80 ms outbound delay (DCS pre-click feel) between the voice chain
     // and the peer destination.
     const outDelay = getOutboundDelay(ctx);
@@ -385,17 +397,56 @@ export function useRadioConnection({
     detachPeerRxGraph(peerSocketId);
     const ctx = audioCtxRef.current;
     const rxEffect = srsSpecRef.current?.rxEffect;
-    if (!ctx || !rxEffect) {
+    if (!ctx) {
       try { audio.srcObject = stream; } catch {}
       return;
     }
     try {
       const source = ctx.createMediaStreamSource(stream);
-      const chain = buildSrsChain(ctx, rxEffect);
+      let tail = source;
+
+      // Optional FM de-emphasis — tames the pre-emphasized highs so
+      // voice reads balanced on FM-band listeners. 75 µs (R-C) low-
+      // shelf centered around 2.1 kHz, matched inverse of the TX
+      // pre-emphasis applied by FM transmitters.
+      let deEmphasis = null;
+      if (srsBandRef.current === 'FM') {
+        deEmphasis = ctx.createBiquadFilter();
+        deEmphasis.type = 'highshelf';
+        deEmphasis.frequency.value = 2122;  // 75 µs time constant
+        deEmphasis.gain.value = -6;
+        tail.connect(deEmphasis);
+        tail = deEmphasis;
+      }
+
+      // SRS rxEffect — the receiver-hardware filter chain for this
+      // listener's radio. Skipped cleanly if rxEffect is absent.
+      let chain = null;
+      if (rxEffect) {
+        chain = buildSrsChain(ctx, rxEffect);
+        tail.connect(chain.input);
+        tail = chain.output;
+      }
+
+      // AGC on receive — a slow, musical compressor that pulls quiet
+      // transmitters up to a target loudness without pumping loud ones
+      // down hard. Normalizes mixed voice levels across a crew where
+      // some mics are hotter than others.
+      const agc = ctx.createDynamicsCompressor();
+      agc.threshold.value = -32;  // start compressing above -32 dB
+      agc.knee.value      = 12;    // soft knee for musical transition
+      agc.ratio.value     = 4;
+      agc.attack.value    = 0.015;
+      agc.release.value   = 0.4;
+      const agcMakeup = ctx.createGain();
+      agcMakeup.gain.value = 1.6;  // +4 dB makeup to recover crushed peaks
+      tail.connect(agc);
+      agc.connect(agcMakeup);
+      tail = agcMakeup;
+
       const dest = ctx.createMediaStreamDestination();
-      source.connect(chain.input);
-      chain.output.connect(dest);
-      peerRxNodesRef.current[peerSocketId] = { source, chain, dest };
+      tail.connect(dest);
+      peerRxNodesRef.current[peerSocketId] = { source, chain, dest, deEmphasis, agc, agcMakeup };
       audio.srcObject = dest.stream;
     } catch (err) {
       console.error('[Radio] rxEffect graph failed for', peerSocketId, err);
@@ -407,7 +458,10 @@ export function useRadioConnection({
     const graph = peerRxNodesRef.current[peerSocketId];
     if (!graph) return;
     try { graph.source.disconnect(); } catch {}
-    try { graph.chain.dispose?.(); } catch {}
+    try { graph.chain?.dispose?.(); } catch {}
+    try { graph.deEmphasis?.disconnect(); } catch {}
+    try { graph.agc?.disconnect(); } catch {}
+    try { graph.agcMakeup?.disconnect(); } catch {}
     try { graph.dest.disconnect?.(); } catch {}
     delete peerRxNodesRef.current[peerSocketId];
   }, []);
@@ -544,6 +598,10 @@ export function useRadioConnection({
       const rc = getRadioChrome(audioCtxRef.current);
       rc.playKeyUp();
       rc.setBedActive(true);
+      // KY-58 TX preamble when YOUR rig is crypto-tagged.
+      if (srsSpecRef.current?.encryptionEffect?.$type === 'cvsd') {
+        try { new Audio('/sounds/radio/KY_58_TX.wav').play().catch(() => {}); } catch {}
+      }
     } catch {}
     socket?.emit('radio:ptt-start', { frequency: currentFreqRef.current });
   }, [socket]);
@@ -706,20 +764,42 @@ export function useRadioConnection({
       console.error('[Radio] server error:', message);
     };
 
-    const onPttStart = ({ socketId }) => {
+    const onPttStart = ({ socketId, crypto }) => {
       setTransmittingPeerIds(prev => {
         if (prev.includes(socketId)) return prev;
         const next = [...prev, socketId];
         transmittingPeerIdsRef.current = next;
-        // Peer keyed up — local squelch bed + key-up click so the user hears
-        // the channel open before voice arrives, DCS-style.
         try {
           const rc = getRadioChrome(audioCtxRef.current);
           rc?.playKeyUp();
           rc?.setBedActive(true);
+          // KY-58 crypto preamble — plays locally when a peer transmits
+          // with a crypto-tagged rig. Modulation-agnostic in Nexus:
+          // triggered by preset.spec.encryptionEffect existence, not FM.
+          if (crypto) {
+            try { new Audio('/sounds/radio/KY_58_RX.wav').play().catch(() => {}); } catch {}
+          }
         } catch {}
         return next;
       });
+    };
+
+    // Collision — fires when the server detects two or more concurrent
+    // PTT holders on this frequency. All operators on the room hear a
+    // random frq-collision sample so overlapping transmissions have a
+    // distinct "clash" sound rather than muddy mixing.
+    const COLLISION_SAMPLES = [
+      '/sounds/radio/frq-collision.wav',
+      '/sounds/radio/frq-collision2.wav',
+      '/sounds/radio/frq-collision3.wav',
+    ];
+    let lastCollisionAt = 0;
+    const onCollision = () => {
+      const now = Date.now();
+      if (now - lastCollisionAt < 400) return; // rate-limit — one clash per ~400 ms
+      lastCollisionAt = now;
+      const url = COLLISION_SAMPLES[Math.floor(Math.random() * COLLISION_SAMPLES.length)];
+      try { new Audio(url).play().catch(() => {}); } catch {}
     };
 
     const onPttStop = ({ socketId }) => {
@@ -758,6 +838,7 @@ export function useRadioConnection({
     socket.on('radio:ice-candidate', onIce);
     socket.on('radio:ptt-start',     onPttStart);
     socket.on('radio:ptt-stop',      onPttStop);
+    socket.on('radio:collision',     onCollision);
     socket.on('radio:error',         onError);
     socket.on('connect',             onConnect);
 
@@ -770,6 +851,7 @@ export function useRadioConnection({
       socket.off('radio:ice-candidate', onIce);
       socket.off('radio:ptt-start',     onPttStart);
       socket.off('radio:ptt-stop',      onPttStop);
+      socket.off('radio:collision',     onCollision);
       socket.off('radio:error',         onError);
       socket.off('connect',             onConnect);
     };

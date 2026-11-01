@@ -12,6 +12,12 @@ Specific per-file attribution per the SRS repo's `Original/Sources.txt`:
   samples contributed by **Bimbac** (Discord).
 - `VHF_NOISE.wav`, `UHF_NOISE.wav`, `HF_NOISE.wav`, `FM_NOISE.wav` —
   band-limited squelch backgrounds from the SRS AudioEffects collection.
+- `frq-collision.wav`, `frq-collision2.wav`, `frq-collision3.wav` —
+  simultaneous-transmission interference tones (from SRS Original folder).
+- `KY_58_TX.wav`, `KY_58_RX.wav` — crypto sync chirps played when a
+  secure-voice rig keys up / down. Though sampled from a real KY-58
+  (which is an FM radio), in Nexus these are modulation-agnostic
+  "crypto handshake" cues — gated on the preset's crypto flag only.
 
 Additional SRS attributions (not currently in Nexus but acknowledged):
 - HAVE QUICK frequency-hopping information: **Nicholas Landolfi**

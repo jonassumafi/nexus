@@ -4,8 +4,13 @@ const Mission = require('../models/Mission');
 const Ship = require('../models/Ship');
 const MissionLog = require('../models/MissionLog');
 const ShipAccessRequest = require('../models/ShipAccessRequest');
+const radioModels = require('./radioModels');
 
 let io;
+
+// Map freq-room name → Set of socketIds currently holding PTT down. Used
+// to detect simultaneous-transmission collisions in the PTT relay below.
+const pttActiveByFreq = new Map();
 
 async function verifyCrewAccess(userId, discordId, missionId) {
   try {
@@ -253,20 +258,54 @@ function init(socketIo) {
     });
 
     // ── PTT RELAY ───────────────────────────────────────────────────────────
-    socket.on('radio:ptt-start', (data) => {
+    // Per-frequency live-transmitter tracking so we can detect collisions
+    // and tag ptt-start events with crypto status for the KY-58 chirp.
+    socket.on('radio:ptt-start', async (data) => {
       const { frequency } = data || {};
       if (!frequency) return;
-      socket.to(`freq_${frequency}`).emit('radio:ptt-start', {
+      const room = `freq_${frequency}`;
+
+      // Resolve this operator's radio type → crypto flag. Lookup is in
+      // memory via radioModels (28 presets, cheap).
+      let crypto = false;
+      try {
+        const u = socket.user;
+        const rig = u?.radio_type ? radioModels.byId(u.radio_type) : null;
+        crypto = !!(rig?.spec?.encryptionEffect?.$type === 'cvsd');
+      } catch {}
+
+      // Detect simultaneous transmission on this frequency — if any
+      // other socket in this room is already transmitting, broadcast
+      // a collision event to EVERYONE on the freq (including the
+      // transmitters themselves so they hear the clash too).
+      const activeTxers = pttActiveByFreq.get(room);
+      if (activeTxers && activeTxers.size > 0 && !activeTxers.has(socket.id)) {
+        io.to(room).emit('radio:collision', {
+          frequency,
+          transmitters: [...activeTxers, socket.id],
+        });
+      }
+      if (!activeTxers) pttActiveByFreq.set(room, new Set([socket.id]));
+      else activeTxers.add(socket.id);
+
+      socket.to(room).emit('radio:ptt-start', {
         userId: socket.userId,
         citizenName: socket.citizenName,
         socketId: socket.id,
+        crypto,
       });
     });
 
     socket.on('radio:ptt-stop', (data) => {
       const { frequency } = data || {};
       if (!frequency) return;
-      socket.to(`freq_${frequency}`).emit('radio:ptt-stop', {
+      const room = `freq_${frequency}`;
+      const active = pttActiveByFreq.get(room);
+      if (active) {
+        active.delete(socket.id);
+        if (active.size === 0) pttActiveByFreq.delete(room);
+      }
+      socket.to(room).emit('radio:ptt-stop', {
         userId: socket.userId,
         citizenName: socket.citizenName,
         socketId: socket.id,
@@ -295,6 +334,14 @@ function init(socketIo) {
 
       const freqRooms = [...socket.rooms].filter(r => r.startsWith('freq_'));
       for (const room of freqRooms) {
+        // Clear this socket from the room's active-PTT set so a
+        // disconnect-mid-transmission doesn't leave a ghost that
+        // triggers phantom collisions.
+        const active = pttActiveByFreq.get(room);
+        if (active) {
+          active.delete(socket.id);
+          if (active.size === 0) pttActiveByFreq.delete(room);
+        }
         socket.to(room).emit('radio:peer-left', {
           socketId: socket.id,
           userId: socket.userId,
