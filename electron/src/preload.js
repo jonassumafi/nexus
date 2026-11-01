@@ -18,7 +18,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   companion: {
     platform: process.platform,
-    version: '0.6.6',
+    version: '0.6.7',
   },
 
   // PTT bridge from the native OS-level key hook.
