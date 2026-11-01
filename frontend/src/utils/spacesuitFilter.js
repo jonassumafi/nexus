@@ -64,12 +64,11 @@ export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
   distortion.oversample = '4x';
 
   const mixer = audioContext.createGain();
-  // v0.6.6 — makeup gain. The highpass+lowpass+distortion stages
-  // collectively attenuate the voice ~6 dB; after we added the
-  // squelch bed, operators reported voices sitting too low in the
-  // mix. 2.0× (+6 dB) compensates without clipping (the bitcrusher
-  // soft-saturates anything that would peak above 0 dBFS).
-  mixer.gain.value = 2.0;
+  // v1.1.5 — outbound makeup bumped 2.0 → 2.8 (+9 dB from unity).
+  // Users reported voice sitting too faint under the squelch bed even
+  // with mic sensitivity at 150 %. The bitcrusher downstream soft-
+  // saturates anything that would otherwise clip, so this is safe.
+  mixer.gain.value = 2.8;
 
   const noiseSource = createWhiteNoiseSource(audioContext);
   const noiseGain = audioContext.createGain();

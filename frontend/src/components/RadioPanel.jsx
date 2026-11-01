@@ -585,7 +585,7 @@ function TunedView({
         <input
           type="range"
           min={0}
-          max={150}
+          max={250}
           step={5}
           value={micSensitivity}
           onChange={e => onSensitivityChange(Number(e.target.value))}
