@@ -2,9 +2,65 @@ const express = require('express');
 const crypto = require('crypto');
 const Mission = require('../models/Mission');
 const Ship = require('../models/Ship');
+const User = require('../models/User');
 const { isAuthenticated } = require('../middleware/permissions');
+const radioModels = require('../services/radioModels');
 
 const router = express.Router();
+
+// ── Radio-model catalog ─────────────────────────────────────────────────
+router.get('/models', isAuthenticated, (req, res) => {
+  res.json(radioModels.pickerList().map(r => ({
+    ...r,
+    spec: radioModels.byId(r.id)?.spec,
+  })));
+});
+
+// ── Player's own radio ──────────────────────────────────────────────────
+// If the user hasn't been assigned one yet, randomly pick + persist.
+router.get('/my-radio', isAuthenticated, async (req, res) => {
+  try {
+    let u = await User.findById(req.user._id);
+    if (!u) return res.status(404).json({ error: 'user not found' });
+    if (!u.radio_type || !radioModels.byId(u.radio_type)) {
+      u.radio_type = radioModels.randomRadio();
+      await u.save();
+    }
+    const entry = radioModels.byId(u.radio_type);
+    res.json({
+      radio_type: u.radio_type,
+      radio: entry ? { ...entry } : null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin / platform-owner only: force a specific radio onto a player, or
+// `{ reroll: true }` to randomly re-assign.
+router.put('/user/:userId/radio', isAuthenticated, async (req, res) => {
+  try {
+    if (!req.user.is_platform_owner) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    const u = await User.findById(req.params.userId);
+    if (!u) return res.status(404).json({ error: 'user not found' });
+
+    if (req.body?.reroll) {
+      u.radio_type = radioModels.randomRadio();
+    } else {
+      const next = String(req.body?.radio_type || '');
+      if (!radioModels.byId(next)) {
+        return res.status(400).json({ error: 'unknown radio_type' });
+      }
+      u.radio_type = next;
+    }
+    await u.save();
+    res.json({ radio_type: u.radio_type });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/radio/turn-credentials
 router.get('/turn-credentials', isAuthenticated, (req, res) => {

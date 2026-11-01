@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState, useCallback, useRef, Component } from 're
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext }   from '../context/AuthContext.jsx';
 import { useRadioConnection } from '../hooks/useRadioConnection';
+import useMyRadio from '../hooks/useMyRadio';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
 import api from '../services/api';
 import ThemePicker from '../components/ThemePicker';
@@ -121,10 +122,17 @@ function Companion() {
     joinFrequency, startPTT, stopPTT,
     setMicSensitivity: setHookMicSensitivity,
     setMuted: setHookMuted,
+    setSrsRadioSpec,
   } = useRadioConnection({
     voiceProfile, voiceProfileVersion: profileVersion,
     pttKey, micDeviceId, outputDeviceId,
   });
+
+  // Load the player's assigned SRS radio-model and feed it to the DSP
+  // chain. The hook rebuilds its filter path on next tune, so radio
+  // changes take effect the next time the operator joins a frequency.
+  const { radio: myRadio } = useMyRadio();
+  useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
 
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setHookMicSensitivity(micSensitivity); }, [micSensitivity, setHookMicSensitivity]);

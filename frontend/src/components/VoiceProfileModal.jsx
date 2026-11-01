@@ -20,6 +20,7 @@
 import { useRef, useState } from 'react';
 import api from '../services/api';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
+import useMyRadio from '../hooks/useMyRadio';
 
 const FIELDS = [
   { field: 'highpass',       label: 'Highpass',   min: 150,   max: 600,   step: 10,   fmt: v => `${v} Hz` },
@@ -113,6 +114,10 @@ export default function VoiceProfileModal({
         </div>
 
         <div style={{ overflowY: 'auto', padding: '10px 12px' }}>
+          {/* Assigned radio rig — read-only for players, admin can
+              re-roll via the admin panel. Shown above the voice-profile
+              sliders so the player sees what hardware they're on. */}
+          <RadioRigChip />
           {!voiceProfile ? (
             <div style={{ fontSize: 11, color: 'var(--fg3)', padding: '12px 0' }}>Loading profile…</div>
           ) : (
@@ -211,6 +216,66 @@ function SliderRow({ label, value, min, max, step, format, onChange }) {
         onChange={e => onChange(Number(e.target.value))}
         style={{ width: '100%', accentColor: 'var(--rim2)', height: 4 }}
       />
+    </div>
+  );
+}
+
+// Read-only rig display. Shows the player what SRS radio preset they
+// were assigned. Admin re-rolls happen via /api/radio/user/:id/radio
+// — a self-serve re-roll flow (if we add one later) can wire a button
+// into this chip's affordance area.
+function RadioRigChip() {
+  const { radio, loading } = useMyRadio();
+  if (loading) {
+    return (
+      <div style={{
+        padding: '8px 10px', marginBottom: 12,
+        border: '1px solid var(--rim0)', borderRadius: 4,
+        background: 'var(--bg0)', fontSize: 10, color: 'var(--fg3)',
+      }}>
+        Loading rig…
+      </div>
+    );
+  }
+  if (!radio) return null;
+  return (
+    <div style={{
+      padding: '8px 10px', marginBottom: 12,
+      border: '1px solid var(--rim0)', borderRadius: 4,
+      background: 'linear-gradient(180deg, var(--card-hi), var(--card-lo))',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'baseline', gap: 6,
+        marginBottom: 2,
+      }}>
+        <span style={{
+          fontSize: 9, color: 'var(--fg3)',
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+        }}>
+          Assigned rig
+        </span>
+        <span style={{
+          fontSize: 9, color: 'var(--cyan)',
+          letterSpacing: '0.1em', textTransform: 'uppercase',
+          marginLeft: 'auto',
+        }}>
+          {radio.family_label}
+        </span>
+      </div>
+      <div style={{
+        fontSize: 13, fontWeight: 700, color: 'var(--fg0)',
+        letterSpacing: '0.04em',
+      }}>
+        {radio.label}
+      </div>
+      {radio.blurb && (
+        <div style={{
+          fontSize: 10, color: 'var(--fg2)', lineHeight: 1.5,
+          marginTop: 2,
+        }}>
+          {radio.blurb}
+        </div>
+      )}
     </div>
   );
 }

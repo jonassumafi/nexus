@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../context/AuthContext.jsx';
 import { useRadioConnection } from '../hooks/useRadioConnection';
+import useMyRadio from '../hooks/useMyRadio';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
 import api from '../services/api';
 import TitleBar from '../components/TitleBar';
@@ -55,10 +56,14 @@ export default function RadioWidget() {
     micPermission, requestMicPermission,
     joinFrequency, startPTT, stopPTT,
     setMuted: setHookMuted,
+    setSrsRadioSpec,
   } = useRadioConnection({
     voiceProfile, voiceProfileVersion: profileVersion,
     pttKey, micDeviceId, outputDeviceId,
   });
+
+  const { radio: myRadio } = useMyRadio();
+  useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
 
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setFreqInput(tunedFrequency || ''); }, [tunedFrequency]);

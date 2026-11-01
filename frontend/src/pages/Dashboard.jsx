@@ -14,6 +14,7 @@ import ThemePicker from '../components/ThemePicker';
 import TitleBar from '../components/TitleBar';
 import OnlineCount from '../components/OnlineCount';
 import FeedIcon from '../components/FeedIcon';
+import useMyRadio from '../hooks/useMyRadio';
 import BugReportModal from '../components/BugReportModal';
 import GlobalChat, { useChatUnread } from '../components/GlobalChat';
 import { useRadioConnection } from '../hooks/useRadioConnection';
@@ -2766,6 +2767,7 @@ export default function Dashboard() {
     stopPTT,
     setMicSensitivity: setHookMicSensitivity,
     setMuted: setHookMuted,
+    setSrsRadioSpec,
   } = useRadioConnection({
     voiceProfile,
     voiceProfileVersion: profileVersion,
@@ -2773,6 +2775,10 @@ export default function Dashboard() {
     micDeviceId,
     outputDeviceId,
   });
+
+  // Player's assigned SRS radio-model DSP preset.
+  const { radio: myRadio } = useMyRadio();
+  useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
 
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setHookMicSensitivity(micSensitivity); }, [micSensitivity, setHookMicSensitivity]);

@@ -18,6 +18,10 @@ const UserSchema = new mongoose.Schema({
   rp_rank: { type: mongoose.Schema.Types.Mixed, default: null },
   missions_completed: { type: Number, default: 0 },
   current_mission_assignment: { type: mongoose.Schema.Types.Mixed, default: null },
+  // Nexus radio-rig assignment — one of the SRS preset IDs. Random on
+  // first connection, locked by default (admin can re-roll). See
+  // backend/services/radioModels.js for the catalog.
+  radio_type: { type: String, default: null },
   voice_profile: {
     highpass:       { type: Number, default: null },
     lowpass:        { type: Number, default: null },

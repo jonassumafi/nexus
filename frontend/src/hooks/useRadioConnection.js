@@ -3,6 +3,7 @@ import { useSocketContext } from '../context/SocketContext';
 import api from '../services/api';
 import { buildSpacesuitChain } from '../utils/spacesuitFilter';
 import { getRadioChrome, getOutboundDelay, channelColor } from '../utils/radioChrome';
+import { buildSrsChain } from '../utils/srsChain';
 
 // Apply a per-frequency color on top of the operator's base profile.
 // Idempotent — safe to call every time the freq changes or chain rebuilds.
@@ -55,6 +56,8 @@ export function useRadioConnection({
   const audioCtxRef     = useRef(null);
   const micStreamRef    = useRef(null);
   const filterChainRef  = useRef(null);
+  const srsChainRef     = useRef(null);    // GPL: SRS DSP preset applied after voice profile
+  const srsSpecRef      = useRef(null);    // the current radio spec being used
   const filteredStreamRef = useRef(null);  // MediaStream sent to peers
   const turnCredsRef    = useRef(null);
   const currentFreqRef  = useRef(null);
@@ -136,16 +139,33 @@ export function useRadioConnection({
     micGainRef.current = micGain;
 
     const dest = ctx.createMediaStreamDestination();
-    // Insert the 80 ms outbound delay (DCS pre-click feel) between the
-    // filter chain output and the peer destination. The local key-up cue
-    // fires immediately on PTT press via the chrome's localBus, so the
-    // operator hears their mic open ~80 ms before peers receive voice.
+
+    // Insert the SRS radio-model DSP chain between the personal voice
+    // profile and the outbound delay. The spec was pre-fetched by the
+    // consumer and stashed in srsSpecRef — if it's absent (user hasn't
+    // been assigned yet, or fetch failed), we skip SRS cleanly.
+    let srsOutput = chain.output;
+    if (srsSpecRef.current?.txEffect && ctx) {
+      try {
+        const srs = buildSrsChain(ctx, srsSpecRef.current.txEffect);
+        if (srs) {
+          srsChainRef.current = srs;
+          chain.output.connect(srs.input);
+          srsOutput = srs.output;
+        }
+      } catch (err) {
+        console.error('[Radio] SRS chain build failed:', err);
+      }
+    }
+
+    // 80 ms outbound delay (DCS pre-click feel) between the voice chain
+    // and the peer destination.
     const outDelay = getOutboundDelay(ctx);
     if (outDelay) {
-      chain.output.connect(outDelay);
+      srsOutput.connect(outDelay);
       outDelay.connect(dest);
     } else {
-      chain.output.connect(dest);
+      srsOutput.connect(dest);
     }
     filteredStreamRef.current = dest.stream;
 
@@ -774,6 +794,27 @@ export function useRadioConnection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Expose a setter for the SRS radio-model spec. Called by the Dashboard /
+  // Companion / RadioWidget whenever the user's assigned radio is loaded
+  // or the admin reassigns one. The spec is held in a ref and consumed by
+  // the next ensureMicAndChain() call, so changing radios takes effect on
+  // the next tune (or an explicit untune → retune cycle).
+  const setSrsRadioSpec = useCallback((spec) => {
+    srsSpecRef.current = spec || null;
+    // If we already have a built chain, dispose it so the next tune
+    // rebuilds with the new radio.
+    try {
+      srsChainRef.current?.dispose?.();
+    } catch {}
+    srsChainRef.current = null;
+    // Also tear down the current filtered stream so ensureMicAndChain
+    // rebuilds the whole DSP path (including SRS) next time.
+    try {
+      filteredStreamRef.current?.getTracks().forEach(t => t.stop());
+    } catch {}
+    filteredStreamRef.current = null;
+  }, []);
+
   return {
     tunedFrequency,
     peers,
@@ -789,5 +830,6 @@ export function useRadioConnection({
     getInputLevel,
     setMicSensitivity,
     setMuted,
+    setSrsRadioSpec,
   };
 }
