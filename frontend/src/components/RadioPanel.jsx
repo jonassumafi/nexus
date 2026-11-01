@@ -46,6 +46,15 @@ const playTuneClick = () => {
   new Audio(`/sounds/${pick}.mp3`).play().catch(() => {});
 };
 
+// Tiny helper: tag the next successful save on a `.btn.go` so the CSS
+// pulse animation fires. Called by SettingsView's onSave on success.
+function pulseSaveBtn(btnEl) {
+  if (!btnEl) return;
+  btnEl.classList.remove('saved');
+  requestAnimationFrame(() => btnEl.classList.add('saved'));
+  setTimeout(() => btnEl.classList.remove('saved'), 1000);
+}
+
 // Every child container is transparent so the texture behind shows through
 // the whole panel. Dividers are semi-transparent black — the design calls for
 // slightly lighter divisions further down (0.12 / 0.10) but a single value
@@ -1059,7 +1068,11 @@ function SettingsView({
           </button>
           <button
             className="btn go"
-            onClick={onSave}
+            onClick={async (e) => {
+              const btn = e.currentTarget;
+              const ok = await onSave();
+              if (ok !== false) pulseSaveBtn(btn);
+            }}
             disabled={saving}
             style={{ flex: 1, fontSize: 12, padding: '8px 0' }}
           >

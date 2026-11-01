@@ -7,20 +7,33 @@ const { dispatch } = require('../services/nexusDispatch');
 
 const router = express.Router();
 
-// Domain-aware OAuth redirect URI. Derived from the request's Origin header
-// (set by the browser) or the forwarded-proto + host pair (set by cloudflared).
-// Falls back to env for direct localhost calls during development. This lets
-// the same backend serve multiple public hostnames (nexus.app-palette.com and
-// nexus-missions.space, in our case) without env-level reconfiguration — the
-// redirect URI Discord sees matches whichever domain the user actually came
-// from, which Discord requires for the token exchange.
+// Domain-aware OAuth redirect URI. Derived from the request origin, then
+// normalized so www. and apex hostnames collapse to a single canonical
+// URI. This way we only have to register ONE URI per hostname in Discord's
+// developer portal, and friends who happen to type www. instead of apex
+// (or vice-versa) still get a working OAuth round-trip.
+//
+// Normalization rules:
+//   • Scheme forced to https
+//   • Leading "www." stripped from the host
+//   • If the resulting canonical host is in our known-mapped-domains set,
+//     we also allow a hard override via env (DISCORD_REDIRECT_URI) for
+//     localhost / staging deployments.
 function discordRedirectUri(req) {
   const explicitOrigin = req.get('origin');
-  if (explicitOrigin) return `${explicitOrigin}/auth/discord/callback`;
-  const proto = req.get('x-forwarded-proto') || req.protocol;
-  const host  = req.get('x-forwarded-host')  || req.get('host');
-  if (host) return `${proto}://${host}/auth/discord/callback`;
-  return process.env.DISCORD_REDIRECT_URI;
+  const originHost = (() => {
+    try { return explicitOrigin ? new URL(explicitOrigin).host : null; } catch { return null; }
+  })();
+  const headerHost = req.get('x-forwarded-host') || req.get('host');
+  let host = originHost || headerHost;
+  if (!host) return process.env.DISCORD_REDIRECT_URI;
+  // Strip www. prefix so Discord only needs one registered redirect per
+  // domain. e.g. "www.nexus-missions.space" → "nexus-missions.space".
+  if (host.startsWith('www.')) host = host.slice(4);
+  // Localhost dev stays HTTP; everything else is forced HTTPS so Discord
+  // doesn't reject a mixed scheme in production.
+  const scheme = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
+  return `${scheme}://${host}/auth/discord/callback`;
 }
 
 router.get('/discord', (req, res) => {

@@ -528,6 +528,11 @@ export function useRadioConnection({
     // Per-channel squelch bed profile (brick-wall cutoff + optional AM fade).
     try { getRadioChrome(audioCtxRef.current)?.setChannel?.(f); } catch {}
     socket.emit('radio:join', { frequency: f, missionId });
+    // Self-connect cue — plays for the operator themselves, in every
+    // mode (Dashboard, Companion, Radio-only). Previously only peer
+    // joins triggered freq_connect; the user had no feedback that
+    // their own tune succeeded.
+    try { new Audio('/sounds/freq_connect.mp3').play().catch(() => {}); } catch {}
   }, [socket, ensureMicAndChain, cleanupAllPeers]);
 
   const teardownAudioChain = useCallback(() => {
@@ -560,7 +565,10 @@ export function useRadioConnection({
   const leaveFrequency = useCallback(() => {
     if (currentFreqRef.current && socket) {
       socket.emit('radio:leave', { frequency: currentFreqRef.current });
-      new Audio('/sounds/radio_disconnect.mp3').play().catch(() => {});
+      // Self-disconnect cue — same freq_disconnect.mp3 the hook uses
+      // for peer-leaves, so operator leaving a freq always has an
+      // audible confirmation across Dashboard / Companion / Radio-only.
+      try { new Audio('/sounds/freq_disconnect.mp3').play().catch(() => {}); } catch {}
     }
     cleanupAllPeers();
     teardownAudioChain();

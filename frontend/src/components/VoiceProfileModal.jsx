@@ -22,6 +22,7 @@ import api from '../services/api';
 import { buildSpacesuitChain, randomVoiceProfile } from '../utils/spacesuitFilter';
 import { buildSrsChain } from '../utils/srsChain';
 import useMyRadio from '../hooks/useMyRadio';
+import useSavePulse from '../hooks/useSavePulse';
 
 const FIELDS = [
   { field: 'highpass',       label: 'Highpass',   min: 150,   max: 600,   step: 10,   fmt: v => `${v} Hz` },
@@ -42,6 +43,7 @@ export default function VoiceProfileModal({
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
   const [previewing, setPreviewing] = useState(false);
+  const savePulse = useSavePulse();
   const panelRef = useRef(null);
   const { radio: myRadio } = useMyRadio();
 
@@ -64,67 +66,75 @@ export default function VoiceProfileModal({
     try {
       await api.put('/users/voice-profile', { ...voiceProfile, ptt_key: pttKey });
       setSavedAt(Date.now());
+      savePulse.trigger();
     } catch {}
     setSaving(false);
   };
 
-  // Preview — plays a brief pink-noise burst through the full outbound
-  // chain (voice profile → SRS tx) so the operator hears exactly what
-  // peers will hear, without needing a live transmission.
+  // Preview — opens the mic, routes it through the full outbound chain
+  // (voice profile → SRS tx), and plays the processed signal through
+  // the user's speakers for 5 s so they hear exactly how they sound to
+  // peers. Uses echoCancellation to minimize feedback via speakers;
+  // headphones recommended for best preview quality.
+  const PREVIEW_SECONDS = 5;
+  const [previewRemaining, setPreviewRemaining] = useState(0);
   const onPreview = async () => {
     if (previewing || !voiceProfile) return;
     setPreviewing(true);
+    setPreviewRemaining(PREVIEW_SECONDS);
+
+    let ctx = null, mic = null, chain = null, srsOut = null, stopTimer = null, tickTimer = null;
+    const cleanup = () => {
+      try { if (tickTimer) clearInterval(tickTimer); } catch {}
+      try { if (stopTimer) clearTimeout(stopTimer); } catch {}
+      try { chain?.dispose?.(); } catch {}
+      try { srsOut?.dispose?.(); } catch {}
+      try { mic?.getTracks().forEach(t => t.stop()); } catch {}
+      try { ctx?.close(); } catch {}
+      setPreviewing(false);
+      setPreviewRemaining(0);
+    };
+
     try {
+      // Mic grab — same constraints the hook uses so sound character
+      // matches the real transmit path.
+      mic = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+
       const Ctx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new Ctx();
+      ctx = new Ctx();
       if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
 
-      // Short pink-noise voice stand-in. 1.2 s, decays over its length.
-      const dur = 1.2;
-      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-      for (let i = 0; i < d.length; i++) {
-        const w = Math.random() * 2 - 1;
-        b0 = 0.99886*b0 + w*0.0555179;
-        b1 = 0.99332*b1 + w*0.0750759;
-        b2 = 0.96900*b2 + w*0.1538520;
-        b3 = 0.86650*b3 + w*0.3104856;
-        b4 = 0.55000*b4 + w*0.5329522;
-        b5 = -0.7616*b5 - w*0.0168980;
-        const pink = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.09;
-        b6 = w * 0.115926;
-        // AM-modulate so it sounds like speech cadence, not pure hiss
-        const t = i / ctx.sampleRate;
-        const env = Math.max(0, Math.sin(t * 8) * 0.6 + 0.4);
-        d[i] = pink * env;
-      }
-
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const chain = await buildSpacesuitChain(ctx, src, voiceProfile);
+      const source = ctx.createMediaStreamSource(mic);
+      chain = await buildSpacesuitChain(ctx, source, voiceProfile);
       let tail = chain.output;
       if (myRadio?.spec?.txEffect) {
         try {
-          const srs = buildSrsChain(ctx, myRadio.spec.txEffect);
-          chain.output.connect(srs.input);
-          tail = srs.output;
+          srsOut = buildSrsChain(ctx, myRadio.spec.txEffect);
+          chain.output.connect(srsOut.input);
+          tail = srsOut.output;
         } catch {}
       }
+
+      // Modest makeup gain so the preview isn't painfully loud but
+      // isn't a whisper either. Users wearing headphones will hear
+      // themselves clearly; speaker users will get some low-level
+      // feedback they can tolerate for 5 seconds.
       const makeup = ctx.createGain();
-      makeup.gain.value = 0.6;
-      tail.connect(makeup); makeup.connect(ctx.destination);
-      src.start();
-      src.onended = () => {
-        try { chain.dispose?.(); } catch {}
-        try { ctx.close(); } catch {}
-        setPreviewing(false);
-      };
-      // Safety net — close ctx after dur + a hair in case onended doesn't fire
-      setTimeout(() => { try { ctx.close(); } catch {}; setPreviewing(false); }, (dur + 0.3) * 1000);
+      makeup.gain.value = 0.75;
+      tail.connect(makeup);
+      makeup.connect(ctx.destination);
+
+      // Countdown + auto-stop
+      tickTimer = setInterval(() => {
+        setPreviewRemaining(r => Math.max(0, r - 1));
+      }, 1000);
+      stopTimer = setTimeout(cleanup, PREVIEW_SECONDS * 1000);
     } catch (err) {
-      console.error('[voice preview] failed:', err);
-      setPreviewing(false);
+      console.error('[voice preview] mic failed:', err);
+      cleanup();
     }
   };
 
@@ -241,10 +251,10 @@ export default function VoiceProfileModal({
             className="btn"
             onClick={onPreview}
             disabled={previewing || !voiceProfile}
-            title="Hear what your voice sounds like through your rig"
+            title="Speak into your mic to hear yourself through your rig (5 s). Headphones recommended."
             style={{ flex: 1, fontSize: 11, padding: '6px 10px' }}
           >
-            {previewing ? '▶ Playing…' : '▶ Preview'}
+            {previewing ? `🎙 Speak… ${previewRemaining}s` : '🎙 Preview'}
           </button>
           <button
             className="btn"
@@ -254,7 +264,7 @@ export default function VoiceProfileModal({
             Randomize
           </button>
           <button
-            className="btn go"
+            className={`btn go ${savePulse.className}`}
             onClick={onSave}
             disabled={saving}
             style={{ flex: 1, fontSize: 11, padding: '6px 10px' }}

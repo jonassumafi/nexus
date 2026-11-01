@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import ColumnResizeHandle from './ColumnResizeHandle';
+import useSavePulse from '../hooks/useSavePulse';
 
 const playClick = () => {
   const file = Math.random() > 0.5 ? '/sounds/click.mp3' : '/sounds/click2.mp3';
@@ -251,6 +252,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
   const [descEditing, setDescEditing] = useState(false);
   const [descDraft, setDescDraft] = useState('');
   const [descSaving, setDescSaving] = useState(false);
+  const descPulse = useSavePulse();
   const [descError, setDescError] = useState('');
 
   useEffect(() => {
@@ -642,7 +644,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
                   Cancel
                 </button>
                 <button
-                  className="btn go"
+                  className={`btn go ${descPulse.className}`}
                   disabled={descSaving || descDraft === (ship.description || '')}
                   onClick={async () => {
                     setDescSaving(true); setDescError('');
@@ -650,6 +652,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
                       await api.put(`/ships/${ship._id}`, { description: descDraft });
                       setDescEditing(false);
                       onChanged?.();
+                      descPulse.trigger();
                     } catch (err) {
                       setDescError(err?.response?.data?.error || 'save failed');
                     } finally {
