@@ -638,12 +638,15 @@ export function useRadioConnection({
   }, []);
 
   const stopPTT = useCallback(() => {
-    if (!isPTTActive && !filteredStreamRef.current) return;
+    // v1.1.2 — strict guard. Previously this also ran its close-click
+    // path if filteredStreamRef.current existed (mic had ever been
+    // opened), which meant onMouseLeave on the Transmit button fired
+    // a click sound on every hover-exit even when the user had never
+    // pressed. Now a no-op unless PTT was genuinely active.
+    if (!isPTTActive) return;
     if (filterChainRef.current) {
       try { filterChainRef.current.playClick('close'); } catch {}
     }
-    // Local key-down cue — synthesized tail click + hiss. Bed stays on
-    // if any peer is still transmitting; otherwise it fades out.
     try {
       const rc = getRadioChrome(audioCtxRef.current);
       rc?.playKeyDown();
@@ -651,7 +654,6 @@ export function useRadioConnection({
         rc?.setBedActive(false);
       }
     } catch {}
-    // Tiny delay before muting so the close click is included in the stream.
     setTimeout(() => {
       if (filteredStreamRef.current) {
         for (const t of filteredStreamRef.current.getAudioTracks()) t.enabled = false;
