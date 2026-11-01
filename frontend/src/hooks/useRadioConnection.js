@@ -457,6 +457,13 @@ export function useRadioConnection({
     setTransmittingPeerIds([]);
   }, [cleanupPeer]);
 
+  // Persisted-tune keys. Writing freq + mission + timestamp here means a
+  // view switch (Dashboard → Companion → Radio-only, all of which fully
+  // reload the frontend URL via Electron's switchMode) can rejoin the
+  // same frequency on mount instead of forcing the operator to retune.
+  const TUNE_LS_KEY = 'nexus_persisted_tune';
+  const TUNE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes — stale enough tunes don't auto-rejoin
+
   const joinFrequency = useCallback(async (freq, missionId) => {
     if (!socket || !freq) return;
     const f = String(freq).trim();
@@ -480,6 +487,12 @@ export function useRadioConnection({
     // Per-channel squelch bed profile (brick-wall cutoff + optional AM fade).
     try { getRadioChrome(audioCtxRef.current)?.setChannel?.(f); } catch {}
     socket.emit('radio:join', { frequency: f, missionId });
+    // Persist so view switches can rejoin automatically.
+    try {
+      localStorage.setItem(TUNE_LS_KEY, JSON.stringify({
+        freq: f, missionId: missionId || null, ts: Date.now(),
+      }));
+    } catch {}
     // Self-connect cue — plays for the operator themselves, in every
     // mode (Dashboard, Companion, Radio-only). Previously only peer
     // joins triggered freq_connect; the user had no feedback that
@@ -517,11 +530,11 @@ export function useRadioConnection({
   const leaveFrequency = useCallback(() => {
     if (currentFreqRef.current && socket) {
       socket.emit('radio:leave', { frequency: currentFreqRef.current });
-      // Self-disconnect cue — same freq_disconnect.mp3 the hook uses
-      // for peer-leaves, so operator leaving a freq always has an
-      // audible confirmation across Dashboard / Companion / Radio-only.
       try { new Audio('/sounds/freq_disconnect.mp3').play().catch(() => {}); } catch {}
     }
+    // Clear the persisted tune — an explicit leave means "I'm done,"
+    // so subsequent view switches should NOT auto-rejoin.
+    try { localStorage.removeItem(TUNE_LS_KEY); } catch {}
     cleanupAllPeers();
     teardownAudioChain();
     currentFreqRef.current = null;
@@ -624,6 +637,37 @@ export function useRadioConnection({
       socket.emit('radio:ptt-stop', { frequency: currentFreqRef.current });
     }
   }, [socket, isPTTActive]);
+
+  // Auto-rejoin a recently-tuned frequency on mount. When Electron
+  // switches modes (full → companion → radio-only) it reloads the
+  // frontend URL, which blows away in-memory state. Reading the
+  // persisted tune here lets the hook rejoin automatically if the
+  // last tune happened within TUNE_MAX_AGE_MS. Fired AFTER the socket
+  // is live, so joinFrequency has a working socket to emit on.
+  useEffect(() => {
+    if (!socket) return;
+    let cancelled = false;
+    try {
+      const raw = localStorage.getItem(TUNE_LS_KEY);
+      if (!raw) return;
+      const { freq, missionId, ts } = JSON.parse(raw);
+      if (!freq || !ts) return;
+      if (Date.now() - ts > TUNE_MAX_AGE_MS) {
+        localStorage.removeItem(TUNE_LS_KEY);
+        return;
+      }
+      // Already tuned to the same freq (e.g. the hook remounted but
+      // currentFreqRef somehow survived) — no-op.
+      if (currentFreqRef.current === freq) return;
+      // Small delay so the Companion / Radio page can finish its own
+      // first-tick setup (voice profile load, radio load, etc.) before
+      // we open the mic.
+      const tid = setTimeout(() => {
+        if (!cancelled) joinFrequency(freq, missionId).catch(() => {});
+      }, 350);
+      return () => { cancelled = true; clearTimeout(tid); };
+    } catch {}
+  }, [socket, joinFrequency]);
 
   // ── Socket listeners ──────────────────────────────────────────────────────
   useEffect(() => {
