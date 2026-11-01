@@ -332,10 +332,12 @@ export function useRadioConnection({
 
         const audio = new Audio();
         audio.autoplay = true;
-        // v1.1.5 — amplify peer voices above the squelch bed. Chromium
-        // allows HTMLMediaElement.volume above 1.0 as a gain multiplier
-        // (Firefox / Safari clamp to 1.0, but Electron is Chromium).
-        try { audio.volume = 1.4; } catch {}
+        // v1.1.6 — further-amplify peer voices (2.0 is near the upper
+        // useful limit before Chromium's internal limiter kicks in).
+        // Together with the outbound +15 dB makeup in spacesuitFilter,
+        // this roughly doubles effective voice loudness vs the previous
+        // tuning so users don't need to touch sensitivity.
+        try { audio.volume = 2.0; } catch {}
         peerAudiosRef.current[peerSocketId] = audio;
 
         // Wire the stream through the listener's own SRS rxEffect if we

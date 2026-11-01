@@ -64,11 +64,13 @@ export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
   distortion.oversample = '4x';
 
   const mixer = audioContext.createGain();
-  // v1.1.5 — outbound makeup bumped 2.0 → 2.8 (+9 dB from unity).
-  // Users reported voice sitting too faint under the squelch bed even
-  // with mic sensitivity at 150 %. The bitcrusher downstream soft-
-  // saturates anything that would otherwise clip, so this is safe.
-  mixer.gain.value = 2.8;
+  // v1.1.6 — outbound makeup bumped 2.8 → 5.6 (~+15 dB from unity).
+  // Baseline is now loud enough that users don't need the sensitivity
+  // slider past 100 % to be heard clearly through the squelch bed.
+  // The bitcrusher downstream soft-saturates anything that would
+  // otherwise clip; voices on hot mics may read as slightly over-
+  // driven, which fits the radio aesthetic.
+  mixer.gain.value = 5.6;
 
   const noiseSource = createWhiteNoiseSource(audioContext);
   const noiseGain = audioContext.createGain();

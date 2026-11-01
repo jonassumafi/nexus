@@ -579,15 +579,15 @@ function TunedView({
             fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
             fontVariantNumeric: 'tabular-nums',
           }}>
-            {micSensitivity}%
+            {Math.min(100, micSensitivity)}%
           </span>
         </div>
         <input
           type="range"
           min={0}
-          max={250}
+          max={100}
           step={5}
-          value={micSensitivity}
+          value={Math.min(100, micSensitivity)}
           onChange={e => onSensitivityChange(Number(e.target.value))}
           style={{
             width: '100%', accentColor: 'var(--rim2)',
