@@ -43,6 +43,10 @@ export default function VoiceProfileModal({
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
   const [previewing, setPreviewing] = useState(false);
+  // v1.1.3 — moved above the `open` guard. Having a useState below an
+  // early-return produced React error #310 (hooks called conditionally)
+  // the moment the modal opened for the first time.
+  const [previewRemaining, setPreviewRemaining] = useState(0);
   const savePulse = useSavePulse();
   const panelRef = useRef(null);
   const { radio: myRadio } = useMyRadio();
@@ -77,7 +81,6 @@ export default function VoiceProfileModal({
   // peers. Uses echoCancellation to minimize feedback via speakers;
   // headphones recommended for best preview quality.
   const PREVIEW_SECONDS = 5;
-  const [previewRemaining, setPreviewRemaining] = useState(0);
   const onPreview = async () => {
     if (previewing || !voiceProfile) return;
     setPreviewing(true);
