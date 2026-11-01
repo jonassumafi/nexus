@@ -17,7 +17,7 @@
 //   pttKey           — current PTT key letter
 //   setPttKey        — setter
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import { buildSpacesuitChain, randomVoiceProfile } from '../utils/spacesuitFilter';
 import { buildSrsChain } from '../utils/srsChain';
@@ -297,24 +297,37 @@ function SliderRow({ label, value, min, max, step, format, onChange }) {
 // — a self-serve re-roll flow (if we add one later) can wire a button
 // into this chip's affordance area.
 function RadioRigChip() {
-  const { radio, loading } = useMyRadio();
-  const [requesting, setRequesting] = useState(false);
-  const [reqState, setReqState] = useState({ type: 'idle', msg: '' });
+  const { radio, loading, refetch } = useMyRadio();
+  const [catalog, setCatalog] = useState([]);
+  const [busy, setBusy]       = useState(false);
 
-  const requestReroll = async () => {
-    if (requesting) return;
-    setRequesting(true);
-    setReqState({ type: 'idle', msg: '' });
+  // Pull the full catalog so the player can pick ANY rig, not just
+  // random-roll. Catalog is small (25 entries) and effectively static,
+  // so one fetch per modal open is fine.
+  useEffect(() => {
+    api.get('/radio/models')
+      .then(({ data }) => setCatalog(Array.isArray(data) ? data : []))
+      .catch(() => setCatalog([]));
+  }, []);
+
+  const change = async (body) => {
+    if (busy) return;
+    setBusy(true);
     try {
-      await api.post('/radio/request-reroll', { reason: '' });
-      setReqState({ type: 'ok', msg: 'Request sent to admin.' });
+      await api.put('/radio/my-radio', body);
+      refetch();
     } catch (err) {
-      const msg = err?.response?.data?.error === 'already requested recently'
-        ? 'Already requested recently — hang tight.'
-        : (err?.response?.data?.error || 'Request failed.');
-      setReqState({ type: 'err', msg });
+      console.error('[radio self-change] failed:', err);
+    } finally {
+      setBusy(false);
     }
-    setRequesting(false);
+  };
+
+  const cycle = (dir) => {
+    if (!catalog.length || !radio) return;
+    const idx = catalog.findIndex(r => r.id === radio.id);
+    const nextIdx = ((idx === -1 ? 0 : idx) + dir + catalog.length) % catalog.length;
+    change({ radio_type: catalog[nextIdx].id });
   };
 
   if (loading) {
@@ -367,37 +380,73 @@ function RadioRigChip() {
           {radio.blurb}
         </div>
       )}
+      {/* Self-serve picker — prev / next cycle through all 25 presets,
+          random re-rolls to a fresh one, dropdown jumps to any specific
+          rig. All three write to PUT /api/radio/my-radio and refetch so
+          the DSP chain rebuilds with the new preset on next tune. */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        marginTop: 6,
+        display: 'flex', alignItems: 'center', gap: 4,
+        marginTop: 8,
       }}>
         <button
           type="button"
-          onClick={requestReroll}
-          disabled={requesting || reqState.type === 'ok'}
-          title="Ask the admin to roll a different rig for you"
+          onClick={() => cycle(-1)}
+          disabled={busy || !catalog.length}
+          title="Previous rig"
+          style={pickerBtn}
+        >
+          ◀
+        </button>
+        <select
+          value={radio.id}
+          onChange={e => change({ radio_type: e.target.value })}
+          disabled={busy || !catalog.length}
+          title="Jump to a specific rig"
           style={{
-            fontSize: 10, padding: '3px 10px',
-            background: 'transparent',
-            border: '1px solid var(--rim1)',
+            flex: 1, minWidth: 0,
+            fontSize: 11, padding: '3px 6px',
+            background: 'var(--inset)',
+            border: '1px solid var(--rim0)',
             borderRadius: 3,
-            color: 'var(--fg2)',
-            cursor: 'pointer',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
+            color: 'var(--fg0)',
           }}
         >
-          {requesting ? 'Sending…' : reqState.type === 'ok' ? 'Requested' : 'Request re-roll'}
+          {catalog.map(r => (
+            <option key={r.id} value={r.id}>
+              {r.label} · {r.band} ({r.family_label})
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => cycle(1)}
+          disabled={busy || !catalog.length}
+          title="Next rig"
+          style={pickerBtn}
+        >
+          ▶
         </button>
-        {reqState.msg && (
-          <span style={{
-            fontSize: 9,
-            color: reqState.type === 'ok' ? 'var(--lime)' : 'var(--red)',
-          }}>
-            {reqState.msg}
-          </span>
-        )}
+        <button
+          type="button"
+          onClick={() => change({ reroll: true })}
+          disabled={busy}
+          title="Random rig"
+          style={{ ...pickerBtn, color: 'var(--cyan)' }}
+        >
+          🎲
+        </button>
       </div>
     </div>
   );
 }
+
+const pickerBtn = {
+  fontSize: 11, padding: '3px 8px',
+  background: 'transparent',
+  border: '1px solid var(--rim1)',
+  borderRadius: 3,
+  color: 'var(--fg1)',
+  cursor: 'pointer',
+  minWidth: 26,
+  textAlign: 'center',
+};

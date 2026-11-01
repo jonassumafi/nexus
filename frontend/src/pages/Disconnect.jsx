@@ -30,16 +30,19 @@ export default function Disconnect() {
   useEffect(() => {
     playClick();
 
+    // Line step bumped 200 → 400 ms and tail bumped 1200 → 2400 ms so
+    // the sequence lands at exactly twice its original speed — gives
+    // the user time to read each line before redirect.
     const tids = [];
     lines.forEach((_, i) => {
-      tids.push(setTimeout(() => setVisibleCount(i + 1), i * 200));
+      tids.push(setTimeout(() => setVisibleCount(i + 1), i * 400));
     });
 
-    const lastDelay = (lines.length - 1) * 200;
+    const lastDelay = (lines.length - 1) * 400;
     tids.push(setTimeout(() => {
       localStorage.removeItem('nexus_token');
       window.location.href = '/';
-    }, lastDelay + 1200));
+    }, lastDelay + 2400));
 
     return () => tids.forEach(clearTimeout);
   }, []);

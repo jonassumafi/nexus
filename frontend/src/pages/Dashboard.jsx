@@ -993,7 +993,9 @@ function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onReg
           Disconnect button a few pixels to its left. */}
       <div data-nexus-chip style={{
         position: 'absolute',
-        top: 0,
+        // v1.1.1 — nudged 6 px down so the chip visually centers on the
+        // brand-bar row rather than hugging the TitleBar edge above it.
+        top: 6,
         right: 16,
         height: 72,
         display: 'flex',
@@ -2707,6 +2709,9 @@ export default function Dashboard() {
   const [missionListCollapsed, setMissionListCollapsed] = useState(() => {
     try { return localStorage.getItem('nexus_missionlist_collapsed') === '1'; } catch { return false; }
   });
+  const [rightColCollapsed, setRightColCollapsed] = useState(() => {
+    try { return localStorage.getItem('nexus_rightcol_collapsed') === '1'; } catch { return false; }
+  });
   const [loadingMissions, setLoadingMissions] = useState(true);
   const [loadingFeed, setLoadingFeed]       = useState(true);
   const [timezone, setTimezone]             = useState('UTC');
@@ -3121,7 +3126,7 @@ export default function Dashboard() {
       <div style={{
         flex: 1,
         display: myShipsMode ? 'block' : 'grid',
-        gridTemplateColumns: `${missionListCollapsed ? 44 : leftWidth}px 1fr ${rightWidth}px`,
+        gridTemplateColumns: `${missionListCollapsed ? 44 : leftWidth}px 1fr ${rightColCollapsed ? 44 : rightWidth}px`,
         minHeight: 0,
         zIndex: 1,
         overflow: 'hidden',
@@ -3288,13 +3293,89 @@ export default function Dashboard() {
           ) : null}
         </div>
 
-        {/* Right: Activity feed + persistent radio panel */}
+        {/* Right: Activity feed + persistent radio panel. Entire column
+            collapsible to a 44 px rail (same pattern as the mission
+            board column on the left). State persists in localStorage. */}
         <div ref={rightColumnRef} style={{
           position: 'relative',
           borderLeft: `1px solid ${C.border}`,
           display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden',
         }}>
-          <ColumnResizeHandle side="left" columnRef={rightColumnRef} setWidth={setRightWidth} />
+          {!rightColCollapsed && (
+            <ColumnResizeHandle side="left" columnRef={rightColumnRef} setWidth={setRightWidth} />
+          )}
+
+          {rightColCollapsed ? (
+            // Collapsed rail — stays visibly present so the player
+            // never loses the radio/feed. Vertical label + unread
+            // feed-event hint + clickable area to re-expand.
+            <div
+              onClick={() => {
+                setRightColCollapsed(false);
+                try { localStorage.setItem('nexus_rightcol_collapsed', '0'); } catch {}
+              }}
+              title="Click to expand activity feed + radio"
+              style={{
+                flex: 1,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', padding: '14px 0', gap: 12,
+                cursor: 'pointer', transition: 'background .15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(102,170,221,.06)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <button
+                className="btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRightColCollapsed(false);
+                  try { localStorage.setItem('nexus_rightcol_collapsed', '0'); } catch {}
+                }}
+                title="Expand"
+                style={{ padding: '3px 8px', fontSize: 12, minWidth: 32 }}
+              >
+                »
+              </button>
+              <div style={{
+                writingMode: 'vertical-rl',
+                transform: 'rotate(180deg)',
+                fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.22em', textTransform: 'uppercase',
+                color: 'var(--blue)',
+                textShadow: '0 0 6px color-mix(in srgb, var(--blue) 45%, transparent)',
+                userSelect: 'none',
+              }}>
+                Activity · Radio
+              </div>
+              <div style={{
+                fontSize: 10, color: 'var(--fg3)',
+                writingMode: 'vertical-rl',
+                transform: 'rotate(180deg)',
+                letterSpacing: '0.12em', userSelect: 'none',
+              }}>
+                click to open
+              </div>
+            </div>
+          ) : (
+            <>
+          <div className="sh" style={{
+            borderBottom: '1px solid var(--rim0)',
+            padding: '7px 10px',
+            display: 'flex', alignItems: 'center',
+          }}>
+            <button
+              className="btn"
+              onClick={() => {
+                setRightColCollapsed(true);
+                try { localStorage.setItem('nexus_rightcol_collapsed', '1'); } catch {}
+              }}
+              title="Collapse column"
+              aria-label="Collapse right column"
+              style={{ padding: '3px 8px', fontSize: 12, minWidth: 32 }}
+            >
+              «
+            </button>
+          </div>
           <div style={{ flex: feedCollapsed ? '0 0 auto' : 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div className="sh">
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3365,11 +3446,12 @@ export default function Dashboard() {
             micPermission={micPermission}
             requestMicPermission={requestMicPermission}
           />
+            </>
+          )}
         </div>
 
           </>
         )}
-
       </div>
     </div>
   );

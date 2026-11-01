@@ -36,6 +36,35 @@ router.get('/my-radio', isAuthenticated, async (req, res) => {
   }
 });
 
+// Player-facing self-serve: change your own radio.
+//   PUT /api/radio/my-radio
+//   body: { radio_type?: string, reroll?: true }
+// If reroll is true, randomly reassigns. Otherwise sets to the given id.
+router.put('/my-radio', isAuthenticated, async (req, res) => {
+  try {
+    const u = await User.findById(req.user._id);
+    if (!u) return res.status(404).json({ error: 'user not found' });
+
+    if (req.body?.reroll) {
+      u.radio_type = radioModels.randomRadio();
+    } else {
+      const next = String(req.body?.radio_type || '');
+      if (!radioModels.byId(next)) {
+        return res.status(400).json({ error: 'unknown radio_type' });
+      }
+      u.radio_type = next;
+    }
+    await u.save();
+    const entry = radioModels.byId(u.radio_type);
+    res.json({
+      radio_type: u.radio_type,
+      radio: entry ? { ...entry } : null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Player-facing: request a radio re-roll from the admin. Fires an
 // email via Resend to BUG_REPORT_TO (same channel as bug reports) so
 // the admin can respond via the admin UI. Rate-limited to one request
