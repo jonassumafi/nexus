@@ -169,17 +169,10 @@ export function useRadioConnection({
       }
     }
 
-    // FM pre-emphasis — if MY rig is on the FM band, boost highs on
-    // outbound. Pairs with the matching de-emphasis the listener's FM
-    // receiver applies on rx (see attachPeerRxGraph). Non-FM rigs skip.
-    if (srsBandRef.current === 'FM') {
-      const preEmphasis = ctx.createBiquadFilter();
-      preEmphasis.type = 'highshelf';
-      preEmphasis.frequency.value = 2122;  // 75 µs time constant
-      preEmphasis.gain.value = 6;
-      srsOutput.connect(preEmphasis);
-      srsOutput = preEmphasis;
-    }
+    // v1.1.4 — FM pre-emphasis temporarily disabled alongside the rx
+    // de-emphasis (see attachPeerRxGraph). Will re-enable once the
+    // Web Audio peer-rx pipeline is confirmed non-breaking in a
+    // multi-browser test.
 
     // 80 ms outbound delay (DCS pre-click feel) between the voice chain
     // and the peer destination.
@@ -393,65 +386,18 @@ export function useRadioConnection({
   // still work. If no AudioContext or no rxEffect is available we skip
   // DSP cleanly — audio.srcObject points at the raw stream and the
   // behavior matches the pre-rxEffect code path.
+  // v1.1.4 — rx DSP temporarily disabled. The Web Audio graph
+  // (source → rxEffect → AGC → MediaStreamDestination → audio.srcObject)
+  // was silencing peer voices for some users even though the local
+  // squelch bed kept playing (that goes through ctx.destination
+  // directly, not this chain). Falling back to raw stream playback
+  // restores known-good Phase 3 behavior while we debug the Web Audio
+  // path. rxEffect, FM de-emphasis, and AGC on receive are therefore
+  // currently NO-OPS — the listener's radio only colors their own
+  // outbound character via the tx chain.
   const attachPeerRxGraph = useCallback((peerSocketId, stream, audio) => {
     detachPeerRxGraph(peerSocketId);
-    const ctx = audioCtxRef.current;
-    const rxEffect = srsSpecRef.current?.rxEffect;
-    if (!ctx) {
-      try { audio.srcObject = stream; } catch {}
-      return;
-    }
-    try {
-      const source = ctx.createMediaStreamSource(stream);
-      let tail = source;
-
-      // Optional FM de-emphasis — tames the pre-emphasized highs so
-      // voice reads balanced on FM-band listeners. 75 µs (R-C) low-
-      // shelf centered around 2.1 kHz, matched inverse of the TX
-      // pre-emphasis applied by FM transmitters.
-      let deEmphasis = null;
-      if (srsBandRef.current === 'FM') {
-        deEmphasis = ctx.createBiquadFilter();
-        deEmphasis.type = 'highshelf';
-        deEmphasis.frequency.value = 2122;  // 75 µs time constant
-        deEmphasis.gain.value = -6;
-        tail.connect(deEmphasis);
-        tail = deEmphasis;
-      }
-
-      // SRS rxEffect — the receiver-hardware filter chain for this
-      // listener's radio. Skipped cleanly if rxEffect is absent.
-      let chain = null;
-      if (rxEffect) {
-        chain = buildSrsChain(ctx, rxEffect);
-        tail.connect(chain.input);
-        tail = chain.output;
-      }
-
-      // AGC on receive — a slow, musical compressor that pulls quiet
-      // transmitters up to a target loudness without pumping loud ones
-      // down hard. Normalizes mixed voice levels across a crew where
-      // some mics are hotter than others.
-      const agc = ctx.createDynamicsCompressor();
-      agc.threshold.value = -32;  // start compressing above -32 dB
-      agc.knee.value      = 12;    // soft knee for musical transition
-      agc.ratio.value     = 4;
-      agc.attack.value    = 0.015;
-      agc.release.value   = 0.4;
-      const agcMakeup = ctx.createGain();
-      agcMakeup.gain.value = 1.6;  // +4 dB makeup to recover crushed peaks
-      tail.connect(agc);
-      agc.connect(agcMakeup);
-      tail = agcMakeup;
-
-      const dest = ctx.createMediaStreamDestination();
-      tail.connect(dest);
-      peerRxNodesRef.current[peerSocketId] = { source, chain, dest, deEmphasis, agc, agcMakeup };
-      audio.srcObject = dest.stream;
-    } catch (err) {
-      console.error('[Radio] rxEffect graph failed for', peerSocketId, err);
-      try { audio.srcObject = stream; } catch {}
-    }
+    try { audio.srcObject = stream; } catch {}
   }, []);
 
   const detachPeerRxGraph = useCallback((peerSocketId) => {
