@@ -49,5 +49,6 @@
       "icon": "build/icon.png",
       "category": "public.app-category.games"
     }
-  }
+  },
+  "license": "GPL-3.0-or-later"
 }

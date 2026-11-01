@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "jonassumafi",
-  "license": "ISC",
+  "license": "GPL-3.0-or-later",
   "dependencies": {
     "@google/genai": "^2.10.0",
     "axios": "^1.7.2",

@@ -83,6 +83,39 @@ export default function Disconnect() {
             {line.text}
           </div>
         ))}
+
+        {/* License + attribution footer. Shown on the Disconnect page so
+            players always have a visible path to credit information
+            without needing a separate About screen. */}
+        <div style={{
+          marginTop: 24,
+          paddingTop: 14,
+          borderTop: '1px solid var(--rim0)',
+          fontSize: 10,
+          color: 'var(--fg3)',
+          lineHeight: 1.6,
+          letterSpacing: '0.04em',
+        }}>
+          <div style={{ marginBottom: 4 }}>
+            Nexus Interstellar Traffic System — free software under{' '}
+            <a href="https://www.gnu.org/licenses/gpl-3.0.html"
+               target="_blank" rel="noreferrer"
+               style={{ color: 'var(--blue)' }}>
+              GPL&nbsp;v3
+            </a>{' '}·{' '}
+            <a href="https://github.com/jonassumafi/nexus"
+               target="_blank" rel="noreferrer"
+               style={{ color: 'var(--blue)' }}>
+              source
+            </a>
+          </div>
+          <div>
+            Radio effects and configurations from DCS-SimpleRadioStandalone
+            by Ciribob and contributors, used under GPL v3. PTT and radio
+            effects by Bimbac. HAVE QUICK by Nicholas Landolfi. AM
+            frequency collision by Jester. SimPhonics tones collection.
+          </div>
+        </div>
       </div>
     </div>
   );
