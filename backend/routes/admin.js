@@ -1,10 +1,24 @@
 const express = require('express');
 const PlatformConfig = require('../models/PlatformConfig');
+const User = require('../models/User');
 const { isAuthenticated, isPlatformOwner } = require('../middleware/permissions');
 
 const router = express.Router();
 
 router.use(isAuthenticated, isPlatformOwner);
+
+// Minimal user list for the admin radio-reassignment panel.
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.find({}, {
+      _id: 1, citizen_name: 1, username: 1, discord_id: 1,
+      radio_type: 1, rp_rank: 1, created_at: 1,
+    }).sort({ citizen_name: 1 }).lean();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.get('/config', async (req, res) => {
   try {

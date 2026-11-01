@@ -19,7 +19,8 @@
 
 import { useRef, useState } from 'react';
 import api from '../services/api';
-import { randomVoiceProfile } from '../utils/spacesuitFilter';
+import { buildSpacesuitChain, randomVoiceProfile } from '../utils/spacesuitFilter';
+import { buildSrsChain } from '../utils/srsChain';
 import useMyRadio from '../hooks/useMyRadio';
 
 const FIELDS = [
@@ -40,7 +41,9 @@ export default function VoiceProfileModal({
 }) {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
+  const [previewing, setPreviewing] = useState(false);
   const panelRef = useRef(null);
+  const { radio: myRadio } = useMyRadio();
 
   if (!open) return null;
 
@@ -63,6 +66,66 @@ export default function VoiceProfileModal({
       setSavedAt(Date.now());
     } catch {}
     setSaving(false);
+  };
+
+  // Preview — plays a brief pink-noise burst through the full outbound
+  // chain (voice profile → SRS tx) so the operator hears exactly what
+  // peers will hear, without needing a live transmission.
+  const onPreview = async () => {
+    if (previewing || !voiceProfile) return;
+    setPreviewing(true);
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
+
+      // Short pink-noise voice stand-in. 1.2 s, decays over its length.
+      const dur = 1.2;
+      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (let i = 0; i < d.length; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886*b0 + w*0.0555179;
+        b1 = 0.99332*b1 + w*0.0750759;
+        b2 = 0.96900*b2 + w*0.1538520;
+        b3 = 0.86650*b3 + w*0.3104856;
+        b4 = 0.55000*b4 + w*0.5329522;
+        b5 = -0.7616*b5 - w*0.0168980;
+        const pink = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.09;
+        b6 = w * 0.115926;
+        // AM-modulate so it sounds like speech cadence, not pure hiss
+        const t = i / ctx.sampleRate;
+        const env = Math.max(0, Math.sin(t * 8) * 0.6 + 0.4);
+        d[i] = pink * env;
+      }
+
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const chain = await buildSpacesuitChain(ctx, src, voiceProfile);
+      let tail = chain.output;
+      if (myRadio?.spec?.txEffect) {
+        try {
+          const srs = buildSrsChain(ctx, myRadio.spec.txEffect);
+          chain.output.connect(srs.input);
+          tail = srs.output;
+        } catch {}
+      }
+      const makeup = ctx.createGain();
+      makeup.gain.value = 0.6;
+      tail.connect(makeup); makeup.connect(ctx.destination);
+      src.start();
+      src.onended = () => {
+        try { chain.dispose?.(); } catch {}
+        try { ctx.close(); } catch {}
+        setPreviewing(false);
+      };
+      // Safety net — close ctx after dur + a hair in case onended doesn't fire
+      setTimeout(() => { try { ctx.close(); } catch {}; setPreviewing(false); }, (dur + 0.3) * 1000);
+    } catch (err) {
+      console.error('[voice preview] failed:', err);
+      setPreviewing(false);
+    }
   };
 
   return (
@@ -176,6 +239,15 @@ export default function VoiceProfileModal({
         }}>
           <button
             className="btn"
+            onClick={onPreview}
+            disabled={previewing || !voiceProfile}
+            title="Hear what your voice sounds like through your rig"
+            style={{ flex: 1, fontSize: 11, padding: '6px 10px' }}
+          >
+            {previewing ? '▶ Playing…' : '▶ Preview'}
+          </button>
+          <button
+            className="btn"
             onClick={onRandomize}
             style={{ flex: 1, fontSize: 11, padding: '6px 10px' }}
           >
@@ -226,6 +298,25 @@ function SliderRow({ label, value, min, max, step, format, onChange }) {
 // into this chip's affordance area.
 function RadioRigChip() {
   const { radio, loading } = useMyRadio();
+  const [requesting, setRequesting] = useState(false);
+  const [reqState, setReqState] = useState({ type: 'idle', msg: '' });
+
+  const requestReroll = async () => {
+    if (requesting) return;
+    setRequesting(true);
+    setReqState({ type: 'idle', msg: '' });
+    try {
+      await api.post('/radio/request-reroll', { reason: '' });
+      setReqState({ type: 'ok', msg: 'Request sent to admin.' });
+    } catch (err) {
+      const msg = err?.response?.data?.error === 'already requested recently'
+        ? 'Already requested recently — hang tight.'
+        : (err?.response?.data?.error || 'Request failed.');
+      setReqState({ type: 'err', msg });
+    }
+    setRequesting(false);
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -276,6 +367,37 @@ function RadioRigChip() {
           {radio.blurb}
         </div>
       )}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        marginTop: 6,
+      }}>
+        <button
+          type="button"
+          onClick={requestReroll}
+          disabled={requesting || reqState.type === 'ok'}
+          title="Ask the admin to roll a different rig for you"
+          style={{
+            fontSize: 10, padding: '3px 10px',
+            background: 'transparent',
+            border: '1px solid var(--rim1)',
+            borderRadius: 3,
+            color: 'var(--fg2)',
+            cursor: 'pointer',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {requesting ? 'Sending…' : reqState.type === 'ok' ? 'Requested' : 'Request re-roll'}
+        </button>
+        {reqState.msg && (
+          <span style={{
+            fontSize: 9,
+            color: reqState.type === 'ok' ? 'var(--lime)' : 'var(--red)',
+          }}>
+            {reqState.msg}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

@@ -36,6 +36,65 @@ router.get('/my-radio', isAuthenticated, async (req, res) => {
   }
 });
 
+// Player-facing: request a radio re-roll from the admin. Fires an
+// email via Resend to BUG_REPORT_TO (same channel as bug reports) so
+// the admin can respond via the admin UI. Rate-limited to one request
+// per user per hour to prevent spam.
+const rerollRequests = new Map(); // userId → ts
+
+router.post('/request-reroll', isAuthenticated, async (req, res) => {
+  try {
+    const uid = String(req.user._id);
+    const now = Date.now();
+    const last = rerollRequests.get(uid) || 0;
+    if (now - last < 60 * 60 * 1000) {
+      return res.status(429).json({ error: 'already requested recently' });
+    }
+    rerollRequests.set(uid, now);
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const to     = process.env.BUG_REPORT_TO;
+    const from   = process.env.BUG_REPORT_FROM || 'Nexus Radio <onboarding@resend.dev>';
+    if (!apiKey || !to) {
+      // Delivery not configured; still record the request so UI can
+      // show "sent" and admin can see it later via logs.
+      console.log('[reroll request]', req.user.citizen_name, 'rig:', req.user.radio_type);
+      return res.json({ ok: true, delivered: false });
+    }
+
+    const reason = String(req.body?.reason || '').slice(0, 400);
+    const currentRadio = radioModels.byId(req.user.radio_type);
+    const subject = `[Nexus Rig] ${req.user.citizen_name || req.user.username || 'operator'} requests a re-roll`;
+    const bodyText = [
+      `Reporter    : ${req.user.citizen_name || req.user.username || '—'}`,
+      `Discord     : ${req.user.discord_id || '—'}`,
+      `User ID     : ${req.user._id}`,
+      `Current rig : ${req.user.radio_type || '—'} (${currentRadio?.label || 'unknown'})`,
+      `Band        : ${currentRadio?.band || '—'}`,
+      '',
+      '--- Reason ---',
+      reason || '(no reason given)',
+      '',
+      `Approve by hitting PUT /api/radio/user/${req.user._id}/radio with { reroll: true } or a specific radio_type, or use the Admin panel.`,
+    ].join('\n');
+
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to, subject, text: bodyText }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      console.error('[reroll request] Resend error', resp.status, text);
+      return res.status(502).json({ error: 'email delivery failed' });
+    }
+    res.json({ ok: true, delivered: true });
+  } catch (err) {
+    console.error('[reroll request] crash:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin / platform-owner only: force a specific radio onto a player, or
 // `{ reroll: true }` to randomly re-assign.
 router.put('/user/:userId/radio', isAuthenticated, async (req, res) => {

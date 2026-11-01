@@ -52,6 +52,8 @@ export function useRadioConnection({
   const peerConnPromisesRef = useRef({});  // socketId -> in-flight createPeerConnection promise
   const pendingCandidatesRef = useRef({}); // socketId -> [RTCIceCandidateInit, ...] queued until remoteDescription is set
   const peerAudiosRef   = useRef({});  // socketId -> HTMLAudioElement
+  const peerStreamsRef  = useRef({});  // socketId -> raw incoming MediaStream
+  const peerRxNodesRef  = useRef({});  // socketId -> { source, chain, dest } (DSP graph)
   const peersRef        = useRef([]);  // mirror of peers state for cleanup
   const audioCtxRef     = useRef(null);
   const micStreamRef    = useRef(null);
@@ -314,19 +316,25 @@ export function useRadioConnection({
       };
 
       pc.ontrack = (e) => {
+        const stream = e.streams[0];
+        peerStreamsRef.current[peerSocketId] = stream;
+
         const audio = new Audio();
-        audio.srcObject = e.streams[0];
         audio.autoplay = true;
-        // Apply the selected output device if the browser supports the
-        // spec'd setSinkId API (Chromium yes, Safari no, Firefox behind a
-        // flag). Failures are non-fatal — audio still plays through default.
+        peerAudiosRef.current[peerSocketId] = audio;
+
+        // Wire the stream through the listener's own SRS rxEffect if we
+        // have one AND an AudioContext is already live. Falls back to
+        // direct playback if either prerequisite isn't met — restoring
+        // the pre-rx behavior with zero functional regression.
+        attachPeerRxGraph(peerSocketId, stream, audio);
+
         if (outputDeviceIdRef.current && typeof audio.setSinkId === 'function') {
           audio.setSinkId(outputDeviceIdRef.current).catch((err) => {
             console.error('[Radio] setSinkId failed:', err);
           });
         }
         audio.play().catch(() => {});
-        peerAudiosRef.current[peerSocketId] = audio;
       };
 
       pc.onconnectionstatechange = () => {
@@ -361,12 +369,63 @@ export function useRadioConnection({
     }
   }, []);
 
+  // Build the per-peer Web Audio graph that applies the listener's own
+  // SRS rxEffect to this peer's incoming stream, then feeds a brand new
+  // MediaStream back to the <audio> element so setSinkId / autoplay
+  // still work. If no AudioContext or no rxEffect is available we skip
+  // DSP cleanly — audio.srcObject points at the raw stream and the
+  // behavior matches the pre-rxEffect code path.
+  const attachPeerRxGraph = useCallback((peerSocketId, stream, audio) => {
+    detachPeerRxGraph(peerSocketId);
+    const ctx = audioCtxRef.current;
+    const rxEffect = srsSpecRef.current?.rxEffect;
+    if (!ctx || !rxEffect) {
+      try { audio.srcObject = stream; } catch {}
+      return;
+    }
+    try {
+      const source = ctx.createMediaStreamSource(stream);
+      const chain = buildSrsChain(ctx, rxEffect);
+      const dest = ctx.createMediaStreamDestination();
+      source.connect(chain.input);
+      chain.output.connect(dest);
+      peerRxNodesRef.current[peerSocketId] = { source, chain, dest };
+      audio.srcObject = dest.stream;
+    } catch (err) {
+      console.error('[Radio] rxEffect graph failed for', peerSocketId, err);
+      try { audio.srcObject = stream; } catch {}
+    }
+  }, []);
+
+  const detachPeerRxGraph = useCallback((peerSocketId) => {
+    const graph = peerRxNodesRef.current[peerSocketId];
+    if (!graph) return;
+    try { graph.source.disconnect(); } catch {}
+    try { graph.chain.dispose?.(); } catch {}
+    try { graph.dest.disconnect?.(); } catch {}
+    delete peerRxNodesRef.current[peerSocketId];
+  }, []);
+
+  // Rebuild every active peer's rx graph. Called when the listener's
+  // SRS spec changes (admin reassign, player re-roll, initial load that
+  // happened after peers were already connected).
+  const rebuildAllPeerRxGraphs = useCallback(() => {
+    for (const [peerSocketId, stream] of Object.entries(peerStreamsRef.current)) {
+      const audio = peerAudiosRef.current[peerSocketId];
+      if (!audio) continue;
+      attachPeerRxGraph(peerSocketId, stream, audio);
+    }
+  }, [attachPeerRxGraph]);
+
   const cleanupPeer = useCallback((peerSocketId) => {
     const pc = peerConnsRef.current[peerSocketId];
     if (pc) { try { pc.close(); } catch {} }
     delete peerConnsRef.current[peerSocketId];
     delete peerConnPromisesRef.current[peerSocketId];
     delete pendingCandidatesRef.current[peerSocketId];
+
+    detachPeerRxGraph(peerSocketId);
+    delete peerStreamsRef.current[peerSocketId];
 
     const a = peerAudiosRef.current[peerSocketId];
     if (a) {
@@ -376,7 +435,7 @@ export function useRadioConnection({
     delete peerAudiosRef.current[peerSocketId];
 
     setTransmittingPeerIds(prev => prev.filter(id => id !== peerSocketId));
-  }, []);
+  }, [detachPeerRxGraph]);
 
   const cleanupAllPeers = useCallback(() => {
     for (const sid of Object.keys(peerConnsRef.current)) cleanupPeer(sid);
@@ -812,7 +871,10 @@ export function useRadioConnection({
       filteredStreamRef.current?.getTracks().forEach(t => t.stop());
     } catch {}
     filteredStreamRef.current = null;
-  }, []);
+    // Rebuild every peer's rx graph with the new listener-side rxEffect.
+    // If spec is null, graphs are torn down and streams play raw.
+    try { rebuildAllPeerRxGraphs(); } catch {}
+  }, [rebuildAllPeerRxGraphs]);
 
   // Swap the local squelch-bed sample to match the player's radio band.
   // Called by the consumer whenever the radio changes. Safe to call
