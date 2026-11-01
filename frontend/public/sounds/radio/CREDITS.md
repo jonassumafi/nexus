@@ -12,6 +12,10 @@ Specific per-file attribution per the SRS repo's `Original/Sources.txt`:
   samples contributed by **Bimbac** (Discord).
 - `VHF_NOISE.wav`, `UHF_NOISE.wav`, `HF_NOISE.wav`, `FM_NOISE.wav` —
   band-limited squelch backgrounds from the SRS AudioEffects collection.
+- `KY58_UHF_SECURE.wav` — cryptomap receive-static texture from the SRS
+  Original folder (originally `UHF KY58 RX Secure.wav`). Reserved for
+  cvsd-tagged crypto rigs (DX-201 Secure, KR-1A Jadro) so they have a
+  distinct bed vs non-crypto FM presets.
 - `frq-collision.wav`, `frq-collision2.wav`, `frq-collision3.wav` —
   simultaneous-transmission interference tones (from SRS Original folder).
 - `KY_58_TX.wav`, `KY_58_RX.wav` — crypto sync chirps played when a

@@ -58,10 +58,14 @@ const CLICK_URLS = {
   down: ['/sounds/radio/RADIO_TRANS_END.wav',   '/sounds/radio/RADIO_TRANS_END_ALTERNATE.wav'],
 };
 const BED_URL = {
-  UHF: '/sounds/radio/UHF_NOISE.wav',
-  VHF: '/sounds/radio/VHF_NOISE.wav',
-  HF:  '/sounds/radio/HF_NOISE.wav',
-  FM:  '/sounds/radio/FM_NOISE.wav',
+  UHF:  '/sounds/radio/UHF_NOISE.wav',
+  VHF:  '/sounds/radio/VHF_NOISE.wav',
+  HF:   '/sounds/radio/HF_NOISE.wav',
+  FM:   '/sounds/radio/FM_NOISE.wav',
+  // KY58 cryptomap static — reserved for cvsd-tagged crypto rigs so they
+  // get a bed distinct from non-crypto FM rigs. Shorter sample (~10 s)
+  // but seamlessly loops. See CREDITS.md.
+  KY58: '/sounds/radio/KY58_UHF_SECURE.wav',
 };
 
 // Per-ctx cache of decoded AudioBuffers so each sample is fetched + decoded

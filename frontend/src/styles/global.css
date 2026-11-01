@@ -104,9 +104,12 @@
   --key-hi: color-mix(in srgb, var(--blue) 30%, var(--bg1));
   --key-lo: color-mix(in srgb, var(--blue) 17%, var(--bg0));
 
-  /* go key */
-  --go-hi:  color-mix(in srgb, var(--lime) 40%, var(--bg0));
-  --go-lo:  color-mix(in srgb, var(--lime) 24%, var(--bg0));
+  /* go key — v1.1: brightened from 40/24% → 72/55% lime so the actual
+     button face reads as a convincing green instead of a dark olive
+     tinged with lime. White text + the brighter fill restores the
+     "primary action" affordance across every theme. */
+  --go-hi:  color-mix(in srgb, var(--lime) 72%, var(--bg0));
+  --go-lo:  color-mix(in srgb, var(--lime) 55%, var(--bg0));
   --go-rim: color-mix(in srgb, var(--lime) 62%, var(--bg0));
   --go-txt: color-mix(in srgb, var(--lime) 55%, #fff);
 
@@ -264,18 +267,26 @@ input:focus, textarea:focus, select:focus {
 .btn.sm   { font-size: 11px; padding: 5px 10px; }
 
 .btn.go {
-  color: var(--edge);
-  border-color: #2fbf66;
+  /* Green "Go" variant.
+     v1.1 — text was var(--edge) (near-black deepblue) which read as a
+     hard-to-see black on green; now white, matching the convention of
+     every other primary-action green button in the app. Border tightened
+     to a tone darker than --lime so it hugs the gradient fill rather
+     than visually floating as a bright frame outside a darker inset. */
+  color: #fff;
+  border-color: color-mix(in srgb, var(--lime) 70%, #000);
   background: linear-gradient(180deg, var(--go-hi), var(--go-lo));
   box-shadow:
-    0 1px 0 rgba(255,255,255,.5) inset,
-    0 3px 0 #0e5a2a,
+    0 1px 0 rgba(255,255,255,.28) inset,
+    0 3px 0 color-mix(in srgb, var(--lime) 35%, #000),
     0 5px 8px rgba(0,0,0,.4);
+  text-shadow: 0 1px 0 rgba(0,0,0,.35);
 }
+.btn.go:hover  { color: #fff; }
 .btn.go:active {
   box-shadow:
-    0 1px 0 rgba(255,255,255,.4) inset,
-    0 0 0 #0e5a2a;
+    0 1px 0 rgba(255,255,255,.22) inset,
+    0 0 0 color-mix(in srgb, var(--lime) 35%, #000);
 }
 
 .btn.amb {

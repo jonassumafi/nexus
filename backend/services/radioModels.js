@@ -17,12 +17,14 @@ const HIDE_FROM_PICKER = new Set(['link16', 'intercom', 'hfnoise']);
 // behaves faithfully; only the player-facing labels are reskinned to fit
 // the in-universe fiction (we're a Star Citizen fan project, not a
 // military sim, so an "ARC-164" would feel out of place).
-// `band` maps the preset to one of the four SRS noise-bed .wav samples
+// `band` maps the preset to one of the SRS noise-bed .wav samples
 // in frontend/public/sounds/radio/. Rough logic:
 //   UHF   → tight 3 kHz band-limit, handheld / consumer character
 //   VHF   → standard 5 kHz, ship-fit and broadcast
 //   HF    → wider 8 kHz with atmospheric fade, legacy / long-range
 //   FM    → full-spectrum, military FM data-capable rigs
+//   KY58  → crypto-receive secure static. Reserved for cvsd-tagged rigs
+//           so they get a distinctive bed vs non-crypto FM rigs.
 const META = {
   arc27:    { label: 'VX-27 Scoutlink',       family: 'personal',  band: 'UHF', blurb: 'Lightweight scout handheld — tight bandwidth, loud carrier.' },
   arc51:    { label: 'VX-51 Fieldmaster',     family: 'personal',  band: 'VHF', blurb: 'Field-grade handheld, mid-brightness voice.' },
@@ -30,12 +32,12 @@ const META = {
   arc134:   { label: 'VX-134 Patrol',         family: 'ship',      band: 'VHF', blurb: 'Patrol-class rig, balanced warmth.' },
   arc164:   { label: 'UV-164 Guard',          family: 'ship',      band: 'UHF', blurb: 'Guard-channel broadcast, dense mid-range, prominent sidechain compression.' },
   arc186:   { label: 'VX-186 Hauler',         family: 'ship',      band: 'VHF', blurb: 'Civilian hauler fit-standard, forgiving dynamics.' },
-  arc201d:  { label: 'DX-201 Secure',         family: 'ship',      band: 'FM',  blurb: 'Secure-voice rig with crypto discipline. Bright, bit-crushed.' },
+  arc201d:  { label: 'DX-201 Secure',         family: 'ship',      band: 'KY58', blurb: 'Secure-voice rig with crypto discipline. Bright, bit-crushed, cryptomap static.' },
   arc210:   { label: 'MX-210 Interop',        family: 'broadcast', band: 'VHF', blurb: 'Multi-band interop broadcaster. Clean body, assertive compression.' },
   arc220:   { label: 'MX-220 Datalink',       family: 'broadcast', band: 'FM',  blurb: 'Data-capable broadcast rig, warm high-end.' },
   arc222:   { label: 'MX-222 Dispatch',       family: 'broadcast', band: 'VHF', blurb: 'Dispatch-grade broadcast, high clarity.' },
   baklan5:  { label: 'KR-5 Baklan',           family: 'ship',      band: 'VHF', blurb: 'Soviet-pattern cockpit rig. Narrow midband, aggressive peak.' },
-  jadro1a:  { label: 'KR-1A Jadro',           family: 'ship',      band: 'FM',  blurb: 'Secure cockpit set with distinctive compression curve.' },
+  jadro1a:  { label: 'KR-1A Jadro',           family: 'ship',      band: 'KY58', blurb: 'Secure cockpit set with distinctive compression curve + cryptomap bed.' },
   r800:     { label: 'KR-800 Flight',         family: 'ship',      band: 'VHF', blurb: 'Flight-standard transceiver, tight presence.' },
   r828:     { label: 'KR-828 Line',           family: 'ship',      band: 'UHF', blurb: 'Line-of-sight pattern, mid-forward voicing.' },
   r832m:    { label: 'KR-832M Military',      family: 'ship',      band: 'VHF', blurb: 'Military-pattern voice, deliberate saturation.' },
