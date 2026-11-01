@@ -3,7 +3,7 @@ import { useSocketContext } from '../context/SocketContext';
 import api from '../services/api';
 import { buildSpacesuitChain } from '../utils/spacesuitFilter';
 import { getRadioChrome, getOutboundDelay, channelColor } from '../utils/radioChrome';
-import { buildSrsChain } from '../utils/srsChain';
+import { buildSrsChain, ensureCvsdWorkletLoaded } from '../utils/srsChain';
 
 // Apply a per-frequency color on top of the operator's base profile.
 // Idempotent — safe to call every time the freq changes or chain rebuilds.
@@ -125,6 +125,12 @@ export function useRadioConnection({
     }
     // Apply any band that was stashed by setSrsRadioBand before ctx existed.
     try { getRadioChrome(ctx)?.setBand?.(srsBandRef.current); } catch {}
+    // Preload the CVSD vocoder worklet so cvsd-equipped SRS presets
+    // (ARC-201D "DX-201 Secure", KR-1A "Jadro") get the real adaptive
+    // delta-modulation vocoder instead of the bitcrush fallback. Awaited
+    // here so the first chain build (just below) can synchronously
+    // instantiate AudioWorkletNodes.
+    try { await ensureCvsdWorkletLoaded(ctx); } catch {}
 
     if (!analyserRef.current) {
       const analyser = ctx.createAnalyser();

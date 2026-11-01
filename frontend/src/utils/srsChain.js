@@ -41,6 +41,28 @@
 
 const DEBUG = false;
 
+// CVSD AudioWorklet path. Preferred over bitcrush approximation for the
+// crypto-enabled SRS presets (ARC-201D, KR-1A Jadro). Registration is
+// idempotent per AudioContext, so repeat calls are cheap. Call this once
+// before building any SRS chain that may contain a `cvsd` effect; the
+// in-chain code will fall back to WaveShaper bitcrush if the worklet
+// isn't available (unsupported browser, load error, etc.).
+const CVSD_WORKLET_URL = '/worklets/cvsd_vocoder.js';
+const CVSD_LOADED = new WeakSet();
+
+export async function ensureCvsdWorkletLoaded(ctx) {
+  if (!ctx || !ctx.audioWorklet) return false;
+  if (CVSD_LOADED.has(ctx)) return true;
+  try {
+    await ctx.audioWorklet.addModule(CVSD_WORKLET_URL);
+    CVSD_LOADED.add(ctx);
+    return true;
+  } catch (err) {
+    console.warn('[srsChain] CVSD worklet load failed, falling back to bitcrush:', err?.message);
+    return false;
+  }
+}
+
 export function buildSrsChain(ctx, effect) {
   if (!ctx || !effect) return null;
   const nodes = [];
@@ -152,14 +174,30 @@ function buildEffect(ctx, effect, nodes) {
     }
 
     case 'cvsd': {
-      // CVSD vocoder approximation. True implementation would need an
-      // AudioWorklet with 16-kbit delta-modulation + reconstruction;
-      // for now we insert a mild bitcrush-via-WaveShaper so there's SOME
-      // digital artifact signature on crypto-enabled radios. Marked as
-      // a known approximation in the file header above.
+      // Prefer the real CVSD AudioWorklet (16-kbit adaptive delta
+      // modulation — see public/worklets/cvsd_vocoder.js). Falls back
+      // to bitcrush-via-WaveShaper if the worklet isn't registered
+      // yet or isn't supported.
+      if (CVSD_LOADED.has(ctx)) {
+        try {
+          const node = new AudioWorkletNode(ctx, 'cvsd-vocoder');
+          // Default params match SRS's KY-57-ish character; can be
+          // tuned per-preset later.
+          node.port.postMessage({
+            enabled: true, bitRate: 16000,
+            stepMin: 0.0012, stepMax: 0.12, decay: 0.985,
+          });
+          nodes.push(node);
+          return { head: node, tail: node };
+        } catch (err) {
+          console.warn('[srsChain] cvsd worklet instantiation failed, falling back:', err?.message);
+        }
+      }
+      // Fallback: 10-bit WaveShaper bitcrush. Not as granular as true
+      // CVSD but keeps a digital-crypto flavor on the signal.
       const shaper = ctx.createWaveShaper();
       shaper.oversample = 'none';
-      shaper.curve = makeBitcrushCurve(10); // 10-bit effective resolution
+      shaper.curve = makeBitcrushCurve(10);
       nodes.push(shaper);
       return { head: shaper, tail: shaper };
     }
