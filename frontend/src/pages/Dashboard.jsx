@@ -3334,7 +3334,7 @@ export default function Dashboard() {
                 title="Expand"
                 style={{ padding: '3px 8px', fontSize: 12, minWidth: 32 }}
               >
-                »
+                «
               </button>
               <div style={{
                 writingMode: 'vertical-rl',
@@ -3373,7 +3373,7 @@ export default function Dashboard() {
               aria-label="Collapse right column"
               style={{ padding: '3px 8px', fontSize: 12, minWidth: 32 }}
             >
-              «
+              »
             </button>
           </div>
           <div style={{ flex: feedCollapsed ? '0 0 auto' : 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>

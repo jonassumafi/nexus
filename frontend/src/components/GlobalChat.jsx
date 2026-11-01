@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import { useSocketContext } from '../context/SocketContext';
+import { playKeystroke, preloadKeystroke } from '../utils/keystrokeSfx';
 
 const UNREAD_KEY  = 'nexus_chat_last_seen_ts';
 const RECT_KEY    = 'nexus_chat_popover_rect';
@@ -137,6 +138,9 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
     }).catch(() => setMessages([]));
     markSeen?.();
     setTimeout(() => inputRef.current?.focus(), 50);
+    // Pre-decode the typing sample so the first keystroke isn't delayed
+    // by the fetch+decode. Safe no-op if already loaded.
+    preloadKeystroke();
     // First-time detach hint (popover mode only).
     if (!isPopout && electron) {
       try {
@@ -431,7 +435,15 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
           type="text"
           value={draft}
           onChange={e => setDraft(e.target.value.slice(0, 500))}
-          onKeyDown={e => { if (e.key === 'Enter') send(); }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { send(); return; }
+            // Mechanical-keyboard SFX — only for keys that actually
+            // modify the field. Skip modifiers, Escape, arrow keys,
+            // Tab, etc.
+            if (e.key === 'Backspace' || e.key === 'Delete' || e.key === ' ' || e.key.length === 1) {
+              playKeystroke();
+            }
+          }}
           placeholder="Say something…"
           style={{
             flex: 1,

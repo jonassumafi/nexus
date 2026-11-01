@@ -289,6 +289,32 @@ input:focus, textarea:focus, select:focus {
     0 0 0 color-mix(in srgb, var(--lime) 35%, #000);
 }
 
+/* Save-confirmation pulse — animate text + glow + edge so any .btn.go
+   with .saved applied momentarily "pops" to confirm persistence. Add
+   .saved via JS on save success, auto-remove after animation. */
+.btn.go.saved {
+  animation: nexus-save-pulse .95s ease-out;
+}
+@keyframes nexus-save-pulse {
+  0%   { color: #fff; text-shadow: 0 0 0 color-mix(in srgb, var(--lime) 100%, transparent); box-shadow:
+    0 1px 0 rgba(255,255,255,.28) inset,
+    0 3px 0 color-mix(in srgb, var(--lime) 35%, #000),
+    0 5px 8px rgba(0,0,0,.4); }
+  25%  { color: #fff; text-shadow: 0 0 14px color-mix(in srgb, var(--lime) 95%, transparent),
+                                   0 0 24px color-mix(in srgb, var(--lime) 60%, transparent); box-shadow:
+    0 1px 0 rgba(255,255,255,.5) inset,
+    0 3px 0 color-mix(in srgb, var(--lime) 55%, #000),
+    0 5px 18px color-mix(in srgb, var(--lime) 65%, transparent); }
+  60%  { color: #fff; text-shadow: 0 0 6px color-mix(in srgb, var(--lime) 55%, transparent); box-shadow:
+    0 1px 0 rgba(255,255,255,.3) inset,
+    0 3px 0 color-mix(in srgb, var(--lime) 40%, #000),
+    0 5px 10px color-mix(in srgb, var(--lime) 30%, transparent); }
+  100% { color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.35); box-shadow:
+    0 1px 0 rgba(255,255,255,.28) inset,
+    0 3px 0 color-mix(in srgb, var(--lime) 35%, #000),
+    0 5px 8px rgba(0,0,0,.4); }
+}
+
 .btn.amb {
   color: #1d1300;
   border-color: #c48a14;
