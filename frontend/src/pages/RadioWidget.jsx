@@ -23,7 +23,6 @@ import api from '../services/api';
 import TitleBar from '../components/TitleBar';
 import { playTune, playTransmit, playMute, playUnmute } from '../utils/audioFx';
 import FreqTuneInput from '../components/FreqTuneInput';
-import VoiceProfileModal from '../components/VoiceProfileModal';
 
 const PROFILE_FIELDS = [
   'highpass', 'lowpass', 'resonance_freq', 'resonance_q',
@@ -36,7 +35,6 @@ export default function RadioWidget() {
 
   const [voiceProfile, setVoiceProfile]     = useState(null);
   const [profileVersion, setProfileVersion] = useState(0);
-  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [pttKey, setPttKey]                 = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
   const [isMuted, setIsMuted]               = useState(false);
   const [micDeviceId]    = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
@@ -162,9 +160,6 @@ export default function RadioWidget() {
         <button className="btn" title="Companion"
           onClick={() => electron?.setMode?.('companion')}
           style={{ fontSize: 10, padding: '4px 8px' }}>▬ Companion</button>
-        <button className="btn" title="Edit voice profile"
-          onClick={() => setShowVoiceModal(true)}
-          style={{ fontSize: 10, padding: '4px 8px' }}>🎚 Edit Voice</button>
         <div style={{ flex: 1 }} />
         <button
           className={`btn${pinned ? ' nt on' : ''}`}
@@ -307,15 +302,6 @@ export default function RadioWidget() {
         {speakingPeer ? `${speakingPeer.label} speaking` :
           tunedFrequency ? 'Standby' : 'Not tuned'}
       </div>
-      <VoiceProfileModal
-        open={showVoiceModal}
-        onClose={() => setShowVoiceModal(false)}
-        voiceProfile={voiceProfile}
-        setVoiceProfile={setVoiceProfile}
-        bumpVersion={() => setProfileVersion(v => v + 1)}
-        pttKey={pttKey}
-        setPttKey={setPttKey}
-      />
     </div>
   );
 }

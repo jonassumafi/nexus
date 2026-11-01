@@ -1,22 +1,29 @@
-// Web Audio chain that simulates a spacesuit/helmet radio:
-//   source → pitchShifter → highpass → lowpass → peaking (resonance)
-//          → waveshaper (distortion) → bitCrusher
-//          → mixer ← static-noise gain
-//                  ← click buffer (on demand)
+// Minimal pre-SRS stage, matching SRS's architecture: the radio model's
+// txEffect chain (built downstream in useRadioConnection via srsChain.js)
+// does all voice character shaping. This file is intentionally thin so it
+// doesn't double-filter the signal before SRS gets to it — a prior design
+// stacked a full HP/LP/peak/distortion/bitcrush chain here, which combined
+// with the SRS tx chain and the listener's rx chain to filter voices into
+// inaudibility.
 //
-// Returns { output, playClick, setParam, setProfile, dispose }.
+// What remains:
+//   source → pitchShifter → mixer ← baked-in noise (per-player static_level)
+//                                 ← click buffer (on demand)
+//
+// Per-player variation is now:
+//   - pitch_shift   : non-destructive, just raises/lowers formants
+//   - static_level  : the hiss volume baked into their transmission
+// All other character comes from the operator's assigned SRS radio model
+// (ARC-164, Jadro-1A, intercom, etc.), applied downstream.
+//
+// Public API unchanged from previous versions so useRadioConnection keeps
+// working: { output, playClick, setParam, setProfile, dispose }. setParam
+// legacy fields that used to drive filters are now intentional no-ops.
 
-// AudioWorklet module registrations are idempotent on the same AudioContext,
-// so calling addModule on each chain build is safe. Modules ship from
-// public/worklets and are served at these absolute paths.
 const PITCH_WORKLET_URL = '/worklets/pitch_shifter.js';
-const BIT_WORKLET_URL   = '/worklets/bit_crusher.js';
 
 async function ensureWorkletsLoaded(ctx) {
-  await Promise.all([
-    ctx.audioWorklet.addModule(PITCH_WORKLET_URL),
-    ctx.audioWorklet.addModule(BIT_WORKLET_URL),
-  ]);
+  await ctx.audioWorklet.addModule(PITCH_WORKLET_URL);
 }
 
 function createPitchShifterNode(ctx, initSemitones) {
@@ -28,49 +35,15 @@ function createPitchShifterNode(ctx, initSemitones) {
   };
 }
 
-function createBitCrusherNode(ctx, initBits) {
-  const node = new AudioWorkletNode(ctx, 'bit-crusher');
-  node.port.postMessage({ bitDepth: initBits != null ? initBits : 16 });
-  return {
-    node,
-    setBits: (b) => node.port.postMessage({ bitDepth: b }),
-  };
-}
-
 export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
   const p = withDefaults(profile);
 
   await ensureWorkletsLoaded(audioContext);
 
   const { node: pitchNode, setRate } = createPitchShifterNode(audioContext, p.pitch_shift);
-  const { node: bitNode, setBits }   = createBitCrusherNode(audioContext, p.bit_crush);
-
-  const highpass = audioContext.createBiquadFilter();
-  highpass.type = 'highpass';
-  highpass.frequency.value = p.highpass;
-
-  const lowpass = audioContext.createBiquadFilter();
-  lowpass.type = 'lowpass';
-  lowpass.frequency.value = p.lowpass;
-
-  const resonance = audioContext.createBiquadFilter();
-  resonance.type = 'peaking';
-  resonance.frequency.value = p.resonance_freq;
-  resonance.Q.value = p.resonance_q;
-  resonance.gain.value = 6;
-
-  const distortion = audioContext.createWaveShaper();
-  distortion.curve = makeDistortionCurve(p.distortion);
-  distortion.oversample = '4x';
 
   const mixer = audioContext.createGain();
-  // v1.1.6 — outbound makeup bumped 2.8 → 5.6 (~+15 dB from unity).
-  // Baseline is now loud enough that users don't need the sensitivity
-  // slider past 100 % to be heard clearly through the squelch bed.
-  // The bitcrusher downstream soft-saturates anything that would
-  // otherwise clip; voices on hot mics may read as slightly over-
-  // driven, which fits the radio aesthetic.
-  mixer.gain.value = 5.6;
+  mixer.gain.value = 1.0;
 
   const noiseSource = createWhiteNoiseSource(audioContext);
   const noiseGain = audioContext.createGain();
@@ -78,14 +51,9 @@ export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
   noiseSource.connect(noiseGain);
   noiseGain.connect(mixer);
 
-  // source → pitch → highpass → lowpass → resonance → distortion → bitCrush → mixer
+  // source → pitch → mixer
   sourceNode.connect(pitchNode);
-  pitchNode.connect(highpass);
-  highpass.connect(lowpass);
-  lowpass.connect(resonance);
-  resonance.connect(distortion);
-  distortion.connect(bitNode);
-  bitNode.connect(mixer);
+  pitchNode.connect(mixer);
 
   const playClick = (type) => {
     const buf = makeClickBuffer(audioContext, type);
@@ -99,39 +67,26 @@ export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
     src.stop(audioContext.currentTime + buf.duration + 0.02);
   };
 
-  let lastDistortion = p.distortion;
   const SMOOTH = 0.01;
   const setParam = (field, value) => {
     if (value == null || isNaN(value)) return;
     const v = Number(value);
     const now = audioContext.currentTime;
     switch (field) {
-      case 'highpass':
-        highpass.frequency.setTargetAtTime(v, now, SMOOTH);
-        break;
-      case 'lowpass':
-        lowpass.frequency.setTargetAtTime(v, now, SMOOTH);
-        break;
-      case 'resonance_freq':
-        resonance.frequency.setTargetAtTime(v, now, SMOOTH);
-        break;
-      case 'resonance_q':
-        resonance.Q.setTargetAtTime(v, now, SMOOTH);
-        break;
       case 'static_level':
         noiseGain.gain.setTargetAtTime(v, now, SMOOTH);
-        break;
-      case 'distortion':
-        if (Math.abs(v - lastDistortion) > 0.001) {
-          distortion.curve = makeDistortionCurve(v);
-          lastDistortion = v;
-        }
         break;
       case 'pitch_shift':
         setRate(v);
         break;
+      case 'highpass':
+      case 'lowpass':
+      case 'resonance_freq':
+      case 'resonance_q':
+      case 'distortion':
       case 'bit_crush':
-        setBits(v);
+        // Legacy fields — voice character now comes from the SRS radio
+        // model chain downstream, not from this stage. Intentionally no-op.
         break;
       default:
         // unknown field — ignore
@@ -140,24 +95,13 @@ export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
 
   const setProfile = (newProfile) => {
     const np = withDefaults(newProfile);
-    setParam('highpass',       np.highpass);
-    setParam('lowpass',        np.lowpass);
-    setParam('resonance_freq', np.resonance_freq);
-    setParam('resonance_q',    np.resonance_q);
-    setParam('static_level',   np.static_level);
-    setParam('distortion',     np.distortion);
-    setParam('pitch_shift',    np.pitch_shift);
-    setParam('bit_crush',      np.bit_crush);
+    setParam('static_level', np.static_level);
+    setParam('pitch_shift',  np.pitch_shift);
   };
 
   const dispose = () => {
     try { sourceNode.disconnect(); } catch {}
     try { pitchNode.disconnect(); } catch {}
-    try { highpass.disconnect(); } catch {}
-    try { lowpass.disconnect(); } catch {}
-    try { resonance.disconnect(); } catch {}
-    try { distortion.disconnect(); } catch {}
-    try { bitNode.disconnect(); } catch {}
     try { noiseSource.stop(); } catch {}
     try { noiseSource.disconnect(); } catch {}
     try { noiseGain.disconnect(); } catch {}
@@ -168,27 +112,30 @@ export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
 }
 
 export function randomVoiceProfile() {
+  // Per-player variation that doesn't fight the SRS chain downstream.
   return {
-    highpass:       randIntInRange(200, 500),
-    lowpass:        randIntInRange(2500, 4000),
-    resonance_freq: randIntInRange(1000, 2000),
-    resonance_q:    round(randInRange(1.5, 4.5), 1),
-    distortion:     randIntInRange(5, 30),
-    static_level:   round(randInRange(0.003, 0.012), 3),
-    pitch_shift:    0,
+    pitch_shift:  round(randInRange(-1.5, 1.5), 1),
+    static_level: round(randInRange(0.004, 0.012), 3),
+    // retained for schema compatibility — ignored by the chain
+    highpass:       350,
+    lowpass:        3250,
+    resonance_freq: 1500,
+    resonance_q:    3.0,
+    distortion:     0,
     bit_crush:      16,
   };
 }
 
 export const VOICE_PROFILE_RANGES = {
+  pitch_shift:    { min: -4,    max: 4,     step: 0.1,   default: 0      },
+  static_level:   { min: 0.001, max: 0.03,  step: 0.001, default: 0.008  },
+  // deprecated fields kept for UI compat
   highpass:       { min: 100,   max: 800,   step: 1,     default: 350    },
   lowpass:        { min: 800,   max: 8000,  step: 1,     default: 3250   },
   resonance_freq: { min: 1000,  max: 2000,  step: 1,     default: 1500   },
   resonance_q:    { min: 1.5,   max: 12,    step: 0.1,   default: 3.0    },
-  distortion:     { min: 5,     max: 80,    step: 1,     default: 17     },
-  static_level:   { min: 0.003, max: 0.05,  step: 0.001, default: 0.0075 },
-  pitch_shift:    { min: -4,    max: 4,     step: 0.1,   default: 0      },
-  bit_crush:      { min: 4,     max: 16,    step: 1,     default: 16     },
+  distortion:     { min: 0,     max: 0,     step: 1,     default: 0      },
+  bit_crush:      { min: 16,    max: 16,    step: 1,     default: 16     },
 };
 
 function withDefaults(profile) {
@@ -198,27 +145,9 @@ function withDefaults(profile) {
     return (profile && profile[k] != null && !isNaN(profile[k])) ? Number(profile[k]) : def;
   };
   return {
-    highpass:       v('highpass'),
-    lowpass:        v('lowpass'),
-    resonance_freq: v('resonance_freq'),
-    resonance_q:    v('resonance_q'),
-    distortion:     v('distortion'),
-    static_level:   v('static_level'),
-    pitch_shift:    v('pitch_shift'),
-    bit_crush:      v('bit_crush'),
+    pitch_shift:  v('pitch_shift'),
+    static_level: v('static_level'),
   };
-}
-
-function makeDistortionCurve(amount) {
-  const n = 4096;
-  const curve = new Float32Array(n);
-  const deg = Math.PI / 180;
-  const a = Math.max(0, Number(amount) || 0);
-  for (let i = 0; i < n; i++) {
-    const x = (i * 2) / n - 1;
-    curve[i] = ((3 + a) * x * 20 * deg) / (Math.PI + a * Math.abs(x));
-  }
-  return curve;
 }
 
 function createWhiteNoiseSource(audioContext) {
@@ -248,5 +177,4 @@ function makeClickBuffer(audioContext, type) {
 }
 
 function randInRange(min, max) { return Math.random() * (max - min) + min; }
-function randIntInRange(min, max) { return Math.floor(randInRange(min, max + 1)); }
 function round(n, decimals) { const f = Math.pow(10, decimals); return Math.round(n * f) / f; }

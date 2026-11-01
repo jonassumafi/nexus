@@ -21,7 +21,6 @@ import ThemePicker from '../components/ThemePicker';
 import TitleBar from '../components/TitleBar';
 import { playTune, playTransmit, playMute, playUnmute } from '../utils/audioFx';
 import FreqTuneInput from '../components/FreqTuneInput';
-import VoiceProfileModal from '../components/VoiceProfileModal';
 
 // Error boundary — a renderer crash inside Companion was manifesting as
 // the Electron window "abruptly closing" because the sub-mode window
@@ -99,7 +98,6 @@ function Companion() {
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
 
   const [pinned, setPinned] = useState(false);
-  const [showVoiceModal, setShowVoiceModal] = useState(false);
   useEffect(() => {
     if (!electron?.onWindowState) return;
     return electron.onWindowState((s) => {
@@ -288,10 +286,6 @@ function Companion() {
         Nexus Companion
       </span>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <button className="btn"
-          onClick={() => setShowVoiceModal(true)}
-          title="Voice profile"
-          style={{ width: 26, height: 22, padding: 0, fontSize: 11 }}>🎚</button>
         <ThemePicker compact />
         <button className={`btn${pinned ? ' nt on' : ''}`}
           onClick={async () => { if (!electron) return; const next = await electron.togglePin(); setPinned(next); }}
@@ -510,15 +504,6 @@ function Companion() {
         {tabs}
       </div>
       {radioStrip}
-      <VoiceProfileModal
-        open={showVoiceModal}
-        onClose={() => setShowVoiceModal(false)}
-        voiceProfile={voiceProfile}
-        setVoiceProfile={setVoiceProfile}
-        bumpVersion={() => setProfileVersion(v => v + 1)}
-        pttKey={pttKey}
-        setPttKey={setPttKey}
-      />
     </div>
   );
 }

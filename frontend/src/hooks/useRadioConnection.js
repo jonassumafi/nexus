@@ -169,10 +169,17 @@ export function useRadioConnection({
       }
     }
 
-    // v1.1.4 — FM pre-emphasis temporarily disabled alongside the rx
-    // de-emphasis (see attachPeerRxGraph). Will re-enable once the
-    // Web Audio peer-rx pipeline is confirmed non-breaking in a
-    // multi-browser test.
+    // FM pre-emphasis — if MY rig is on the FM band, boost highs on
+    // outbound. Pairs with the matching de-emphasis the listener's FM
+    // receiver applies on rx (see attachPeerRxGraph). Non-FM rigs skip.
+    if (srsBandRef.current === 'FM') {
+      const preEmphasis = ctx.createBiquadFilter();
+      preEmphasis.type = 'highshelf';
+      preEmphasis.frequency.value = 2122;  // 75 µs time constant
+      preEmphasis.gain.value = 6;
+      srsOutput.connect(preEmphasis);
+      srsOutput = preEmphasis;
+    }
 
     // 80 ms outbound delay (DCS pre-click feel) between the voice chain
     // and the peer destination.
@@ -332,12 +339,6 @@ export function useRadioConnection({
 
         const audio = new Audio();
         audio.autoplay = true;
-        // v1.1.6 — further-amplify peer voices (2.0 is near the upper
-        // useful limit before Chromium's internal limiter kicks in).
-        // Together with the outbound +15 dB makeup in spacesuitFilter,
-        // this roughly doubles effective voice loudness vs the previous
-        // tuning so users don't need to touch sensitivity.
-        try { audio.volume = 2.0; } catch {}
         peerAudiosRef.current[peerSocketId] = audio;
 
         // Wire the stream through the listener's own SRS rxEffect if we
@@ -386,21 +387,11 @@ export function useRadioConnection({
     }
   }, []);
 
-  // Build the per-peer Web Audio graph that applies the listener's own
-  // SRS rxEffect to this peer's incoming stream, then feeds a brand new
-  // MediaStream back to the <audio> element so setSinkId / autoplay
-  // still work. If no AudioContext or no rxEffect is available we skip
-  // DSP cleanly — audio.srcObject points at the raw stream and the
-  // behavior matches the pre-rxEffect code path.
-  // v1.1.4 — rx DSP temporarily disabled. The Web Audio graph
-  // (source → rxEffect → AGC → MediaStreamDestination → audio.srcObject)
-  // was silencing peer voices for some users even though the local
-  // squelch bed kept playing (that goes through ctx.destination
-  // directly, not this chain). Falling back to raw stream playback
-  // restores known-good Phase 3 behavior while we debug the Web Audio
-  // path. rxEffect, FM de-emphasis, and AGC on receive are therefore
-  // currently NO-OPS — the listener's radio only colors their own
-  // outbound character via the tx chain.
+  // Peer rx DSP bypassed. The listener-side chain (source → rxEffect →
+  // AGC → MediaStreamDestination) silenced peer voices in testing. Each
+  // sender's radio character is already baked into the outbound stream
+  // via their own tx chain in ensureMicAndChain(), so skipping listener
+  // DSP preserves per-radio variation while keeping voices audible.
   const attachPeerRxGraph = useCallback((peerSocketId, stream, audio) => {
     detachPeerRxGraph(peerSocketId);
     try { audio.srcObject = stream; } catch {}
@@ -457,13 +448,6 @@ export function useRadioConnection({
     setTransmittingPeerIds([]);
   }, [cleanupPeer]);
 
-  // Persisted-tune keys. Writing freq + mission + timestamp here means a
-  // view switch (Dashboard → Companion → Radio-only, all of which fully
-  // reload the frontend URL via Electron's switchMode) can rejoin the
-  // same frequency on mount instead of forcing the operator to retune.
-  const TUNE_LS_KEY = 'nexus_persisted_tune';
-  const TUNE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes — stale enough tunes don't auto-rejoin
-
   const joinFrequency = useCallback(async (freq, missionId) => {
     if (!socket || !freq) return;
     const f = String(freq).trim();
@@ -487,17 +471,6 @@ export function useRadioConnection({
     // Per-channel squelch bed profile (brick-wall cutoff + optional AM fade).
     try { getRadioChrome(audioCtxRef.current)?.setChannel?.(f); } catch {}
     socket.emit('radio:join', { frequency: f, missionId });
-    // Persist so view switches can rejoin automatically.
-    try {
-      localStorage.setItem(TUNE_LS_KEY, JSON.stringify({
-        freq: f, missionId: missionId || null, ts: Date.now(),
-      }));
-    } catch {}
-    // Self-connect cue — plays for the operator themselves, in every
-    // mode (Dashboard, Companion, Radio-only). Previously only peer
-    // joins triggered freq_connect; the user had no feedback that
-    // their own tune succeeded.
-    try { new Audio('/sounds/freq_connect.mp3').play().catch(() => {}); } catch {}
   }, [socket, ensureMicAndChain, cleanupAllPeers]);
 
   const teardownAudioChain = useCallback(() => {
@@ -530,11 +503,8 @@ export function useRadioConnection({
   const leaveFrequency = useCallback(() => {
     if (currentFreqRef.current && socket) {
       socket.emit('radio:leave', { frequency: currentFreqRef.current });
-      try { new Audio('/sounds/freq_disconnect.mp3').play().catch(() => {}); } catch {}
+      new Audio('/sounds/radio_disconnect.mp3').play().catch(() => {});
     }
-    // Clear the persisted tune — an explicit leave means "I'm done,"
-    // so subsequent view switches should NOT auto-rejoin.
-    try { localStorage.removeItem(TUNE_LS_KEY); } catch {}
     cleanupAllPeers();
     teardownAudioChain();
     currentFreqRef.current = null;
@@ -611,15 +581,12 @@ export function useRadioConnection({
   }, []);
 
   const stopPTT = useCallback(() => {
-    // v1.1.2 — strict guard. Previously this also ran its close-click
-    // path if filteredStreamRef.current existed (mic had ever been
-    // opened), which meant onMouseLeave on the Transmit button fired
-    // a click sound on every hover-exit even when the user had never
-    // pressed. Now a no-op unless PTT was genuinely active.
-    if (!isPTTActive) return;
+    if (!isPTTActive && !filteredStreamRef.current) return;
     if (filterChainRef.current) {
       try { filterChainRef.current.playClick('close'); } catch {}
     }
+    // Local key-down cue — synthesized tail click + hiss. Bed stays on
+    // if any peer is still transmitting; otherwise it fades out.
     try {
       const rc = getRadioChrome(audioCtxRef.current);
       rc?.playKeyDown();
@@ -627,6 +594,7 @@ export function useRadioConnection({
         rc?.setBedActive(false);
       }
     } catch {}
+    // Tiny delay before muting so the close click is included in the stream.
     setTimeout(() => {
       if (filteredStreamRef.current) {
         for (const t of filteredStreamRef.current.getAudioTracks()) t.enabled = false;
@@ -637,37 +605,6 @@ export function useRadioConnection({
       socket.emit('radio:ptt-stop', { frequency: currentFreqRef.current });
     }
   }, [socket, isPTTActive]);
-
-  // Auto-rejoin a recently-tuned frequency on mount. When Electron
-  // switches modes (full → companion → radio-only) it reloads the
-  // frontend URL, which blows away in-memory state. Reading the
-  // persisted tune here lets the hook rejoin automatically if the
-  // last tune happened within TUNE_MAX_AGE_MS. Fired AFTER the socket
-  // is live, so joinFrequency has a working socket to emit on.
-  useEffect(() => {
-    if (!socket) return;
-    let cancelled = false;
-    try {
-      const raw = localStorage.getItem(TUNE_LS_KEY);
-      if (!raw) return;
-      const { freq, missionId, ts } = JSON.parse(raw);
-      if (!freq || !ts) return;
-      if (Date.now() - ts > TUNE_MAX_AGE_MS) {
-        localStorage.removeItem(TUNE_LS_KEY);
-        return;
-      }
-      // Already tuned to the same freq (e.g. the hook remounted but
-      // currentFreqRef somehow survived) — no-op.
-      if (currentFreqRef.current === freq) return;
-      // Small delay so the Companion / Radio page can finish its own
-      // first-tick setup (voice profile load, radio load, etc.) before
-      // we open the mic.
-      const tid = setTimeout(() => {
-        if (!cancelled) joinFrequency(freq, missionId).catch(() => {});
-      }, 350);
-      return () => { cancelled = true; clearTimeout(tid); };
-    } catch {}
-  }, [socket, joinFrequency]);
 
   // ── Socket listeners ──────────────────────────────────────────────────────
   useEffect(() => {

@@ -1,42 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
-import {
-  VOICE_PROFILE_RANGES,
-  randomVoiceProfile,
-  buildSpacesuitChain,
-} from '../utils/spacesuitFilter';
-
-const PROFILE_FIELDS = [
-  'highpass', 'lowpass', 'resonance_freq', 'resonance_q',
-  'distortion', 'static_level', 'pitch_shift', 'bit_crush',
-];
-
-const FIELD_LABELS = {
-  highpass:       'HIGHPASS CUTOFF',
-  lowpass:        'LOWPASS CUTOFF',
-  resonance_freq: 'RESONANCE FREQ',
-  resonance_q:    'RESONANCE Q',
-  distortion:     'DISTORTION',
-  static_level:   'STATIC LEVEL',
-  pitch_shift:    'PITCH SHIFT',
-  bit_crush:      'BIT CRUSH',
-};
-
-const FIELD_UNITS = {
-  highpass:       'Hz',
-  lowpass:        'Hz',
-  resonance_freq: 'Hz',
-  resonance_q:    '',
-  distortion:     '',
-  static_level:   '',
-  pitch_shift:    '',
-  bit_crush:      '',
-};
-
-const FIELD_DISPLAY = {
-  pitch_shift: (v) => (v >= 0 ? '+' : '') + Number(v).toFixed(1) + 'st',
-  bit_crush:   (v) => Math.round(v) + ' bit',
-};
 
 const FONT = "'Inter', system-ui, sans-serif";
 
@@ -45,15 +8,6 @@ const playTuneClick = () => {
   const pick = TUNE_CLIPS[Math.floor(Math.random() * TUNE_CLIPS.length)];
   new Audio(`/sounds/${pick}.mp3`).play().catch(() => {});
 };
-
-// Tiny helper: tag the next successful save on a `.btn.go` so the CSS
-// pulse animation fires. Called by SettingsView's onSave on success.
-function pulseSaveBtn(btnEl) {
-  if (!btnEl) return;
-  btnEl.classList.remove('saved');
-  requestAnimationFrame(() => btnEl.classList.add('saved'));
-  setTimeout(() => btnEl.classList.remove('saved'), 2850);
-}
 
 // Every child container is transparent so the texture behind shows through
 // the whole panel. Dividers are semi-transparent black — the design calls for
@@ -166,9 +120,6 @@ export default function RadioPanel({
     }}>
       {radioState === 'settings' ? (
         <SettingsView
-          voiceProfile={voiceProfile}
-          setVoiceProfile={setVoiceProfile}
-          bumpProfileVersion={() => setProfileVersion(v => v + 1)}
           onClose={() => setRadioState(tunedFrequency ? 'tuned' : 'standby')}
           getInputLevel={getInputLevel}
           pttKey={pttKey}
@@ -579,15 +530,15 @@ function TunedView({
             fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
             fontVariantNumeric: 'tabular-nums',
           }}>
-            {Math.min(100, micSensitivity)}%
+            {micSensitivity}%
           </span>
         </div>
         <input
           type="range"
           min={0}
-          max={100}
+          max={150}
           step={5}
-          value={Math.min(100, micSensitivity)}
+          value={micSensitivity}
           onChange={e => onSensitivityChange(Number(e.target.value))}
           style={{
             width: '100%', accentColor: 'var(--rim2)',
@@ -822,15 +773,10 @@ function MicLevelMeter({ getLevel, active }) {
 // ─── Settings ───────────────────────────────────────────────────────────────
 
 function SettingsView({
-  voiceProfile, setVoiceProfile, bumpProfileVersion, onClose, getInputLevel,
+  onClose, getInputLevel,
   pttKey, setPttKey,
   micDeviceId, setMicDeviceId, outputDeviceId, setOutputDeviceId,
 }) {
-  // Device enumeration — labels are only populated after mic permission has
-  // been granted for this origin. Since the preview chain below calls
-  // getUserMedia on mount, by the time this useEffect resolves we usually
-  // have real names. Re-enumerate on `devicechange` so hot-plugging a
-  // headset shows up without reopening Settings.
   const [inputDevices, setInputDevices]   = useState([]);
   const [outputDevices, setOutputDevices] = useState([]);
   const outputSupported = typeof HTMLMediaElement !== 'undefined' &&
@@ -851,82 +797,13 @@ function SettingsView({
     };
   }, []);
 
-  const [savedAt, setSavedAt]   = useState(0);
-  const [saving, setSaving]     = useState(false);
-  const [previewing, setPreviewing] = useState(false);
   const [remapListening, setRemapListening] = useState(false);
   const isFirstKeydownRef = useRef(false);
 
-  const previewCtxRef       = useRef(null);
-  const previewMicRef       = useRef(null);
-  const previewSourceRef    = useRef(null);
-  const previewChainRef     = useRef(null);
-  const previewAnalyserRef  = useRef(null);
-  const previewConnectedRef = useRef(false);
-
-  const voiceProfileRef = useRef(voiceProfile);
-  useEffect(() => { voiceProfileRef.current = voiceProfile; }, [voiceProfile]);
-
-  const updateField = (field, val) => {
-    setVoiceProfile(p => ({ ...(p || {}), [field]: val }));
-  };
-
-  // Build preview chain on mount
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-          video: false,
-        });
-        if (cancelled) {
-          try { stream.getTracks().forEach(t => t.stop()); } catch {}
-          return;
-        }
-        previewMicRef.current = stream;
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        const ctx = new Ctx();
-        previewCtxRef.current = ctx;
-        const source = ctx.createMediaStreamSource(stream);
-        previewSourceRef.current = source;
-        const chain = await buildSpacesuitChain(ctx, source, voiceProfileRef.current || {});
-        if (cancelled) { try { chain.dispose(); } catch {} return; }
-        previewChainRef.current = chain;
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        previewAnalyserRef.current = analyser;
-      } catch (err) {
-        console.error('[Radio] preview setup failed:', err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      try { previewChainRef.current?.dispose(); } catch {}
-      try { previewSourceRef.current?.disconnect(); } catch {}
-      try { previewAnalyserRef.current?.disconnect(); } catch {}
-      try { previewMicRef.current?.getTracks().forEach(t => t.stop()); } catch {}
-      try { previewCtxRef.current?.close(); } catch {}
-      previewChainRef.current = null;
-      previewSourceRef.current = null;
-      previewAnalyserRef.current = null;
-      previewMicRef.current = null;
-      previewCtxRef.current = null;
-      previewConnectedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (previewChainRef.current && voiceProfile) {
-      previewChainRef.current.setProfile(voiceProfile);
-    }
-  }, [voiceProfile]);
-
   // PTT remap keydown listener — two-phase. Persists the new key to
-  // localStorage AND the server (partial voice_profile update) immediately,
-  // since the key binding is a control preference the operator should never
-  // have to re-set after a browser change.
+  // localStorage AND the server immediately, so the key binding is a
+  // control preference the operator never has to re-set after a browser
+  // change.
   useEffect(() => {
     if (!remapListening) return;
     const handler = (e) => {
@@ -939,7 +816,6 @@ function SettingsView({
       setPttKey(newKey);
       try { localStorage.setItem('nexus_ptt_key', newKey); } catch {}
       setRemapListening(false);
-      // Best-effort server sync; swallow errors — localStorage already persisted it.
       api.put('/users/voice-profile', { ptt_key: newKey }).catch(() => {});
     };
     window.addEventListener('keydown', handler);
@@ -951,145 +827,15 @@ function SettingsView({
     setRemapListening(true);
   };
 
-  const startPreview = useCallback(async () => {
-    const ctx = previewCtxRef.current;
-    const chain = previewChainRef.current;
-    if (!ctx || !chain) return;
-    if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
-    if (!previewConnectedRef.current) {
-      try { chain.output.connect(ctx.destination); } catch {}
-      previewConnectedRef.current = true;
-    }
-    setPreviewing(true);
-  }, []);
-
-  const stopPreview = useCallback(() => {
-    const ctx = previewCtxRef.current;
-    const chain = previewChainRef.current;
-    if (ctx && chain && previewConnectedRef.current) {
-      try { chain.output.disconnect(ctx.destination); } catch {}
-      previewConnectedRef.current = false;
-    }
-    setPreviewing(false);
-  }, []);
-
-  const getSettingsLevel = useCallback(() => {
-    const hookLvl = getInputLevel ? getInputLevel() : 0;
-    const a = previewAnalyserRef.current;
-    if (!a) return hookLvl;
-    const data = new Uint8Array(a.frequencyBinCount);
-    a.getByteFrequencyData(data);
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) sum += data[i];
-    const previewLvl = Math.min(100, (sum / data.length / 255) * 150);
-    return Math.max(hookLvl, previewLvl);
-  }, [getInputLevel]);
-
-  const onRandomize = () => setVoiceProfile(randomVoiceProfile());
-
-  const onSave = async () => {
-    if (!voiceProfile || saving) return;
-    setSaving(true);
-    try {
-      const payload = {};
-      for (const f of PROFILE_FIELDS) {
-        if (voiceProfile[f] != null) payload[f] = Number(voiceProfile[f]);
-      }
-      // Include the current PTT key so a manual SAVE PROFILE resynchronizes
-      // it even if the immediate-on-remap PUT failed silently.
-      if (pttKey) payload.ptt_key = pttKey;
-      await api.put('/users/voice-profile', payload);
-      bumpProfileVersion();
-      setSavedAt(Date.now());
-    } catch (err) {
-      console.error('[Radio] save profile failed:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const [showSaved, setShowSaved] = useState(false);
-  useEffect(() => {
-    if (!savedAt) return;
-    setShowSaved(true);
-    const id = setTimeout(() => setShowSaved(false), 2000);
-    return () => clearTimeout(id);
-  }, [savedAt]);
-
   return (
     <>
       <PanelHeader
         closeIcon
-        onClose={() => { stopPreview(); onClose(); }}
+        onClose={onClose}
       />
 
       <div style={{ padding: 14, maxHeight: 520, overflowY: 'auto' }}>
-        {PROFILE_FIELDS.map(field => (
-          <SliderRow
-            key={field}
-            field={field}
-            value={voiceProfile?.[field]}
-            onChange={(v) => updateField(field, v)}
-          />
-        ))}
-
-        <button
-          className="btn"
-          onMouseDown={startPreview}
-          onMouseUp={stopPreview}
-          onMouseLeave={stopPreview}
-          onTouchStart={startPreview}
-          onTouchEnd={stopPreview}
-          style={{
-            width: '100%',
-            fontSize: 12,
-            padding: '9px 0',
-            margin: '12px 0',
-            userSelect: 'none',
-            ...(previewing ? {
-              color: 'var(--cyan)',
-              borderColor: 'var(--cyan)',
-              background: 'linear-gradient(180deg, rgba(0,238,255,.14), rgba(0,238,255,.04))',
-            } : {}),
-          }}
-        >
-          {previewing ? '◉ Monitoring' : '▶ Preview voice'}
-        </button>
-
-        <MicLevelMeterInline getLevel={getSettingsLevel} />
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <button
-            className="btn"
-            onClick={onRandomize}
-            style={{ flex: 1, fontSize: 12, padding: '8px 0' }}
-          >
-            Randomize
-          </button>
-          <button
-            className="btn go"
-            onClick={async (e) => {
-              const btn = e.currentTarget;
-              const ok = await onSave();
-              if (ok !== false) pulseSaveBtn(btn);
-            }}
-            disabled={saving}
-            style={{ flex: 1, fontSize: 12, padding: '8px 0' }}
-          >
-            {saving ? <><span className="spinner" />Saving…</> : 'Save profile'}
-          </button>
-        </div>
-
-        {showSaved && (
-          <div style={{
-            textAlign: 'center', fontSize: 11, color: 'var(--lime)',
-            letterSpacing: '0.1em', marginTop: 10, fontWeight: 600,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            <span className="live-dot" style={{ animation: 'none' }} />
-            Saved
-          </div>
-        )}
+        <MicLevelMeterInline getLevel={getInputLevel} />
 
         {/* DEVICE PICKERS */}
         <div style={{ marginTop: 20, borderTop: '1px solid var(--rim0)', paddingTop: 16 }}>
@@ -1183,68 +929,3 @@ function MicLevelMeterInline({ getLevel }) {
   );
 }
 
-function SliderRow({ field, value, onChange }) {
-  const range = VOICE_PROFILE_RANGES[field];
-  const def = range.default ?? (range.min + range.max) / 2;
-  const v = value != null ? Number(value) : def;
-  const pct = Math.max(0, Math.min(100, ((v - range.min) / (range.max - range.min)) * 100));
-
-  let formattedValue;
-  if (FIELD_DISPLAY[field]) {
-    formattedValue = FIELD_DISPLAY[field](v);
-  } else {
-    let display;
-    if (range.step >= 1) display = String(Math.round(v));
-    else if (range.step >= 0.1) display = v.toFixed(1);
-    else display = v.toFixed(3);
-    const unit = FIELD_UNITS[field] ? ` ${FIELD_UNITS[field]}` : '';
-    formattedValue = display + unit;
-  }
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-        <span style={{
-          fontSize: 11, fontWeight: 600, color: 'var(--fg2)',
-          letterSpacing: '0.08em', textTransform: 'uppercase',
-        }}>
-          {FIELD_LABELS[field] || field.toUpperCase().replace(/_/g, ' ')}
-        </span>
-        <span style={{
-          fontSize: 12, fontWeight: 600, color: 'var(--fg0)',
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {formattedValue}
-        </span>
-      </div>
-      <div style={{
-        position: 'relative', width: '100%', height: 6,
-        background: '#02080e',
-        border: '1px solid var(--rim0)',
-        borderRadius: 3,
-        boxShadow: '0 1px 3px #000 inset',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          height: '100%',
-          width: `${pct}%`,
-          background: 'linear-gradient(90deg, var(--rim2), var(--blue))',
-          transition: 'width .1s',
-        }} />
-        <input
-          type="range"
-          min={range.min}
-          max={range.max}
-          step={range.step}
-          value={v}
-          onChange={e => onChange(Number(e.target.value))}
-          style={{
-            position: 'absolute', top: -9, left: 0,
-            width: '100%', height: 24, margin: 0, padding: 0,
-            opacity: 0, cursor: 'pointer',
-          }}
-        />
-      </div>
-    </div>
-  );
-}
