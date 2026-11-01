@@ -52,7 +52,7 @@ function pulseSaveBtn(btnEl) {
   if (!btnEl) return;
   btnEl.classList.remove('saved');
   requestAnimationFrame(() => btnEl.classList.add('saved'));
-  setTimeout(() => btnEl.classList.remove('saved'), 1000);
+  setTimeout(() => btnEl.classList.remove('saved'), 2850);
 }
 
 // Every child container is transparent so the texture behind shows through

@@ -11,7 +11,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 
-export default function useSavePulse(durationMs = 950) {
+export default function useSavePulse(durationMs = 2850) {
   const [pulsing, setPulsing] = useState(false);
   const timerRef = useRef(null);
 

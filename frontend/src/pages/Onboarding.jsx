@@ -467,14 +467,12 @@ function Step6({ formData, update, user, onNext, onBack }) {
       {/* Card — pure CSS, no background image */}
       <div style={{ maxWidth: 700, margin: '0 auto 24px', width: '100%', fontFamily: CARD_FONT }}>
         <div style={{
-          /* Textured government-document paper — matches IdCardModal in
-             Dashboard.jsx so the preview card and the final dossier look
-             identical. See notes there for the three-layer rationale. */
-          background: [
-            "repeating-linear-gradient(135deg, rgba(80, 60, 30, 0.025) 0px, rgba(80, 60, 30, 0.025) 1px, transparent 1px, transparent 7px)",
-            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4   0 0 0 0 0.33   0 0 0 0 0.22   0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
-            "linear-gradient(180deg, #F4EDDC 0%, #EFE7D1 55%, #E6DCBE 100%)",
-          ].join(', '),
+          /* Textured parchment image — matches IdCardModal in Dashboard
+             so the preview card here and the final dossier look identical. */
+          backgroundImage: 'url(/images/id_card_parchment.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundColor: '#F0E6CD',
           border: '1px solid #2A5A7A',
           boxShadow: 'inset 0 0 1px rgba(90, 70, 40, 0.25), 0 20px 50px rgba(0, 0, 0, .4)',
           position: 'relative',

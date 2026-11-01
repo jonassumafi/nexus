@@ -503,20 +503,17 @@ function IdCardModal({ me, onClose, onRefresh }) {
         style={{ maxWidth: 700, margin: '0 auto', width: '100%', fontFamily: CARD_FONT }}
       >
         <div style={{
-          /* Layered paper texture — three stacked backgrounds give the card
-             a legible warm off-white look like a real government document
-             instead of raw intense white:
-               1. Top: diagonal pin-stripe simulating paper fiber (very faint)
-               2. Middle: SVG fractal-noise overlay for grain
-               3. Bottom: vertical warm gradient (lighter top, aged bottom)   */
-          background: [
-            // 1. Fiber direction
-            "repeating-linear-gradient(135deg, rgba(80, 60, 30, 0.025) 0px, rgba(80, 60, 30, 0.025) 1px, transparent 1px, transparent 7px)",
-            // 2. Noise grain
-            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4   0 0 0 0 0.33   0 0 0 0 0.22   0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
-            // 3. Warm vertical gradient
-            "linear-gradient(180deg, #F4EDDC 0%, #EFE7D1 55%, #E6DCBE 100%)",
-          ].join(', '),
+          /* Real textured parchment image — the previous CSS-only layer
+             stack was too subtle (2-7% opacities) and read as flat white.
+             Using an ImageMagick-generated 820×600 warm cream + fiber +
+             vignette JPEG gives genuine paper legibility without relying
+             on CSS blending modes that render inconsistently across
+             browsers.
+             Image is fully owned (generated locally), no attribution. */
+          backgroundImage: 'url(/images/id_card_parchment.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundColor: '#F0E6CD',
           border: '1px solid #2A5A7A',
           boxShadow: 'inset 0 0 1px rgba(90, 70, 40, 0.25), 0 20px 50px rgba(0, 0, 0, .4)',
           position: 'relative',
