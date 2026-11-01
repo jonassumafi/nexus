@@ -513,7 +513,7 @@ function IdCardModal({ me, onClose, onRefresh }) {
           backgroundImage: 'url(/images/id_card_parchment.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundColor: '#F0E6CD',
+          backgroundColor: '#DADBDF',
           border: '1px solid #2A5A7A',
           boxShadow: 'inset 0 0 1px rgba(90, 70, 40, 0.25), 0 20px 50px rgba(0, 0, 0, .4)',
           position: 'relative',
