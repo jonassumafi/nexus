@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Log Watcher Mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg0:#0a0a0c; --bg1:#101012; --bg2:#17171a; --bg3:#202024;
+  --rim0:#2c2c31; --rim1:#4a4a52;
+  --blue:#b4c2d3; --cyan:#e4f2ff;
+  --lime:#44FF88; --red:#FF5544; --amber:#FFBB33;
+  --t1:#eef3f8; --t2:#a3aebb; --t3:#c9d3df;
+  --inset:color-mix(in srgb,var(--bg0) 80%,#000);
+  --edge:color-mix(in srgb,var(--bg0) 55%,#000);
+  --hl:color-mix(in srgb,var(--blue) 18%,transparent);
+  --key-hi:color-mix(in srgb,var(--blue) 24%,var(--bg1));
+  --key-lo:color-mix(in srgb,var(--blue) 12%,var(--bg0));
+  --go-hi:color-mix(in srgb,var(--lime) 40%,var(--bg0));
+  --go-lo:color-mix(in srgb,var(--lime) 24%,var(--bg0));
+  --go-rim:color-mix(in srgb,var(--lime) 60%,var(--bg0));
+  --go-txt:color-mix(in srgb,var(--lime) 55%,#fff);
+  --no-hi:color-mix(in srgb,var(--red) 42%,var(--bg0));
+  --no-lo:color-mix(in srgb,var(--red) 26%,var(--bg0));
+  --no-rim:color-mix(in srgb,var(--red) 62%,var(--bg0));
+  --no-txt:color-mix(in srgb,var(--red) 40%,#fff);
+  --am-bg:color-mix(in srgb,var(--amber) 14%,var(--bg0));
+  --am-rim:color-mix(in srgb,var(--amber) 50%,var(--bg0));
+  --am-txt:color-mix(in srgb,var(--amber) 45%,#fff);
+  --banner-hi:color-mix(in srgb,var(--bg3) 78%,var(--bg2));
+  --banner-lo:color-mix(in srgb,var(--bg1) 85%,var(--bg2));
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0)}
+body{background:var(--bg0);color:var(--t1);font:13px/1.5 Inter,system-ui,sans-serif;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));-webkit-font-smoothing:antialiased}
+.tn{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-size:18px;margin-bottom:4px}
+.lead{color:var(--t2);max-width:70ch;margin-bottom:14px}
+
+/* ===== stage and backdrop ===== */
+.stage{position:relative;border:1px solid var(--rim0);border-radius:10px;overflow:hidden;min-height:700px;display:flex;justify-content:center;align-items:flex-start;padding:24px 16px;background:#05070d}
+.stage.nobd{background:repeating-conic-gradient(#15151a 0% 25%,#101013 0% 50%) 0 0/24px 24px}
+.bd{position:absolute;inset:0;pointer-events:none}
+.stage.nobd .bd{display:none}
+.bd canvas{position:absolute;inset:0;width:100%;height:100%}
+.planet{position:absolute;right:-8%;top:8%;width:46%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 30% 30%,#c9a56a 0%,#8a6a3c 35%,#4a3320 62%,#1a120c 100%)}
+.band{position:absolute;right:-8%;top:8%;width:46%;aspect-ratio:1;border-radius:50%;background:repeating-linear-gradient(8deg,transparent 0 22px,rgba(0,0,0,.18) 22px 34px);mix-blend-mode:multiply}
+.neb{position:absolute;inset:0;background:radial-gradient(ellipse at 15% 70%,rgba(60,90,160,.35),transparent 55%),radial-gradient(ellipse at 60% 20%,rgba(120,60,140,.22),transparent 50%)}
+.cock{position:absolute;left:0;right:0;bottom:0;height:34%;background:linear-gradient(180deg,transparent,#0a0c12 40%);clip-path:polygon(0 38%,18% 20%,82% 20%,100% 38%,100% 100%,0 100%)}
+.cock::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#171b26,#0a0c12);clip-path:polygon(0 38%,18% 20%,82% 20%,100% 38%,100% 100%,0 100%)}
+.hud{position:absolute;left:50%;top:48%;width:260px;height:260px;margin:-130px 0 0 -130px;border:1px solid rgba(160,200,255,.35);border-radius:50%}
+.hud::before{content:"";position:absolute;inset:60px;border:1px solid rgba(160,200,255,.3);border-radius:50%}
+.hud::after{content:"";position:absolute;left:50%;top:-24px;bottom:-24px;width:1px;background:rgba(160,200,255,.28)}
+.hud2{position:absolute;left:50%;top:48%;width:340px;height:1px;margin-left:-170px;background:rgba(160,200,255,.28)}
+.hudt{position:absolute;left:5%;top:10%;font:600 12px Inter;color:rgba(190,215,255,.7);letter-spacing:.14em;line-height:1.8}
+.hudt2{left:auto;right:5%;text-align:right;top:auto;bottom:40%}
+
+/* ===== the app window ===== */
+.win{position:relative;z-index:2;width:min(380px,100%);height:620px;display:flex;flex-direction:column;border:1px solid var(--rim1);border-radius:10px;overflow:hidden;
+  background:var(--bg1);box-shadow:0 1px 0 var(--hl) inset,0 0 0 1px #000,0 12px 32px rgba(0,0,0,.6);transition:opacity .12s}
+.hdr{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 12px;background:linear-gradient(180deg,var(--banner-hi),var(--banner-lo));border-bottom:1px solid var(--edge);box-shadow:0 1px 0 var(--rim0);flex:none;position:relative}
+.logo{width:20px;height:20px;flex:none}
+.ttl{font:700 12px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--t1);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:420px){.ttl{letter-spacing:.04em}.hdr{gap:4px;padding-left:8px}.ib{width:28px}}
+.sp{flex:1}
+.ib{width:30px;height:28px;display:grid;place-items:center;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--key-hi),var(--key-lo));box-shadow:0 1px 0 var(--hl) inset,0 2px 0 var(--edge);color:var(--t1);padding:0;flex:none}
+.ib:active{transform:translateY(1px)}
+.ib[aria-pressed=true]{transform:translateY(2px);box-shadow:none;background:linear-gradient(180deg,var(--key-lo),var(--inset));color:var(--go-txt);border-color:var(--go-rim)}
+.ib.locked{color:color-mix(in srgb,var(--blue) 45%,var(--bg2));background:var(--bg2);box-shadow:0 2px 0 var(--edge);cursor:not-allowed}
+.ib.x:hover{color:var(--no-txt)}
+.pinstrip{display:none;padding:5px 12px;font-size:11px;color:var(--t2);background:var(--inset);border-bottom:1px solid var(--rim0);flex:none}
+.pinstrip.on{display:block}
+.pop{position:absolute;right:8px;top:46px;z-index:5;width:250px;padding:10px 12px;border:1px solid var(--rim1);border-radius:8px;background:var(--bg2);box-shadow:0 8px 20px rgba(0,0,0,.6)}
+.pop[hidden]{display:none}
+.pop h4{font:700 11px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:8px;display:flex;justify-content:space-between}
+.pop .val{color:var(--cyan);font-variant-numeric:tabular-nums}
+.pop input[type=range]{width:100%;accent-color:var(--blue)}
+.pop input[type=range]:disabled{opacity:.4;cursor:not-allowed}
+.pop .why{font-size:11px;color:var(--am-txt);margin-top:6px}
+
+.body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;background:var(--bg0);padding:10px;display:flex;flex-direction:column;gap:10px;scrollbar-color:var(--rim1) var(--bg0)}
+.pn{border:1px solid var(--rim0);border-radius:8px;background:linear-gradient(180deg,color-mix(in srgb,var(--bg3) 96%,var(--blue)),var(--bg2));box-shadow:0 1px 0 var(--hl) inset,0 3px 0 var(--edge);overflow:hidden;flex:none}
+.ph{display:flex;align-items:center;gap:8px;padding:7px 10px;background:linear-gradient(180deg,var(--banner-hi),var(--banner-lo));border-bottom:1px solid var(--edge);font:700 11px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--t3)}
+.pb{padding:10px;display:flex;flex-direction:column;gap:8px}
+.muted{color:var(--t2);font-size:12px}
+.small{font-size:11px;color:var(--t2)}
+
+/* status */
+.stl{display:flex;align-items:center;gap:10px}
+.sdot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--t2)}
+.stl.good .sdot{background:var(--lime)}.stl.warn .sdot{background:var(--amber)}.stl.bad .sdot{background:var(--red)}.stl.idle .sdot{background:var(--rim1)}
+.stt{font:700 17px/1.2 Inter;color:var(--t1)}
+.stl.good .stt{color:var(--go-txt)}.stl.warn .stt{color:var(--am-txt)}.stl.bad .stt{color:var(--no-txt)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12px}
+.kv dt{color:var(--t2)}.kv dd{color:var(--t1);min-width:0;overflow-wrap:anywhere}
+.note{font-size:11px;color:var(--t2);padding:6px 8px;border:1px dashed var(--rim1);border-radius:5px;background:var(--inset)}
+.errbox{font-size:12px;color:var(--no-txt);padding:7px 9px;border:1px solid var(--no-rim);border-radius:5px;background:color-mix(in srgb,var(--red) 14%,var(--bg0))}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* keys */
+.key{font:600 12px Inter;padding:7px 12px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--key-hi),var(--key-lo));color:var(--t1);box-shadow:0 1px 0 var(--hl) inset,0 3px 0 var(--edge)}
+.key:active{transform:translateY(2px);box-shadow:0 1px 0 var(--hl) inset,0 1px 0 var(--edge)}
+.key.go{background:linear-gradient(180deg,var(--go-hi),var(--go-lo));border-color:var(--go-rim);color:var(--go-txt)}
+.key.sm{padding:4px 9px;font-size:11px}
+.key[aria-pressed=true]{transform:translateY(2px);box-shadow:none;background:linear-gradient(180deg,var(--key-lo),var(--inset))}
+
+/* ticks */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--inset);border:1px solid var(--rim0);border-radius:6px;padding:6px 9px}
+.tile .l{font:600 11px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--t2)}
+.tile .v{font:700 18px Inter;color:var(--cyan);font-variant-numeric:tabular-nums}
+.tile .v.sm{font-size:14px;color:var(--t1)}
+.sqs{display:flex;gap:5px}
+.sq{width:18px;height:18px;border-radius:3px;border:1.5px solid var(--rim1)}
+.sq.ok{background:var(--lime);border-color:var(--lime)}
+.sq.none{background:transparent}
+.sq.err{background:var(--red);border-color:var(--red)}
+.leg{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--t2);align-items:center}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid var(--rim1);vertical-align:-1px;margin-right:4px}
+.leg i.ok{background:var(--lime);border-color:var(--lime)}.leg i.err{background:var(--red);border-color:var(--red)}
+
+/* place */
+.place{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font:600 12px Inter;padding:5px 10px;border-radius:12px;background:color-mix(in srgb,var(--blue) 14%,var(--bg0));border:1px solid color-mix(in srgb,var(--blue) 42%,var(--bg0));color:var(--t1)}
+.chip.unk{background:transparent;border-style:dotted;color:var(--t2);font-weight:500}
+.age{font-size:12px;color:var(--t2)}
+.raw{display:flex;gap:8px;align-items:flex-start;background:var(--inset);border:1px solid var(--rim0);border-radius:5px;padding:6px 8px}
+.raw p{flex:1;min-width:0;font-size:11px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* events */
+.evl{max-height:176px;overflow-y:auto;border:1px solid var(--rim0);border-radius:6px;background:var(--inset);scrollbar-color:var(--rim1) var(--inset)}
+.ev{display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--rim0);font-size:12px}
+.ev:last-child{border-bottom:0}
+.ev time{color:var(--t2);font-size:11px;font-variant-numeric:tabular-nums}
+.ev span.m{min-width:0;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font:700 11px Inter;letter-spacing:.04em;padding:1px 6px;border-radius:3px;border:1px solid var(--rim1);color:var(--t3);background:var(--bg2);min-width:78px;text-align:center}
+.tag.Zone{color:var(--go-txt);border-color:var(--go-rim)}
+.tag.Quantum{color:var(--am-txt);border-color:var(--am-rim)}
+.tag.Other{color:var(--t2);border-style:dashed}
+.sw{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t1)}
+.sw button{width:34px;height:18px;border-radius:9px;background:var(--inset);border:1px solid var(--rim1);position:relative;padding:0;flex:none}
+.sw button::after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--t2);transition:left .1s}
+.sw button[aria-checked=true]{background:var(--go-lo);border-color:var(--go-rim)}
+.sw button[aria-checked=true]::after{left:18px;background:var(--go-txt)}
+
+/* files */
+.tree{background:var(--inset);border:1px solid var(--rim0);border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.7}
+.tree .d{color:var(--t1);font-weight:600;overflow-wrap:anywhere}
+.tree .f{padding-left:16px;color:var(--t1)}
+.tree .f small{display:block;font-size:11px;color:var(--t2);line-height:1.3;margin-bottom:3px}
+.tree .f b{font-weight:600}
+details{border:1px solid var(--rim0);border-radius:6px;background:var(--inset)}
+summary{cursor:pointer;padding:7px 10px;font:600 12px Inter;color:var(--t3);list-style:none;display:flex;justify-content:space-between}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--t2)}
+details[open] summary::after{content:"-"}
+details ul{padding:0 10px 8px 26px;font-size:12px;color:var(--t2)}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--rim0)}
+.setrow:last-child{border-bottom:0}
+.inp{background:var(--bg0);border:1px solid var(--rim1);border-radius:4px;color:var(--t1);font:500 12px Inter;padding:5px 7px;min-width:0}
+.setb{padding:2px 10px 8px}
+.toast{position:absolute;left:10px;right:10px;bottom:10px;z-index:6;padding:9px 12px;border:1px solid var(--go-rim);border-radius:6px;background:color-mix(in srgb,var(--lime) 14%,var(--bg0));color:var(--go-txt);font-size:12px;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .15s,transform .15s}
+.toast.on{opacity:1;transform:none}
+
+/* mockup controls */
+.ctl{position:absolute;z-index:3;right:16px;top:16px;width:230px;padding:10px;border:1px solid var(--rim1);border-radius:8px;background:var(--bg2);display:flex;flex-direction:column;gap:7px}
+.ctl h3{font:700 11px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--am-txt)}
+.ctl .g{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ctl .key{padding:6px 6px;font-size:11px}
+.ctl .key.on{background:linear-gradient(180deg,var(--key-lo),var(--inset));transform:translateY(2px);box-shadow:none;border-color:var(--go-rim);color:var(--go-txt)}
+.ctl .sw{font-size:11px;color:var(--t2)}
+@media (max-width:1000px){
+  .stage{flex-direction:column;align-items:center;gap:16px}
+  .ctl{position:relative;right:auto;top:auto;width:min(380px,100%);order:-1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Nexus Log Watcher</h1>
+  <p class="lead">A mockup of the small test tool. It reads Game.log without changing it, checks every 2 minutes, and shows whether location can be read. All log lines shown are invented samples.</p>
+
+  <div class="stage" id="stage">
+    <div class="bd" aria-hidden="true">
+      <div class="neb"></div><canvas id="stars"></canvas><div class="planet"></div><div class="band"></div>
+      <div class="hud"></div><div class="hud2"></div>
+      <div class="hudt">SCM &nbsp; 0 m/s<br>QT &nbsp; READY</div>
+      <div class="hudt hudt2">SHIELDS 100<br>POWER NOMINAL</div>
+      <div class="cock"></div>
+    </div>
+
+    <aside class="ctl" aria-label="Mockup controls, not part of the app">
+      <h3>Mockup controls, not part of the app</h3>
+      <div class="g" id="stBtns">
+        <button class="key" data-st="waiting">Waiting</button>
+        <button class="key" data-st="notfound">Not found</button>
+        <button class="key" data-st="reading">Reading</button>
+        <button class="key" data-st="location">Location</button>
+        <button class="key" data-st="noloc">No location</button>
+        <button class="key" data-st="error">Error</button>
+      </div>
+      <div class="g">
+        <button class="key" id="adv">Advance one tick</button>
+        <button class="key" id="addEv">Add location event</button>
+      </div>
+      <div class="sw"><button role="switch" aria-checked="true" id="swBd" aria-label="Backdrop"></button><span>Backdrop</span></div>
+      <div class="sw"><button role="switch" aria-checked="true" id="swAcc" aria-label="Accelerated time"></button><span>Accelerated time (10x)</span></div>
+    </aside>
+
+    <section class="win" id="win" aria-label="Nexus Log Watcher window">
+      <header class="hdr">
+        <svg class="logo" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="9" fill="none" stroke="#b4c2d3" stroke-width="1.6"/><circle cx="15" cy="15" r="3" fill="#b4c2d3"/><path d="M15 2v6M15 22v6M2 15h6M22 15h6" stroke="#b4c2d3" stroke-width="1.6"/></svg>
+        <span class="ttl">Nexus Log Watcher</span><span class="sp"></span>
+        <button class="ib" id="pin" aria-pressed="false" aria-label="Pin on top of the game" title="Pin: keeps this window on top of the game"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 1.5l5 5-2 .8-2.3 2.3.3 3.2-1 1-3-3-4.2 4.2-.8-.8L6 9.2l-3-3 1-1 3.2.3 2.3-2.3z" fill="currentColor"/></svg></button>
+        <button class="ib locked" id="opb" aria-label="Window opacity" aria-expanded="false" title="Window opacity (pin to enable)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 8.3L7 3.5l5 5-4.2 4.2a1.6 1.6 0 0 1-2.3 0z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M7 3.5V1.8M12 8.5h1.2c.8 0 1.2.6 1.2 1.3 0 1-.9 1.9-1.4 1.9s-1.1-.9-1.1-1.9z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M2.4 8.4h9.2" stroke="currentColor" stroke-width="1.2"/></svg></button>
+        <button class="ib" aria-label="Minimize" title="Minimize"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 8h8" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <button class="ib x" aria-label="Close" title="Close"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <div class="pop" id="pop" hidden role="dialog" aria-label="Window opacity">
+          <h4><span>Window opacity</span><span class="val" id="opv">100%</span></h4>
+          <input type="range" id="opr" min="30" max="100" value="100" disabled aria-label="Opacity percent">
+          <div class="why" id="opwhy">Pin to enable</div>
+        </div>
+      </header>
+      <div class="pinstrip" id="pinstrip">Pinned. This window stays on top of the game.</div>
+
+      <div class="body" id="body">
+        <!-- 1 STATUS -->
+        <section class="pn"><div class="ph">Status</div><div class="pb">
+          <div class="stl" id="stl"><span class="sdot"></span><span class="stt" id="stt">Reading the log</span></div>
+          <div class="muted" id="std"></div>
+          <div class="errbox" id="errbox" hidden>Access denied while opening Game.log. Another program may be holding it open exclusively.</div>
+          <dl class="kv">
+            <dt>Log file</dt><dd id="path">C:\Program Files\Roberts Space Industries\StarCitizen\LIVE\Game.log</dd>
+            <dt>Size</dt><dd class="tn" id="size">162 KB</dd>
+            <dt>Last line</dt><dd class="tn" id="lastw">written 12 s ago</dd>
+          </dl>
+          <div class="row" id="stActs"></div>
+          <div class="note">Read only. Nothing is sent anywhere.</div>
+        </div></section>
+
+        <!-- 2 TICKS -->
+        <section class="pn"><div class="ph">Ticks</div><div class="pb">
+          <div class="tgrid">
+            <div class="tile"><div class="l">Tick</div><div class="v" id="tk">7</div></div>
+            <div class="tile"><div class="l">Next check in</div><div class="v" id="cd">1:42</div></div>
+            <div class="tile"><div class="l">Last tick</div><div class="v sm" id="lt">21:13:14</div></div>
+            <div class="tile"><div class="l">Lines read</div><div class="v sm" id="lr">36 new</div></div>
+          </div>
+          <div class="sqs" id="sqs" aria-label="Last 10 ticks"></div>
+          <div class="leg"><span><i class="ok"></i>Read OK</span><span><i></i>No new lines</span><span><i class="err"></i>Error</span><span>Oldest to newest</span></div>
+          <div class="row"><button class="key" id="chk">Check now</button><button class="key" id="paus" aria-pressed="false">Pause</button></div>
+        </div></section>
+
+        <!-- 3 PLACE -->
+        <section class="pn"><div class="ph">Place guess</div><div class="pb">
+          <div class="place"><span class="chip" id="chip">At Seraphim Station</span><span class="age" id="age">just now</span></div>
+          <div class="small" id="conf">Based on 1 event</div>
+          <div class="raw"><p id="rawp" title="">Source line</p><button class="key sm" id="cp">Copy</button></div>
+        </div></section>
+
+        <!-- 4 EVENTS -->
+        <section class="pn"><div class="ph">Recent events</div><div class="pb">
+          <div class="evl" id="evl" tabindex="0" aria-label="Recent location-related log lines"></div>
+          <div class="sw"><button role="switch" aria-checked="false" id="swUn" aria-label="Log every unrecognized line too"></button><span>Log every unrecognized line too</span></div>
+          <div class="small" id="unnote">Off. Only lines that look like location events are saved.</div>
+          <div class="small">Sample lines for illustration.</div>
+        </div></section>
+
+        <!-- 5 FILES -->
+        <section class="pn"><div class="ph">Files</div><div class="pb">
+          <div class="tree">
+            <div class="d">%APPDATA%\Nexus Log Watcher\</div>
+            <div class="f"><b>config.json</b><small>Log path and check interval</small></div>
+            <div class="f"><b>ticks.log</b><small>One line per tick</small></div>
+            <div class="f"><b id="evf">events-2026-11-01.jsonl</b><small>Every candidate line seen, scrubbed</small></div>
+            <div class="f"><b>reports\</b><small>Scrubbed excerpts you can share</small></div>
+          </div>
+          <div class="row"><button class="key" id="opf">Open folder</button><button class="key go" id="rep">Save report</button></div>
+          <details><summary>What gets scrubbed</summary><ul>
+            <li>Your player handle</li><li>Account, player and session IDs</li><li>IP and network addresses</li><li>Computer name and hardware lines</li><li>Links to CIG log tools</li></ul></details>
+          <details id="setd"><summary>Settings</summary><div class="setb">
+            <div class="setrow"><span>Check every</span><span><input class="inp tn" id="ivl" type="number" min="1" max="5" value="2" style="width:54px" aria-label="Check interval in minutes"> min</span></div>
+            <div class="setrow"><span>Log path</span><span class="row" style="flex-wrap:nowrap"><input class="inp" id="lpath" value="LIVE\Game.log" style="width:120px" aria-label="Log path override"><button class="key sm" id="choose2">Choose</button></span></div>
+            <div class="setrow"><span>Start with Windows</span><span class="sw"><button role="switch" aria-checked="false" id="swWin" aria-label="Start with Windows"></button></span></div>
+            <div class="setrow"><span>Keep files for</span><select class="inp" id="keep" aria-label="Keep files"><option>3 days</option><option selected>7 days</option><option>30 days</option></select></div>
+          </div></details>
+        </div></section>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var PATH='C:\\Program Files\\Roberts Space Industries\\StarCitizen\\LIVE\\Game.log';
+  var BASE=21*3600+15*60+14; // mock clock start, seconds
+  var S={state:'location',pinned:false,op:100,tick:7,cd:102,interval:120,acc:true,paused:false,
+    clock:BASE,sizeKB:162,sinceLine:12,lines:36,lastTick:BASE-18,hist:['ok','ok','none','ok','ok','ok','none'],
+    placeText:'At Seraphim Station',placeAge:0,locCount:1,
+    raw:'<2026-11-01T21:14:48.221Z> [Notice] <Sample Event> Entered armistice zone near Seraphim Station',
+    un:false,poolIdx:0};
+  var EVENTS=[
+    {t:BASE-13*60-3,type:'Spawn',msg:'Spawn resolved, player placed at a station'},
+    {t:BASE-10*60-34,type:'Vehicle',msg:'Entered vehicle, sample ship'},
+    {t:BASE-7*60-19,type:'Zone',msg:'Left station zone'},
+    {t:BASE-6*60-12,type:'Quantum',msg:'Quantum target set, Hurston'},
+    {t:BASE-2*60-38,type:'Jurisdiction',msg:'Entered jurisdiction, Stanton'},
+    {t:BASE-26,type:'Zone',msg:'Entered armistice zone near Seraphim Station'}
+  ];
+  var POOL=[
+    {type:'Quantum',msg:'Quantum travel started toward Hurston',place:'Around Hurston'},
+    {type:'Jurisdiction',msg:'Left jurisdiction, open space',place:'In space, Stanton'},
+    {type:'Zone',msg:'Entered station zone, Port Tressler',place:'At Port Tressler'},
+    {type:'Vehicle',msg:'Left vehicle on a planet surface',place:'At Hurston'},
+    {type:'Zone',msg:'Entered armistice zone near Seraphim Station',place:'At Seraphim Station'}
+  ];
+  var OTHER=['Unrecognized line, audio device list','Unrecognized line, entity stream update','Unrecognized line, inventory attachment'];
+
+  function pad(n){return n<10?'0'+n:''+n}
+  function fmt(sec){sec=((sec%86400)+86400)%86400;return pad(Math.floor(sec/3600))+':'+pad(Math.floor(sec%3600/60))+':'+pad(Math.floor(sec%60))}
+  function mmss(sec){sec=Math.max(0,Math.round(sec));return Math.floor(sec/60)+':'+pad(sec%60)}
+  function ageTxt(a){return a<60?'just now':(a<120?'1 min ago':'2 min ago')}
+  function running(){return S.state==='reading'||S.state==='location'||S.state==='noloc'||S.state==='error'}
+
+  function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(function(){t.classList.remove('on')},3200)}
+
+  var STATES={
+    waiting:{cls:'idle',title:'Waiting for the game',desc:'No Game.log activity yet. Start Star Citizen and this will begin on its own.'},
+    notfound:{cls:'warn',title:'Log not found',desc:'No Game.log at the expected path. Choose the file, or the LIVE folder.'},
+    reading:{cls:'good',title:'Reading the log',desc:'Watching for location events.'},
+    location:{cls:'good',title:'Location detected',desc:'The latest location event was understood.'},
+    noloc:{cls:'warn',title:'No location events yet',desc:'The log reads fine, but no line so far looked like a location.'},
+    error:{cls:'bad',title:'Cannot read the log',desc:'The file exists but could not be opened.'}
+  };
+
+  function renderStatus(){
+    var st=STATES[S.state];
+    var el=$('stl');el.className='stl '+st.cls;$('stt').textContent=st.title;$('std').textContent=st.desc;
+    $('errbox').hidden=S.state!=='error';
+    var acts=$('stActs');acts.innerHTML='';
+    function addBtn(label,cls){var b=document.createElement('button');b.className='key'+(cls?' '+cls:'');b.textContent=label;acts.appendChild(b);return b}
+    if(S.state==='notfound'){addBtn('Choose file','go').onclick=function(){toast('File picker would open here.')}}
+    if(S.state==='error'){addBtn('Retry').onclick=function(){setState('reading')}}
+    $('path').textContent=(S.state==='notfound')?'Not found. Expected '+PATH:PATH;
+    var has=running();
+    $('size').textContent=has?(S.sizeKB>=1024?(S.sizeKB/1024).toFixed(1)+' MB':Math.round(S.sizeKB)+' KB'):'None';
+    $('lastw').textContent=has?(S.state==='error'?'unreadable':'written '+Math.round(S.sinceLine)+' s ago'):'No file yet';
+  }
+  function renderTicks(){
+    $('tk').textContent=S.tick;
+    var act=running();
+    $('cd').textContent=S.paused?'Paused':(act?mmss(S.cd):'Not running');
+    $('lt').textContent=fmt(S.lastTick);
+    $('lr').textContent=act?(S.hist[S.hist.length-1]==='none'?'0 new':S.lines+' new'):'None';
+    var q=$('sqs');q.innerHTML='';
+    var h=S.hist.slice(-10);while(h.length<10)h.unshift('empty');
+    h.forEach(function(k){var d=document.createElement('span');d.className='sq '+(k==='empty'?'none':k);d.style.opacity=k==='empty'?.35:1;q.appendChild(d)});
+    $('paus').textContent=S.paused?'Resume':'Pause';$('paus').setAttribute('aria-pressed',S.paused);
+  }
+  function renderPlace(){
+    var chip=$('chip'),show=S.state==='location';
+    if(show){chip.className='chip';chip.innerHTML='<svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 11s3.6-3.4 3.6-6A3.6 3.6 0 0 0 2.4 5C2.4 7.6 6 11 6 11z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="5" r="1.3" fill="currentColor"/></svg>';chip.appendChild(document.createTextNode(S.placeText));
+      $('age').textContent=ageTxt(S.placeAge);
+      $('conf').textContent='Based on '+S.locCount+' event'+(S.locCount===1?'':'s');
+      $('rawp').textContent=S.raw;$('rawp').title=S.raw;
+    }else{
+      chip.className='chip unk';chip.textContent='Unknown';
+      $('age').textContent=running()?'Nothing reported yet':'Not reading';
+      $('conf').textContent='Based on 0 events';
+      $('rawp').textContent='No source line yet';$('rawp').title='';
+    }
+    $('cp').disabled=!show;$('cp').style.opacity=show?1:.5;
+  }
+  function renderEvents(){
+    var l=$('evl');l.innerHTML='';
+    var list=EVENTS.slice(-8).reverse();
+    if(!list.length){l.innerHTML='<div class="ev"><span class="m" style="grid-column:1/-1;color:var(--t2)">No candidate lines yet.</span></div>'}
+    list.forEach(function(e){
+      var r=document.createElement('div');r.className='ev';
+      r.innerHTML='<time>'+fmt(e.t)+'</time><span class="tag '+e.type+'">'+e.type+'</span><span class="m" title="'+e.msg+'">'+e.msg+'</span>';
+      l.appendChild(r);
+    });
+  }
+  function renderAll(){renderStatus();renderTicks();renderPlace();renderEvents();
+    var bs=document.querySelectorAll('#stBtns .key');for(var i=0;i<bs.length;i++)bs[i].classList.toggle('on',bs[i].dataset.st===S.state);
+  }
+
+  function setState(st){
+    S.state=st;
+    if(st==='location'&&!S.locCount)S.locCount=1;
+    if(st==='location'||st==='reading'||st==='noloc'){S.sinceLine=8}
+    if(st==='noloc'){S.locCount=0}
+    S.cd=S.interval;renderAll();
+  }
+
+  function doTick(){
+    if(!running())return;
+    S.tick++;S.lastTick=S.clock;S.cd=S.interval;
+    if(S.state==='error'){S.hist.push('err');renderTicks();return}
+    var none=Math.random()<.2;
+    if(none){S.hist.push('none');S.lines=0}
+    else{S.hist.push('ok');S.lines=12+Math.floor(Math.random()*50);S.sizeKB+=S.lines*0.35;S.sinceLine=2+Math.random()*6;
+      if(S.un){var o=OTHER[Math.floor(Math.random()*OTHER.length)];EVENTS.push({t:S.clock-3,type:'Other',msg:o})}}
+    if(S.hist.length>40)S.hist.shift();
+    if(S.state==='location')S.placeAge=Math.min(S.placeAge,120); // age keeps counting until a new event
+    renderStatus();renderTicks();renderPlace();renderEvents();
+  }
+
+  function addLocEvent(){
+    var p=POOL[S.poolIdx%POOL.length];S.poolIdx++;
+    EVENTS.push({t:S.clock,type:p.type,msg:p.msg});
+    S.placeText=p.place;S.placeAge=0;S.locCount++;
+    S.raw='<2026-11-01T'+fmt(S.clock)+'.402Z> [Notice] <Sample Event> '+p.msg;
+    S.sinceLine=1;
+    if(S.state!=='location')S.state='location';
+    renderAll();
+  }
+
+  // clock
+  setInterval(function(){
+    var step=S.acc?10:1;
+    S.clock+=step;
+    if(running()){S.sinceLine+=step;if(S.state==='location')S.placeAge+=step}
+    if(running()&&!S.paused){S.cd-=step;if(S.cd<=0)doTick()}
+    // light updates
+    if(running()){$('lastw').textContent=S.state==='error'?'unreadable':'written '+Math.round(S.sinceLine)+' s ago';
+      $('cd').textContent=S.paused?'Paused':mmss(S.cd);
+      if(S.state==='location')$('age').textContent=ageTxt(S.placeAge)}
+  },1000);
+
+  // wiring
+  document.querySelectorAll('#stBtns .key').forEach(function(b){b.onclick=function(){setState(b.dataset.st)}});
+  $('adv').onclick=function(){if(!running()){toast('Not running in this state.');return}S.paused=false;doTick()};
+  $('addEv').onclick=addLocEvent;
+  $('chk').onclick=function(){if(!running()){toast('Nothing to check in this state.');return}doTick()};
+  $('paus').onclick=function(){S.paused=!S.paused;renderTicks()};
+  $('cp').onclick=function(){
+    if(S.state!=='location')return;
+    try{navigator.clipboard.writeText(S.raw).then(function(){toast('Copied the source line.')},function(){toast('Copy not available here.')})}catch(e){toast('Copy not available here.')}
+  };
+  $('rep').onclick=function(){toast('Saved report-2026-11-01-1040.txt. Handle, IDs and network addresses removed.')};
+  $('opf').onclick=function(){toast('Would open %APPDATA%\\Nexus Log Watcher\\')};
+  $('choose2').onclick=function(){toast('File picker would open here.')};
+  function sw(id,fn){var b=$(id);b.onclick=function(){var v=b.getAttribute('aria-checked')!=='true';b.setAttribute('aria-checked',v);if(fn)fn(v)}}
+  sw('swBd',function(v){$('stage').classList.toggle('nobd',!v)});
+  sw('swAcc',function(v){S.acc=v});
+  sw('swUn',function(v){S.un=v;$('unnote').textContent=v?'On. Unrecognized lines are also saved, to find new patterns.':'Off. Only lines that look like location events are saved.'});
+  sw('swWin');
+  $('ivl').onchange=function(){var v=Math.max(1,Math.min(5,parseInt(this.value,10)||2));this.value=v;S.interval=v*60;S.cd=S.interval;renderTicks()};
+
+  // pin and opacity
+  function applyPin(){
+    var pin=$('pin');pin.setAttribute('aria-pressed',S.pinned);
+    $('pinstrip').classList.toggle('on',S.pinned);
+    var ob=$('opb');ob.classList.toggle('locked',!S.pinned);
+    ob.title=S.pinned?'Window opacity':'Window opacity (pin to enable)';
+    $('opr').disabled=!S.pinned;$('opwhy').hidden=S.pinned;
+    if(!S.pinned){S.op=100;$('opr').value=100;$('opv').textContent='100%';$('win').style.opacity=1}
+  }
+  $('pin').onclick=function(){S.pinned=!S.pinned;applyPin()};
+  $('opb').onclick=function(){var p=$('pop');p.hidden=!p.hidden;$('opb').setAttribute('aria-expanded',!p.hidden)};
+  $('opr').oninput=function(){S.op=+this.value;$('opv').textContent=S.op+'%';$('win').style.opacity=S.op/100};
+  document.addEventListener('click',function(e){var p=$('pop');if(!p.hidden&&!p.contains(e.target)&&!$('opb').contains(e.target)){p.hidden=true;$('opb').setAttribute('aria-expanded','false')}});
+
+  // stars
+  (function(){
+    var c=$('stars'),stg=$('stage');
+    function draw(){
+      var w=stg.clientWidth,h=stg.clientHeight,dpr=window.devicePixelRatio||1;
+      c.width=w*dpr;c.height=h*dpr;var x=c.getContext('2d');x.scale(dpr,dpr);
+      var seed=7;function r(){seed=(seed*16807)%2147483647;return seed/2147483647}
+      for(var i=0;i<420;i++){var a=.25+r()*.75,s=r()<.06?1.8:(r()<.3?1.2:.7);x.fillStyle='rgba('+(200+r()*55|0)+','+(210+r()*45|0)+',255,'+a+')';x.fillRect(r()*w,r()*h,s,s)}
+    }
+    draw();window.addEventListener('resize',draw);
+  })();
+
+  applyPin();renderAll();
+})();
+</script>
+</body>
+</html>

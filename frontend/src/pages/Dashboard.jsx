@@ -592,7 +592,7 @@ function IdCardModal({ me, onClose, onRefresh }) {
                   />
                 )}
               </div>
-              <div style={{ fontSize: 10, color: '#FFBB33', marginTop: 10, letterSpacing: '0.08em', fontWeight: 'bold' }}>
+              <div style={{ fontSize: 10, color: '#1D3858', marginTop: 10, letterSpacing: '0.08em', fontWeight: 'bold' }}>
                 DOC NO. {docNo}
               </div>
             </div>
