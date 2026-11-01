@@ -2768,6 +2768,7 @@ export default function Dashboard() {
     setMicSensitivity: setHookMicSensitivity,
     setMuted: setHookMuted,
     setSrsRadioSpec,
+    setSrsRadioBand,
   } = useRadioConnection({
     voiceProfile,
     voiceProfileVersion: profileVersion,
@@ -2776,9 +2777,10 @@ export default function Dashboard() {
     outputDeviceId,
   });
 
-  // Player's assigned SRS radio-model DSP preset.
+  // Player's assigned SRS radio-model DSP preset + squelch band.
   const { radio: myRadio } = useMyRadio();
   useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
+  useEffect(() => { setSrsRadioBand(myRadio?.band || 'VHF'); }, [myRadio, setSrsRadioBand]);
 
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setHookMicSensitivity(micSensitivity); }, [micSensitivity, setHookMicSensitivity]);

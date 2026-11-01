@@ -259,7 +259,7 @@ function RadioRigChip() {
           letterSpacing: '0.1em', textTransform: 'uppercase',
           marginLeft: 'auto',
         }}>
-          {radio.family_label}
+          {radio.family_label} · {radio.band}
         </span>
       </div>
       <div style={{

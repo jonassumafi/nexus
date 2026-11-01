@@ -123,16 +123,19 @@ function Companion() {
     setMicSensitivity: setHookMicSensitivity,
     setMuted: setHookMuted,
     setSrsRadioSpec,
+    setSrsRadioBand,
   } = useRadioConnection({
     voiceProfile, voiceProfileVersion: profileVersion,
     pttKey, micDeviceId, outputDeviceId,
   });
 
-  // Load the player's assigned SRS radio-model and feed it to the DSP
-  // chain. The hook rebuilds its filter path on next tune, so radio
-  // changes take effect the next time the operator joins a frequency.
+  // Load the player's assigned SRS radio-model and feed both the DSP
+  // spec AND the squelch bed band to the hook. Spec drives tx filter
+  // chain; band swaps the chrome's noise bed to the appropriate real
+  // SRS recording (UHF/VHF/HF/FM).
   const { radio: myRadio } = useMyRadio();
   useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
+  useEffect(() => { setSrsRadioBand(myRadio?.band || 'VHF'); }, [myRadio, setSrsRadioBand]);
 
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setHookMicSensitivity(micSensitivity); }, [micSensitivity, setHookMicSensitivity]);

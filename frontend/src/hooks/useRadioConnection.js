@@ -58,6 +58,7 @@ export function useRadioConnection({
   const filterChainRef  = useRef(null);
   const srsChainRef     = useRef(null);    // GPL: SRS DSP preset applied after voice profile
   const srsSpecRef      = useRef(null);    // the current radio spec being used
+  const srsBandRef      = useRef('VHF');   // bed band (UHF/VHF/HF/FM) for radioChrome
   const filteredStreamRef = useRef(null);  // MediaStream sent to peers
   const turnCredsRef    = useRef(null);
   const currentFreqRef  = useRef(null);
@@ -120,6 +121,8 @@ export function useRadioConnection({
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch {}
     }
+    // Apply any band that was stashed by setSrsRadioBand before ctx existed.
+    try { getRadioChrome(ctx)?.setBand?.(srsBandRef.current); } catch {}
 
     if (!analyserRef.current) {
       const analyser = ctx.createAnalyser();
@@ -801,18 +804,32 @@ export function useRadioConnection({
   // the next tune (or an explicit untune → retune cycle).
   const setSrsRadioSpec = useCallback((spec) => {
     srsSpecRef.current = spec || null;
-    // If we already have a built chain, dispose it so the next tune
-    // rebuilds with the new radio.
     try {
       srsChainRef.current?.dispose?.();
     } catch {}
     srsChainRef.current = null;
-    // Also tear down the current filtered stream so ensureMicAndChain
-    // rebuilds the whole DSP path (including SRS) next time.
     try {
       filteredStreamRef.current?.getTracks().forEach(t => t.stop());
     } catch {}
     filteredStreamRef.current = null;
+  }, []);
+
+  // Swap the local squelch-bed sample to match the player's radio band.
+  // Called by the consumer whenever the radio changes. Safe to call
+  // before an AudioContext exists — radioChrome lazy-initializes on
+  // first getRadioChrome(ctx) call so we defer until ctx is live.
+  const setSrsRadioBand = useCallback((band) => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) {
+      // Stash and reapply when the ctx comes online inside ensureMicAndChain.
+      srsBandRef.current = band || 'VHF';
+      return;
+    }
+    try {
+      const rc = getRadioChrome(ctx);
+      rc?.setBand?.(band || 'VHF');
+      srsBandRef.current = band || 'VHF';
+    } catch {}
   }, []);
 
   return {
@@ -831,5 +848,6 @@ export function useRadioConnection({
     setMicSensitivity,
     setMuted,
     setSrsRadioSpec,
+    setSrsRadioBand,
   };
 }

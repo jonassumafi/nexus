@@ -57,6 +57,7 @@ export default function RadioWidget() {
     joinFrequency, startPTT, stopPTT,
     setMuted: setHookMuted,
     setSrsRadioSpec,
+    setSrsRadioBand,
   } = useRadioConnection({
     voiceProfile, voiceProfileVersion: profileVersion,
     pttKey, micDeviceId, outputDeviceId,
@@ -64,6 +65,7 @@ export default function RadioWidget() {
 
   const { radio: myRadio } = useMyRadio();
   useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
+  useEffect(() => { setSrsRadioBand(myRadio?.band || 'VHF'); }, [myRadio, setSrsRadioBand]);
 
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setFreqInput(tunedFrequency || ''); }, [tunedFrequency]);

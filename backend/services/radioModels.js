@@ -17,32 +17,38 @@ const HIDE_FROM_PICKER = new Set(['link16', 'intercom', 'hfnoise']);
 // behaves faithfully; only the player-facing labels are reskinned to fit
 // the in-universe fiction (we're a Star Citizen fan project, not a
 // military sim, so an "ARC-164" would feel out of place).
+// `band` maps the preset to one of the four SRS noise-bed .wav samples
+// in frontend/public/sounds/radio/. Rough logic:
+//   UHF   → tight 3 kHz band-limit, handheld / consumer character
+//   VHF   → standard 5 kHz, ship-fit and broadcast
+//   HF    → wider 8 kHz with atmospheric fade, legacy / long-range
+//   FM    → full-spectrum, military FM data-capable rigs
 const META = {
-  arc27:    { label: 'VX-27 Scoutlink',       family: 'personal',  blurb: 'Lightweight scout handheld — tight bandwidth, loud carrier.' },
-  arc51:    { label: 'VX-51 Fieldmaster',     family: 'personal',  blurb: 'Field-grade handheld, mid-brightness voice.' },
-  arc131:   { label: 'VX-131 Transit',        family: 'personal',  blurb: 'Short-range transit unit, muted treble.' },
-  arc134:   { label: 'VX-134 Patrol',         family: 'ship',      blurb: 'Patrol-class rig, balanced warmth.' },
-  arc164:   { label: 'UV-164 Guard',          family: 'ship',      blurb: 'Guard-channel broadcast, dense mid-range, prominent sidechain compression.' },
-  arc186:   { label: 'VX-186 Hauler',         family: 'ship',      blurb: 'Civilian hauler fit-standard, forgiving dynamics.' },
-  arc201d:  { label: 'DX-201 Secure',         family: 'ship',      blurb: 'Secure-voice rig with crypto discipline. Bright, bit-crushed.' },
-  arc210:   { label: 'MX-210 Interop',        family: 'broadcast', blurb: 'Multi-band interop broadcaster. Clean body, assertive compression.' },
-  arc220:   { label: 'MX-220 Datalink',       family: 'broadcast', blurb: 'Data-capable broadcast rig, warm high-end.' },
-  arc222:   { label: 'MX-222 Dispatch',       family: 'broadcast', blurb: 'Dispatch-grade broadcast, high clarity.' },
-  baklan5:  { label: 'KR-5 Baklan',           family: 'ship',      blurb: 'Soviet-pattern cockpit rig. Narrow midband, aggressive peak.' },
-  jadro1a:  { label: 'KR-1A Jadro',           family: 'ship',      blurb: 'Secure cockpit set with distinctive compression curve.' },
-  r800:     { label: 'KR-800 Flight',         family: 'ship',      blurb: 'Flight-standard transceiver, tight presence.' },
-  r828:     { label: 'KR-828 Line',           family: 'ship',      blurb: 'Line-of-sight pattern, mid-forward voicing.' },
-  r832m:    { label: 'KR-832M Military',      family: 'ship',      blurb: 'Military-pattern voice, deliberate saturation.' },
-  r852:     { label: 'KR-852 Steppe',         family: 'personal',  blurb: 'Steppe-service handheld. Dry and immediate.' },
-  r862:     { label: 'KR-862 Scout',          family: 'ship',      blurb: 'Scout cockpit rig, bright articulation.' },
-  r863:     { label: 'KR-863 Patrol',         family: 'ship',      blurb: 'Patrol fitment, moderate compression.' },
-  r864:     { label: 'KR-864 Border',         family: 'ship',      blurb: 'Border-service variant, heavier low-end.' },
-  rsi6k:    { label: 'KR-6K Veteran',         family: 'personal',  blurb: 'Veteran handheld, nostalgic 1960s voicing.' },
-  arc5:     { label: 'LG-5 Veteran',          family: 'legacy',    blurb: 'Legacy prop-era transceiver. Narrow and warm.' },
-  fug16zy:  { label: 'LG-16 Falke',           family: 'legacy',    blurb: 'Interwar continental voice, boxy midband.' },
-  r1155:    { label: 'LG-1155 Transit',       family: 'legacy',    blurb: 'Civilian transit relic, muted and intimate.' },
-  scr522a:  { label: 'LG-522 Field',          family: 'legacy',    blurb: 'Mid-century field rig with pronounced saturation.' },
-  t1154:    { label: 'LG-1154 Beacon',        family: 'legacy',    blurb: 'Beacon-service oldlink. Dim, honest.' },
+  arc27:    { label: 'VX-27 Scoutlink',       family: 'personal',  band: 'UHF', blurb: 'Lightweight scout handheld — tight bandwidth, loud carrier.' },
+  arc51:    { label: 'VX-51 Fieldmaster',     family: 'personal',  band: 'VHF', blurb: 'Field-grade handheld, mid-brightness voice.' },
+  arc131:   { label: 'VX-131 Transit',        family: 'personal',  band: 'UHF', blurb: 'Short-range transit unit, muted treble.' },
+  arc134:   { label: 'VX-134 Patrol',         family: 'ship',      band: 'VHF', blurb: 'Patrol-class rig, balanced warmth.' },
+  arc164:   { label: 'UV-164 Guard',          family: 'ship',      band: 'UHF', blurb: 'Guard-channel broadcast, dense mid-range, prominent sidechain compression.' },
+  arc186:   { label: 'VX-186 Hauler',         family: 'ship',      band: 'VHF', blurb: 'Civilian hauler fit-standard, forgiving dynamics.' },
+  arc201d:  { label: 'DX-201 Secure',         family: 'ship',      band: 'FM',  blurb: 'Secure-voice rig with crypto discipline. Bright, bit-crushed.' },
+  arc210:   { label: 'MX-210 Interop',        family: 'broadcast', band: 'VHF', blurb: 'Multi-band interop broadcaster. Clean body, assertive compression.' },
+  arc220:   { label: 'MX-220 Datalink',       family: 'broadcast', band: 'FM',  blurb: 'Data-capable broadcast rig, warm high-end.' },
+  arc222:   { label: 'MX-222 Dispatch',       family: 'broadcast', band: 'VHF', blurb: 'Dispatch-grade broadcast, high clarity.' },
+  baklan5:  { label: 'KR-5 Baklan',           family: 'ship',      band: 'VHF', blurb: 'Soviet-pattern cockpit rig. Narrow midband, aggressive peak.' },
+  jadro1a:  { label: 'KR-1A Jadro',           family: 'ship',      band: 'FM',  blurb: 'Secure cockpit set with distinctive compression curve.' },
+  r800:     { label: 'KR-800 Flight',         family: 'ship',      band: 'VHF', blurb: 'Flight-standard transceiver, tight presence.' },
+  r828:     { label: 'KR-828 Line',           family: 'ship',      band: 'UHF', blurb: 'Line-of-sight pattern, mid-forward voicing.' },
+  r832m:    { label: 'KR-832M Military',      family: 'ship',      band: 'VHF', blurb: 'Military-pattern voice, deliberate saturation.' },
+  r852:     { label: 'KR-852 Steppe',         family: 'personal',  band: 'UHF', blurb: 'Steppe-service handheld. Dry and immediate.' },
+  r862:     { label: 'KR-862 Scout',          family: 'ship',      band: 'VHF', blurb: 'Scout cockpit rig, bright articulation.' },
+  r863:     { label: 'KR-863 Patrol',         family: 'ship',      band: 'VHF', blurb: 'Patrol fitment, moderate compression.' },
+  r864:     { label: 'KR-864 Border',         family: 'ship',      band: 'UHF', blurb: 'Border-service variant, heavier low-end.' },
+  rsi6k:    { label: 'KR-6K Veteran',         family: 'personal',  band: 'HF',  blurb: 'Veteran handheld, nostalgic 1960s voicing.' },
+  arc5:     { label: 'LG-5 Veteran',          family: 'legacy',    band: 'HF',  blurb: 'Legacy prop-era transceiver. Narrow and warm.' },
+  fug16zy:  { label: 'LG-16 Falke',           family: 'legacy',    band: 'HF',  blurb: 'Interwar continental voice, boxy midband.' },
+  r1155:    { label: 'LG-1155 Transit',       family: 'legacy',    band: 'HF',  blurb: 'Civilian transit relic, muted and intimate.' },
+  scr522a:  { label: 'LG-522 Field',          family: 'legacy',    band: 'HF',  blurb: 'Mid-century field rig with pronounced saturation.' },
+  t1154:    { label: 'LG-1154 Beacon',        family: 'legacy',    band: 'HF',  blurb: 'Beacon-service oldlink. Dim, honest.' },
 };
 
 const FAMILY_LABEL = {
@@ -68,6 +74,7 @@ function load() {
         label: meta.label,
         family: meta.family,
         family_label: FAMILY_LABEL[meta.family] || meta.family,
+        band: meta.band || 'VHF',
         blurb: meta.blurb,
         hidden: HIDE_FROM_PICKER.has(id),
         spec,
