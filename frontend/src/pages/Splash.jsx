@@ -13,15 +13,15 @@ const DOT_SLOTS = 20;
 const TICK_MS = 80;
 
 const LINE_DEFS = [
-  { label: 'BIOS v2.31.04           ', status: 'OK',        color: '#2A6A9A', range: [800,  2800] },
-  { label: 'CHECKING MEMORY         ', status: '640MB OK',  color: '#2A6A9A', range: [700,  2600] },
-  { label: 'LOADING BOOT DEVICE     ', status: 'FOUND',     color: '#2A6A9A', range: [600,  2000] },
-  { label: 'READING SECTOR TABLE    ', status: 'OK',        color: '#2A6A9A', range: [1000, 3600] },
-  { label: 'LOADING CREW MODULE     ', status: 'OK',        color: '#2A6A9A', range: [800,  2800] },
-  { label: 'LOADING MISSION MODULE  ', status: 'OK',        color: '#2A6A9A', range: [900,  3200] },
-  { label: 'LOADING RP ENGINE       ', status: 'OK',        color: '#2A6A9A', range: [1200, 4400] },
-  { label: 'ESTABLISHING CONNECTION ', status: 'CONNECTED', color: '#33DDAA', range: [1000, 3600] },
-  { label: 'AUTHENTICATING NODE     ', status: 'VERIFIED',  color: '#33DDAA', range: [800,  2800] },
+  { label: 'BIOS v2.31.04           ', status: 'OK',        color: '#2A5A7A', range: [800,  2800] },
+  { label: 'CHECKING MEMORY         ', status: '640MB OK',  color: '#2A5A7A', range: [700,  2600] },
+  { label: 'LOADING BOOT DEVICE     ', status: 'FOUND',     color: '#2A5A7A', range: [600,  2000] },
+  { label: 'READING SECTOR TABLE    ', status: 'OK',        color: '#2A5A7A', range: [1000, 3600] },
+  { label: 'LOADING CREW MODULE     ', status: 'OK',        color: '#2A5A7A', range: [800,  2800] },
+  { label: 'LOADING MISSION MODULE  ', status: 'OK',        color: '#2A5A7A', range: [900,  3200] },
+  { label: 'LOADING RP ENGINE       ', status: 'OK',        color: '#2A5A7A', range: [1200, 4400] },
+  { label: 'ESTABLISHING CONNECTION ', status: 'CONNECTED', color: '#44FF88', range: [1000, 3600] },
+  { label: 'AUTHENTICATING NODE     ', status: 'VERIFIED',  color: '#44FF88', range: [800,  2800] },
 ];
 
 function randInt(a, b) {
@@ -281,66 +281,88 @@ export default function Splash() {
     };
   }, []);
 
-  // ─── Keypress / click handler — only active after boot sequence completes ────
+  // ─── Keypress / click handler — ANY-TIME skip ────────────────────────────────
+  //
+  // Previously this handler was gated on `prompt` (the "PRESS ANY KEY TO
+  // CONTINUE" state) so users had to watch the entire boot sequence before
+  // they could proceed. That gets tedious once you've seen it, and worse
+  // once you're already authenticated — nothing meaningful happens in the
+  // animation. Now ANY keypress or click at any point in the sequence
+  // fast-forwards to the end state and routes the user.
 
   useEffect(() => {
-    if (!prompt) return; // Wait for "PRESS ANY KEY" to appear before accepting input
-
     const handleInput = () => {
       if (fadingRef.current) return;
       fadingRef.current = true;
 
       playClick();
-
       setFading(true);
 
-      // Fade HDD over 400ms, stop comms immediately
       fadeOutHDD400();
       try { audios.current.comms?.pause(); } catch {}
 
-      // Check JWT validity and route accordingly
       const { valid } = checkToken();
       if (!valid) {
         setTimeout(() => {
           try {
             const h = audios.current.hdd;
-            if (h) {
-              h.pause();
-              h.currentTime = 0;
-              h.src = '';
-              h.load();
-            }
-          } catch(e) {}
+            if (h) { h.pause(); h.currentTime = 0; h.src = ''; h.load(); }
+          } catch (e) {}
           window.location.href = '/api/auth/discord';
         }, 800);
       } else {
         setTimeout(() => {
           try {
             const h = audios.current.hdd;
-            if (h) {
-              h.pause();
-              h.currentTime = 0;
-              h.src = '';
-              h.load();
-            }
-          } catch(e) {}
+            if (h) { h.pause(); h.currentTime = 0; h.src = ''; h.load(); }
+          } catch (e) {}
           navigate('/dashboard');
         }, 800);
       }
     };
 
-    window.addEventListener('keydown', handleInput);
+    // Ignore modifier-only presses so Ctrl, Shift, etc. aren't swallowed.
+    const onKeyDown = (e) => {
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+      handleInput();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
     window.addEventListener('click',   handleInput);
     return () => {
-      window.removeEventListener('keydown', handleInput);
+      window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('click',   handleInput);
     };
-  }, [navigate, prompt]);
+  }, [navigate]);
+
+  // ─── Already-authenticated fast-path ─────────────────────────────────────────
+  // Users who already have a valid JWT shouldn't have to sit through the
+  // boot sequence every time the app launches. Short-circuit on mount
+  // straight to the dashboard, with a tiny delay so the fading transition
+  // feels intentional rather than jarring.
+
+  useEffect(() => {
+    const { valid } = checkToken();
+    if (!valid) return;
+    if (fadingRef.current) return;
+    fadingRef.current = true;
+    setFading(true);
+    const t = setTimeout(() => {
+      try {
+        const h = audios.current.hdd;
+        if (h) { h.pause(); h.currentTime = 0; h.src = ''; h.load(); }
+      } catch (e) {}
+      navigate('/dashboard', { replace: true });
+    }, 450);
+    return () => clearTimeout(t);
+  }, [navigate]);
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   const lineColor = (ls, idx) =>
     ls.phase === RESOLVED ? LINE_DEFS[idx].color : '#66AADD';
+
+  const electron = typeof window !== 'undefined' ? window.electronAPI : null;
 
   return (
     <div style={{
@@ -352,8 +374,23 @@ export default function Splash() {
       cursor: 'default',
       padding: '48px 72px',
     }}>
-      <div className="scanlines" />
       <div className="vignette" />
+
+      {/* Close button for Electron users — keeps the splash from feeling
+          like a cutscene they can't escape. */}
+      {electron && (
+        <button
+          className="btn warn"
+          onClick={(e) => { e.stopPropagation(); electron.close?.(); }}
+          title="Close"
+          style={{
+            position: 'fixed', top: 12, right: 12,
+            width: 30, height: 26, padding: 0, fontSize: 12, zIndex: 200,
+          }}
+        >
+          ✕
+        </button>
+      )}
 
       <button
         onClick={handleAudioToggle}
@@ -363,8 +400,8 @@ export default function Splash() {
           bottom: 20,
           right: 20,
           background: 'transparent',
-          border: `1px solid ${audioEnabled ? '#33DDAA' : '#2A6A9A'}`,
-          color: audioEnabled ? '#33DDAA' : '#2A6A9A',
+          border: `1px solid ${audioEnabled ? '#44FF88' : '#2A5A7A'}`,
+          color: audioEnabled ? '#44FF88' : '#2A5A7A',
           width: 34,
           height: 34,
           padding: 0,
@@ -390,19 +427,19 @@ export default function Splash() {
       <div style={{ width: '100%', maxWidth: 700 }}>
         <AsciiBox fontSize={21.6} charW={13.2}>
           <div style={{
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+            fontFamily: "var(--font-mono)",
             fontSize: 16.8,
             lineHeight: 1.9,
             color: '#66AADD',
           }}>
 
             {header1 && (
-              <div style={{ color: '#99CCFF', marginBottom: 2 }}>
+              <div style={{ color: '#99BBDD', marginBottom: 2 }}>
                 NEXUS INTERSTELLAR TRAFFIC SYSTEM v1.0
               </div>
             )}
             {header2 && (
-              <div style={{ color: '#2A6A9A', marginBottom: 20 }}>
+              <div style={{ color: '#2A5A7A', marginBottom: 20 }}>
                 COPYRIGHT 2956 FRONTIER OPERATORS GUILD
               </div>
             )}
@@ -444,7 +481,7 @@ export default function Splash() {
             })}
 
             {welcome && (
-              <div style={{ color: '#99CCFF', marginTop: 20 }}>
+              <div style={{ color: '#99BBDD', marginTop: 20 }}>
                 WELCOME TO NEXUS 1.0 <span className="cursor">|</span>
               </div>
             )}

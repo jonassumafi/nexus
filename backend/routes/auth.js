@@ -3,13 +3,30 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { isAuthenticated } = require('../middleware/permissions');
+const { dispatch } = require('../services/nexusDispatch');
 
 const router = express.Router();
+
+// Domain-aware OAuth redirect URI. Derived from the request's Origin header
+// (set by the browser) or the forwarded-proto + host pair (set by cloudflared).
+// Falls back to env for direct localhost calls during development. This lets
+// the same backend serve multiple public hostnames (nexus.app-palette.com and
+// nexus-missions.space, in our case) without env-level reconfiguration — the
+// redirect URI Discord sees matches whichever domain the user actually came
+// from, which Discord requires for the token exchange.
+function discordRedirectUri(req) {
+  const explicitOrigin = req.get('origin');
+  if (explicitOrigin) return `${explicitOrigin}/auth/discord/callback`;
+  const proto = req.get('x-forwarded-proto') || req.protocol;
+  const host  = req.get('x-forwarded-host')  || req.get('host');
+  if (host) return `${proto}://${host}/auth/discord/callback`;
+  return process.env.DISCORD_REDIRECT_URI;
+}
 
 router.get('/discord', (req, res) => {
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID,
-    redirect_uri: process.env.DISCORD_REDIRECT_URI,
+    redirect_uri: discordRedirectUri(req),
     response_type: 'code',
     scope: 'identify',
   });
@@ -29,7 +46,7 @@ router.post('/discord/callback', async (req, res) => {
         client_secret: process.env.DISCORD_CLIENT_SECRET,
         grant_type: 'authorization_code',
         code,
-        redirect_uri: process.env.DISCORD_REDIRECT_URI,
+        redirect_uri: discordRedirectUri(req),
       }),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
@@ -52,7 +69,12 @@ router.post('/discord/callback', async (req, res) => {
       });
     } else {
       user.username = username;
-      user.avatar = avatar;
+      // Preserve onboarding-generated portrait URLs — only overwrite the
+      // avatar if the current stored value is empty or is still a raw
+      // Discord hash (i.e. not a full URL from a portrait upload).
+      if (!user.avatar || !/^(https?:|data:)/i.test(user.avatar)) {
+        user.avatar = avatar;
+      }
       await user.save();
     }
 
@@ -61,6 +83,12 @@ router.post('/discord/callback', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    dispatch('operatorOnline', {
+      operatorName: user.citizen_name || user.username,
+      rank: user.rp_rank?.title,
+    });
+
     res.json({ token });
   } catch (err) {
     console.error('[Auth] Discord callback error:', err.message);
@@ -72,7 +100,11 @@ router.get('/me', isAuthenticated, (req, res) => {
   res.json(req.user);
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', isAuthenticated, (req, res) => {
+  dispatch('operatorOffline', {
+    operatorName: req.user.citizen_name || req.user.username,
+    rank: req.user.rp_rank?.title,
+  });
   res.json({ success: true });
 });
 

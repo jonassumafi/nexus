@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus Radio Panel — Solid Blue Reference</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 30px; display: flex; gap: 24px; flex-wrap: wrap; }
+
+.section-lbl { font-size: 10px; color: #FFBB33; letter-spacing: 0.14em; margin-bottom: 10px; }
+
+.panel {
+  width: 300px;
+  background: #7AAAC8; /* solid steel blue — no PNG */
+  position: relative;
+  z-index: 9001; /* sits above global .scanlines overlay (z-index 9000) */
+}
+.panel-content { position: relative; z-index: 1; }
+
+/* HEADER */
+.panel-header {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0,0,0,0.15);
+  background: transparent;
+}
+.title-block { display: flex; flex-direction: column; align-items: flex-start; }
+.title-main { font-size: 12px; color: #061018; font-weight: bold; letter-spacing: 0.1em; }
+.title-sub { font-size: 10px; color: #1A3A50; letter-spacing: 0.08em; align-self: center; }
+.header-right { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
+.live-pill {
+  background: rgba(6,16,24,0.70);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 10px;
+  color: #33DDAA;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.gear-pill {
+  background: rgba(6,16,24,0.70);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 20px;
+  color: #9DC4D8;
+  cursor: pointer;
+  border: none;
+  position: relative;
+  z-index: 1;
+}
+
+/* FREQUENCY DISPLAY */
+.freq-block {
+  padding: 16px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,0,0,0.15);
+  background: transparent;
+}
+.freq-val { font-size: 36px; color: #061018; font-weight: bold; letter-spacing: 0.1em; }
+.freq-sub { font-size: 11px; color: #1A3A50; margin-top: 2px; }
+
+/* ACTION ROW */
+.action-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+.action-pill {
+  background: rgba(6,16,24,0.70);
+  border-radius: 4px;
+  padding: 6px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  min-width: 80px;
+  position: relative;
+  z-index: 1;
+}
+.action-icon { font-size: 22px; color: #9DC4D8; }
+.action-icon.red { color: #CC3322; }
+.action-lbl { font-size: 9px; color: #9DC4D8; letter-spacing: 0.1em; font-weight: bold; }
+.action-lbl.red { color: #CC3322; }
+
+/* CREW */
+.crew-block { padding: 10px 14px; border-bottom: 1px solid rgba(0,0,0,0.12); }
+.crew-header { font-size: 10px; color: #061018; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 4px; }
+.crew-none { font-size: 10px; color: #1A3A50; }
+
+/* MIC ROW */
+.mic-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+.mic-left { display: flex; align-items: center; gap: 6px; }
+.mic-dot { width: 8px; height: 8px; border-radius: 50%; background: #1A7A40; }
+.mic-dot.muted { background: #CC3322; }
+.mic-lbl { font-size: 10px; color: #061018; font-weight: bold; }
+.mic-status-active { font-size: 10px; color: #1A7A40; font-weight: bold; }
+.mic-status-muted { font-size: 10px; color: #CC3322; font-weight: bold; }
+.mute-btn {
+  font-size: 18px; background: none; border: none;
+  cursor: pointer; padding: 2px 4px;
+  position: relative; z-index: 1;
+}
+/* muted state: background rgba(204,51,34,0.8), color #fff */
+
+/* MIC LEVEL */
+.meter-block { padding: 8px 14px; border-bottom: 1px solid rgba(0,0,0,0.1); }
+.meter-lbl { font-size: 10px; color: #061018; font-weight: bold; margin-bottom: 4px; }
+.meter-track { width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 2px; }
+.meter-fill { height: 100%; width: 40%; background: #1A7A40; border-radius: 2px; }
+
+/* MIC VOLUME */
+.vol-block { padding: 8px 14px; border-bottom: 1px solid rgba(0,0,0,0.1); }
+.vol-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.vol-lbl { font-size: 10px; color: #061018; font-weight: bold; }
+.vol-val { font-size: 10px; color: #061018; font-weight: bold; }
+.vol-slider { width: 100%; accent-color: #061018; position: relative; z-index: 1; }
+
+/* PTT */
+.ptt-block { padding: 12px 14px; }
+.ptt-btn {
+  width: 100%; font-size: 14px; padding: 12px 0;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-weight: bold; cursor: pointer;
+  border: 2px solid #061018;
+  background: rgba(6,16,24,0.85);
+  color: #9DC4D8;
+  letter-spacing: 0.12em; text-align: center;
+  position: relative; z-index: 1;
+}
+/* Active PTT: border #CC3322, color #CC3322, background rgba(204,51,34,0.15) */
+
+.hint {
+  font-size: 10px; color: #061018; font-weight: bold;
+  text-align: center; padding: 0 14px 12px;
+  letter-spacing: 0.08em;
+}
+
+/* STANDBY STATE */
+.standby-body { padding: 20px 16px; text-align: center; }
+.standby-text { font-size: 12px; color: #061018; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 16px; }
+.mission-prompt { font-size: 11px; color: #5A3A00; font-weight: bold; margin-bottom: 8px; }
+.mission-tune-btn {
+  width: 100%; font-size: 11px; color: #5A3A00;
+  border: 2px solid #5A3A00; background: rgba(90,58,0,0.12);
+  padding: 7px 0; font-family: inherit; font-weight: bold;
+  cursor: pointer; margin-bottom: 14px; letter-spacing: 0.08em;
+  position: relative; z-index: 1;
+}
+.freq-input-row { display: flex; gap: 8px; justify-content: center; }
+.freq-input {
+  width: 120px; background: #EEF4F8;
+  border: 1px solid #2A5A7A; color: #061018;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-size: 18px; font-weight: bold;
+  text-align: center; padding: 6px 8px;
+}
+.tune-btn {
+  font-size: 12px; color: #EEF4F8; border: none;
+  background: #061018; padding: 6px 16px;
+  font-family: inherit; font-weight: bold;
+  cursor: pointer; letter-spacing: 0.1em;
+  position: relative; z-index: 1;
+}
+</style>
+</head>
+<body>
+
+<div>
+  <div class="section-lbl">STATE 1 — TUNED</div>
+  <div class="panel">
+    <div class="panel-content">
+      <div class="panel-header">
+        <div class="title-block">
+          <div class="title-main">NEXUS COMM</div>
+          <div class="title-sub">SYSTEM</div>
+        </div>
+        <div class="header-right">
+          <div class="live-pill">● LIVE</div>
+          <button class="gear-pill">⚙</button>
+        </div>
+      </div>
+
+      <div class="freq-block">
+        <div class="freq-val">133.5</div>
+        <div class="freq-sub">MHz — TUNED</div>
+      </div>
+
+      <div class="action-row">
+        <div class="action-pill">
+          <span class="action-icon">⇄</span>
+          <span class="action-lbl">RETUNE</span>
+        </div>
+        <div class="action-pill">
+          <span class="action-icon red">⏏</span>
+          <span class="action-lbl red">DISCONNECT</span>
+        </div>
+      </div>
+
+      <div class="crew-block">
+        <div class="crew-header">ON FREQUENCY</div>
+        <div class="crew-none">— NO OTHER OPERATORS —</div>
+      </div>
+
+      <div class="mic-row">
+        <div class="mic-left">
+          <div class="mic-dot"></div>
+          <span class="mic-lbl">MIC</span>
+          <span class="mic-status-active">ACTIVE</span>
+        </div>
+        <button class="mute-btn">🔊</button>
+      </div>
+
+      <div class="meter-block">
+        <div class="meter-lbl">MIC LEVEL</div>
+        <div class="meter-track"><div class="meter-fill"></div></div>
+      </div>
+
+      <div class="vol-block">
+        <div class="vol-row">
+          <span class="vol-lbl">MIC VOLUME</span>
+          <span class="vol-val">100%</span>
+        </div>
+        <input type="range" class="vol-slider" value="100" />
+      </div>
+
+      <div class="ptt-block">
+        <button class="ptt-btn">● TRANSMIT (V)</button>
+      </div>
+      <div class="hint">PRESS AND HOLD</div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="section-lbl">STATE 2 — STANDBY</div>
+  <div class="panel">
+    <div class="panel-content">
+      <div class="panel-header">
+        <div class="title-block">
+          <div class="title-main">NEXUS COMM</div>
+          <div class="title-sub">SYSTEM</div>
+        </div>
+        <div class="header-right">
+          <button class="gear-pill">⚙</button>
+        </div>
+      </div>
+
+      <div class="standby-body">
+        <div class="standby-text">NO FREQUENCY TUNED</div>
+        <div class="mission-prompt">MISSION FREQUENCY: 127.4 MHz</div>
+        <button class="mission-tune-btn">TUNE TO MISSION</button>
+        <div class="freq-input-row">
+          <input class="freq-input" placeholder="127.4" maxlength="5" />
+          <button class="tune-btn">TUNE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--
+IMPLEMENTATION NOTES FOR CLAUDE CODE:
+
+1. REMOVE PNG TEXTURE
+   In RadioPanel.jsx, find the outermost
+   wrapper div. Change:
+     background: "url('/images/radio_panel_bright.png') center/cover no-repeat"
+   To:
+     background: '#7AAAC8'
+   Keep backgroundColor: '#7AAAC8' as the only background property.
+   Remove any backgroundImage reference entirely.
+
+2. KEEP ALL CHILD BACKGROUNDS TRANSPARENT
+   All child containers must remain background: 'transparent'
+   so the solid #7AAAC8 shows through everywhere.
+
+3. RETAIN ALL SIZING IMPROVEMENTS
+   Keep every change from the previous reference pass:
+   - Stacked title: NEXUS COMM (12px bold #061018) / SYSTEM (10px #1A3A50)
+   - LIVE pill + gear pill on same line, flex-wrap: nowrap
+   - Action pills: icons 22px, pill background rgba(6,16,24,0.70)
+   - PRESS AND HOLD: color #061018
+   - Freq input standby: background #EEF4F8, color #061018
+   - TUNE button: background #061018, color #EEF4F8
+   - All interactive elements: position relative, zIndex 1
+
+4. SCANLINE MASK
+   Keep the z-index: 9001 wrapper so the solid panel
+   still sits above the global .scanlines overlay.
+-->
+
+</body>
+</html>

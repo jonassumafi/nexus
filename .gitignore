@@ -1,4 +1,26 @@
 node_modules/
 .env
+.env.*
 backend/uploads/
 .DS_Store
+
+# Build output — regenerable, never commit
+frontend/dist/
+electron/dist/
+
+# Study / reference material — SRS samples here are GPL v3 and
+# MUST NOT ship in the public repo until Nexus itself commits to GPL.
+study/
+
+# Source-material archives the user uploaded as references
+*.zip
+
+# Loose binaries at repo root (not production assets)
+/*.mp3
+/*.exe
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

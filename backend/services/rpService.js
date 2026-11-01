@@ -6,6 +6,7 @@ const MissionArchive = require('../models/MissionArchive');
 const PlatformConfig = require('../models/PlatformConfig');
 const MissionLog = require('../models/MissionLog');
 const { emitToUser, emitToAll } = require('./socketManager');
+const { dispatch } = require('./nexusDispatch');
 
 async function getConfig() {
   return PlatformConfig.findOne();
@@ -48,6 +49,10 @@ async function incrementUserRPAndUpdateRank(userId, points) {
       citizen_name: user.citizen_name ?? user.username ?? 'UNKNOWN OPERATOR',
       rank_name: newRank.title,
       timestamp: new Date(),
+    });
+    dispatch('rankAdvancement', {
+      operatorName: user.citizen_name || user.username,
+      newRank: newRank.title,
     });
   }
 
@@ -151,6 +156,15 @@ async function awardShipFillBonus(shipId, missionId, capacityAtLaunch, filledAtL
     ship_name: shipDoc?.ship_name ?? '—',
     rp_earned: points,
     timestamp: new Date(),
+  });
+
+  const Mission = require('../models/Mission');
+  const missionDoc = await Mission.findById(missionId).select('name').lean();
+  dispatch('shipRpAwarded', {
+    vesselName: shipDoc?.ship_name,
+    rpEarned: points,
+    fillRate: Math.round(fillRate),
+    missionName: missionDoc?.name,
   });
 }
 

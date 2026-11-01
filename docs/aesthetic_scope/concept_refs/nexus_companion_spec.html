@@ -1,0 +1,500 @@
+<title>Nexus Companion Spec</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
+<style>
+:root{
+  color-scheme:dark;
+  --void:#000710; --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A;
+  --rim0:#1A3A50; --rim1:#2A5A7A; --rim2:#3F82B3;
+  --fg0:#CCE8FF; --fg1:#99BBDD; --fg2:#86AFCF; --fg3:#5F87A8;
+  --lime:#44FF88; --blue:#66AADD; --red:#FF5544; --amber:#FFBB33; --purple:#AA66DD; --cyan:#00EEFF;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{
+  background:radial-gradient(ellipse 70% 40% at 30% 0%,#0B2438 0%,transparent 70%),var(--void);
+  color:var(--fg1);
+  padding-left:max(24px,env(safe-area-inset-left,0px));
+  padding-right:max(24px,env(safe-area-inset-right,0px));
+  padding-block:32px 72px;min-height:100vh;
+}
+.wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:340px minmax(0,1fr);gap:48px;align-items:start}
+.stage{position:sticky;top:24px;display:flex;flex-direction:column;gap:16px;align-items:center;perspective:1400px}
+.cap{font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--fg3);text-align:center}
+
+/* ───── window ───── */
+.slab{transform-style:preserve-3d;transition:transform .25s ease-out;position:relative}
+.slab.live{transition:transform .06s linear}
+.slab::before{content:"";position:absolute;left:8%;right:8%;bottom:-26px;height:30px;background:radial-gradient(ellipse at center,rgba(0,0,0,.75),transparent 70%);filter:blur(6px);pointer-events:none}
+.window{
+  position:relative;width:340px;height:540px;display:flex;flex-direction:column;overflow:hidden;border-radius:8px;
+  background:linear-gradient(180deg,#071522 0%,var(--bg0) 40%);border:1px solid var(--rim0);
+  box-shadow:0 1px 0 rgba(150,210,255,.22) inset,0 0 0 1px #000,0 2px 0 #0a2236,0 4px 0 #071a2a,0 6px 0 #05121e,0 22px 40px rgba(0,0,0,.65),0 0 60px rgba(40,110,170,.12);
+}
+.titlebar{height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 10px;
+  background:linear-gradient(180deg,#0E2236,#081624);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.tb-name{font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg2);text-transform:uppercase}
+.tb-ctl{display:flex;gap:4px}
+.tb-b{width:20px;height:20px;border-radius:3px;font-size:12px;color:var(--fg3);display:flex;align-items:center;justify-content:center;transition:all .12s}
+.tb-b:hover{color:var(--fg0);background:var(--bg3)}
+.tb-b.pin.on{color:var(--blue);}
+.tb-b.x:hover{background:#6a1d12;color:#fff}
+
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:4px;
+  box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.45);transition:transform .15s,box-shadow .15s,border-color .15s}
+.btn{font:600 11px 'Inter',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--fg1);padding:6px 10px;border-radius:3px;border:1px solid var(--rim1);
+  background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);
+  transition:transform .08s,box-shadow .08s,color .15s,background .15s}
+.btn:hover{color:var(--fg0);background:linear-gradient(180deg,#244766,#12304a)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a,0 1px 2px rgba(0,0,0,.5)}
+.btn.tx.on{color:#fff;border-color:var(--red);background:linear-gradient(180deg,#a8321f,#5e150b);box-shadow:0 1px 0 rgba(255,200,190,.4) inset,0 3px 0 #2a0803,0 0 18px rgba(255,85,68,.55)}
+.lcd{font-weight:700;color:var(--cyan);letter-spacing:.03em;background:linear-gradient(180deg,#00060c,#02101a);border-radius:3px;padding:2px 8px;box-shadow:0 2px 6px #000 inset,0 1px 0 rgba(120,200,255,.15)}
+.lcd.tx{color:var(--red);}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.collapse>div{overflow:hidden;min-height:0}
+.open>.collapse{grid-template-rows:1fr}
+
+/* operator header */
+.top{flex-shrink:0;padding:10px 12px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.op-name{font:600 15px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg0);text-transform:uppercase}
+.op-rank{font:600 11px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--blue);text-transform:uppercase}
+.stats{display:flex;gap:12px}
+.stat b{display:block;font:600 17px 'Inter',system-ui,sans-serif;line-height:1}
+.stat span{font:600 10px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg3);text-transform:uppercase}
+
+/* active mission bar */
+.mission-bar{flex-shrink:0;margin:8px 12px 0;padding:6px 10px;cursor:pointer;border-color:rgba(68,255,136,.3);background:linear-gradient(180deg,rgba(68,255,136,.12),rgba(68,255,136,.04))}
+.mission-bar:hover{transform:translateY(-1px)}
+.mb-row{display:flex;justify-content:space-between;align-items:center}
+.mb-name{font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--lime)}
+.mb-meta{font:600 10px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg2);text-transform:uppercase}
+.mb-timer{font:600 14px 'Inter',system-ui,sans-serif;color:var(--lime);letter-spacing:.03em;}
+.detail{padding-top:8px;font-size:11px;color:var(--fg2);line-height:1.7}
+.detail .row{display:flex;justify-content:space-between;gap:10px;border-top:1px dashed var(--rim0);padding:3px 0}
+.detail .row b{color:var(--fg1);font-weight:500;text-align:right}
+.detail .acts{display:flex;gap:6px;margin-top:6px}.detail .acts .btn{flex:1}
+
+/* category tabs */
+.tabs{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 12px 6px}
+.tab{position:relative;font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;padding:7px 0;border-radius:4px;color:var(--fg2);
+  background:linear-gradient(180deg,#0C1D2E,#08141f);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.08) inset,0 3px 0 #050e18;transition:all .1s}
+.tab:hover{color:var(--fg0)}
+.tab.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);
+  box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18,0 0 14px rgba(63,130,179,.35)}
+.tab .n{position:absolute;top:-6px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;font:600 11px 'Inter',system-ui,sans-serif;display:none;align-items:center;justify-content:center;
+  color:#04140a;background:var(--lime);box-shadow:0 0 10px rgba(68,255,136,.7),0 2px 3px #000}
+.tab .n.show{display:flex}
+
+/* feed */
+.feed{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.fi{border-bottom:1px solid rgba(26,58,80,.55);padding:6px 12px;cursor:pointer;transition:background .15s}
+.fi:hover{background:var(--bg1)}
+.fi.new{animation:drop .45s cubic-bezier(.2,1.2,.4,1)}
+@keyframes drop{from{opacity:0;transform:translateY(-14px) scale(.98)}to{opacity:1;transform:none}}
+.fi-row{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center}
+.ico{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:600 12px 'Inter',system-ui,sans-serif;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 3px 5px rgba(0,0,0,.6)}
+.ico.lime{background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);color:var(--lime);border:1px solid rgba(68,255,136,.4)}
+.ico.blue{background:radial-gradient(circle at 35% 30%,#24557a,#0c2437);color:var(--blue);border:1px solid rgba(102,170,221,.4)}
+.ico.red{background:radial-gradient(circle at 35% 30%,#7a2418,#2e0c07);color:var(--red);border:1px solid rgba(255,85,68,.4)}
+.ico.amber{background:radial-gradient(circle at 35% 30%,#7a5a14,#2e2106);color:var(--amber);border:1px solid rgba(255,187,51,.4)}
+.ico.purple{background:radial-gradient(circle at 35% 30%,#4d2a78,#1b0f2e);color:var(--purple);border:1px solid rgba(170,102,221,.4)}
+.ft{font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg0)}
+.ft em{font-style:normal}
+.fs{font-size:11px;color:var(--fg2);margin-top:1px}
+.ftime{font-size:10px;color:var(--fg3)}
+.fd{padding:6px 0 2px 34px;font-size:11px;color:var(--fg2);line-height:1.7}
+.fd b{color:var(--fg1);font-weight:500}
+.empty{padding:28px 12px;text-align:center;font-size:12px;color:var(--fg3)}
+
+/* footer */
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.35}}
+.foot{flex-shrink:0;padding:8px 12px 8px;background:linear-gradient(180deg,#0A1B2B,#061018);border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0);display:flex;flex-direction:column;gap:6px}
+.rhead{display:flex;justify-content:space-between;align-items:center}
+.rlabel{display:flex;align-items:center;gap:6px;font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--cyan);}
+.ptt{font:600 10px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg3);text-transform:uppercase;display:flex;align-items:center;gap:5px}
+kbd{font:600 11px 'Inter',system-ui,sans-serif;color:var(--fg1);padding:1px 6px;border-radius:3px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 2px 0 #04101a}
+.rrow{display:flex;align-items:center;gap:8px}
+.rrow .lcd{font-size:20px;flex:1}
+.chatbar{display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 0;border-radius:4px;font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg1);
+  background:linear-gradient(180deg,#14304a,#0b1f33);border:1px solid var(--rim1);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s}
+.chatbar:hover{color:var(--fg0)}
+.chatbar:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.chatbar.on{color:#fff;border-color:var(--rim2);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 3px 0 #04101a,0 0 14px rgba(63,130,179,.4)}
+.cb-n{min-width:16px;height:16px;padding:0 4px;border-radius:8px;font:600 11px 'Inter',system-ui,sans-serif;letter-spacing:0;display:none;align-items:center;justify-content:center;color:#04140a;background:var(--lime);box-shadow:0 0 10px rgba(68,255,136,.7)}
+.cb-n.show{display:flex}
+.nm{color:var(--fg0);cursor:pointer;border-bottom:1px dotted var(--rim2);transition:color .12s}
+.nm:hover{color:var(--lime);border-bottom-color:var(--lime)}
+.chat{flex:1;min-height:0;display:flex;flex-direction:column}
+.chat[hidden]{display:none}
+.ch-h{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.ch-t{flex:1;font:600 13px 'Inter',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--fg0);display:flex;align-items:center;gap:6px}
+.ch-list{flex:1;min-height:0;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.th{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:7px 8px;cursor:pointer}
+.th:hover{transform:translateY(-1px)}
+.th .av{width:28px;height:28px;border-radius:50%;font:600 10px 'Inter',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;color:var(--blue);background:radial-gradient(circle at 35% 30%,#1f4666,#0b1d2e);border:1px solid var(--rim1);box-shadow:0 3px 5px rgba(0,0,0,.6)}
+.th-n{font:600 12px 'Inter',system-ui,sans-serif;letter-spacing:.03em;color:var(--fg0)}
+.th-p{font-size:11px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.th-u{width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime)}
+.msgs{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:7px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.bub{max-width:80%;padding:6px 9px;border-radius:8px;font-size:12px;line-height:1.6;color:var(--fg0);word-break:break-word}
+.bub small{display:block;font-size:10px;color:var(--fg3);margin-top:2px}
+.bub.them{align-self:flex-start;background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);box-shadow:0 2px 0 #050e18}
+.bub.me{align-self:flex-end;background:linear-gradient(180deg,#1f4a70,#0e2c47);border:1px solid var(--rim2);box-shadow:0 2px 0 #04101a}
+.compose{flex-shrink:0;display:flex;gap:6px;padding:8px 12px;border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0);background:var(--bg1)}
+.compose input{flex:1;min-width:0;font:400 12px 'Inter',system-ui,sans-serif;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:3px;padding:6px 8px;box-shadow:0 2px 6px #000 inset;outline:none}
+.compose input:focus{border-color:var(--rim2)}
+
+/* ───── spec side ───── */
+.spec{display:flex;flex-direction:column;gap:28px;min-width:0}
+.spec h1{font:600 26px 'Inter',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--fg0);text-wrap:balance}
+.spec h1 span{color:var(--blue)}
+.lead{font-size:13px;line-height:1.8;color:var(--fg2);max-width:62ch}
+.spec h2{font:600 13px 'Inter',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--blue);display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.spec h2::after{content:"";flex:1;height:1px;background:var(--rim0)}
+.spec p,.spec li{font-size:12px;line-height:1.8;color:var(--fg1);max-width:70ch}
+.spec ul{padding-left:16px;display:flex;flex-direction:column;gap:4px}
+.spec code,kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 4px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{font:600 11px 'Inter',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:4px 8px;border-bottom:1px solid var(--rim1)}
+.tbl td{padding:6px 8px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top;line-height:1.6}
+.tblwrap{overflow-x:auto;border:1px solid var(--rim0);border-radius:4px;background:var(--bg1)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(255,255,255,.2)}
+.anat{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px}
+.anat b{color:var(--lime);font-weight:700}
+.sim{display:flex;gap:8px;flex-wrap:wrap}
+
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr);gap:40px}.stage{position:static}}
+@media (max-width:400px){.window{width:100%}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+<div class="stage">
+  <div class="slab" id="slab">
+    <div class="window" id="win">
+      <div class="titlebar" id="drag">
+        <div class="tb-name">Nexus ITS</div>
+        <div class="tb-ctl">
+          <button class="tb-b pin" id="pin" title="Always on top">⌖</button>
+          <button class="tb-b" id="mini" title="Compact mode">▁</button>
+          <button class="tb-b x" title="Hide to tray">✕</button>
+        </div>
+      </div>
+
+      <div class="top">
+        <div><div class="op-name">Peter Tork</div><div class="op-rank">◈ Veteran Operator</div></div>
+        <div class="stats">
+          <div class="stat"><b style="color:var(--lime)">12</b><span>Crew RP</span></div>
+          <div class="stat"><b style="color:var(--blue)">3</b><span>Ship RP</span></div>
+          <div class="stat"><b style="color:var(--amber)">9</b><span>Missions</span></div>
+        </div>
+      </div>
+
+      <div class="raised mission-bar" id="mBar">
+        <div class="mb-row"><div><div class="mb-name">● OP. IRON VEIL</div><div class="mb-meta">HCS Jomlet · 3/4 crew</div></div><div class="mb-timer" id="timer">01:23:47</div></div>
+        <div class="collapse"><div><div class="detail">
+          <div class="row"><span>Commander</span><b>Peter Tork</b></div>
+          <div class="row"><span>Objective</span><b>Escort convoy to Pyro Gateway</b></div>
+          <div class="row"><span>Crew</span><b>Tork · Unger · Tekke</b></div>
+          <div class="acts"><button class="btn" data-confirm>Complete</button><button class="btn" data-confirm style="color:var(--red)">Abort</button></div>
+        </div></div></div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-t="mission">Missions<span class="n" id="n-mission"></span></button>
+        <button class="tab" data-t="crew">Crew<span class="n" id="n-crew"></span></button>
+        <button class="tab" data-t="ship">Ships<span class="n" id="n-ship"></span></button>
+      </div>
+
+      <div class="feed" id="feed"></div>
+
+      <div class="chat" id="chat" hidden>
+        <div class="ch-h">
+          <button class="btn" id="chBack" style="padding:4px 8px" hidden>◂</button>
+          <div class="ch-t" id="chTitle">Direct Messages</div>
+          <button class="btn" id="chClose" style="padding:4px 8px">✕</button>
+        </div>
+        <div class="ch-list" id="chList"></div>
+        <div class="msgs" id="msgs" hidden></div>
+        <div class="compose" id="compose" hidden><input id="msgIn" placeholder="Message" autocomplete="off"><button class="btn" id="send">Send</button></div>
+      </div>
+
+      <div class="foot">
+        <div class="rhead">
+          <span class="rlabel"><i class="live-dot"></i>RADIO</span>
+          <span class="ptt" title="Synced from your Nexus web app settings">Push to talk <kbd id="pttKey">F8</kbd></span>
+        </div>
+        <div class="rrow">
+          <div class="lcd" id="freq">131.3</div>
+          <button class="btn" id="dn">◂</button><button class="btn" id="up">▸</button>
+          <button class="btn" id="tx">● TX</button>
+        </div>
+        <button class="chatbar" id="chatBtn"><span>CHAT</span><span class="cb-n" id="chatN"></span></button>
+      </div>
+    </div>
+  </div>
+  <div class="cap">Option B · Console · 340 × 540</div>
+  <div class="sim">
+    <button class="btn" data-sim="mission">Sim mission event</button>
+    <button class="btn" data-sim="crew">Sim crew event</button>
+    <button class="btn" data-sim="ship">Sim ship event</button>
+    <button class="btn" id="simDm">Sim incoming DM</button>
+  </div>
+</div>
+
+<div class="spec">
+  <div>
+    <h1>Nexus Companion <span>Console</span></h1>
+    <p class="lead">Compact always-on-top Electron window for the Nexus Interstellar Traffic System. It pairs a live event feed, split into three categories, with an active mission readout and a pinned radio strip. This page is the working reference for the build. The window on the left is interactive: switch tabs, expand rows, tune, transmit, and use the simulate buttons to see new events arrive.</p>
+  </div>
+
+  <section>
+    <h2>Anatomy, top to bottom</h2>
+    <div class="anat">
+      <b>1 Titlebar</b><span>30px. Custom frame. Drag region. Pin (always on top), compact toggle, hide to tray.</span>
+      <b>2 Operator header</b><span>Name, rank label, three stat readouts (Crew RP, Ship RP, Missions).</span>
+      <b>3 Mission bar</b><span>Only rendered while the operator is on an active mission. Click to expand. Holds Complete and Abort.</span>
+      <b>4 Category tabs</b><span>Missions, Crew, Ships. No "All" tab. Missions is the default. Unread badge per tab.</span>
+      <b>5 Feed</b><span>Flexible height, scrolls. Rows expand in place for detail.</span>
+      <b>6 Radio strip</b><span>Cyan "RADIO" signal label with a live dot, the saved push-to-talk key shown at right, then frequency LCD, tune down and up, and transmit toggle. Always visible, including while chat is open.</span>
+      <b>7 Chat bar</b><span>Full-width button at the very bottom with an unread badge. Opens the direct message panel in place of the tabs and feed.</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tabs and event mapping</h2>
+    <div class="tblwrap"><table class="tbl">
+      <tr><th>Tab</th><th>Events shown</th><th>Accent</th></tr>
+      <tr><td>Missions</td><td>Mission created, launched, complete, aborted</td><td><i class="sw" style="background:#44FF88"></i>Lime for created, launched, complete<br><i class="sw" style="background:#FF5544"></i>Red for aborted</td></tr>
+      <tr><td>Crew</td><td>Crew slot filled, slot withdrawn, rank advancement, operator online and offline</td><td><i class="sw" style="background:#66AADD"></i>Blue for presence and slot filled<br><i class="sw" style="background:#44FF88"></i>Lime for rank advancement<br><i class="sw" style="background:#FF5544"></i>Red for withdrawn</td></tr>
+      <tr><td>Ships</td><td>Ship access granted, ship recalled, ship RP awarded</td><td><i class="sw" style="background:#FFBB33"></i>Amber for loans<br><i class="sw" style="background:#FF5544"></i>Red for recall<br><i class="sw" style="background:#44FF88"></i>Lime for ship RP</td></tr>
+    </table></div>
+    <p style="margin-top:10px">Each incoming socket event is routed to exactly one tab. A row inserted into an inactive tab raises that tab's badge, which clears when the tab is opened. A row inserted into the active tab animates in at the top of the feed.</p>
+  </section>
+
+  <section>
+    <h2>Design tokens</h2>
+    <div class="tblwrap"><table class="tbl">
+      <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+      <tr><td><i class="sw" style="background:#000710"></i>void</td><td><code>#000710</code></td><td>Outside the window, transparent areas</td></tr>
+      <tr><td><i class="sw" style="background:#020C14"></i>bg0</td><td><code>#020C14</code></td><td>Window body</td></tr>
+      <tr><td><i class="sw" style="background:#061018"></i>bg1</td><td><code>#061018</code></td><td>Header and footer bands</td></tr>
+      <tr><td><i class="sw" style="background:#0A1828"></i>bg2</td><td><code>#0A1828</code></td><td>Raised card base</td></tr>
+      <tr><td><i class="sw" style="background:#1A3A50"></i>rim0</td><td><code>#1A3A50</code></td><td>Default border</td></tr>
+      <tr><td><i class="sw" style="background:#2A5A7A"></i>rim1</td><td><code>#2A5A7A</code></td><td>Button and hover border</td></tr>
+      <tr><td><i class="sw" style="background:#3F82B3"></i>rim2</td><td><code>#3F82B3</code></td><td>Active tab border</td></tr>
+      <tr><td><i class="sw" style="background:#CCE8FF"></i>fg0 / fg1 / fg2 / fg3</td><td><code>#CCE8FF #99BBDD #5A8AAA #2F5272</code></td><td>Text, strongest to faintest</td></tr>
+      <tr><td><i class="sw" style="background:#44FF88"></i>lime</td><td><code>#44FF88</code></td><td>Success, positive</td></tr>
+      <tr><td><i class="sw" style="background:#66AADD"></i>blue</td><td><code>#66AADD</code></td><td>Neutral, presence</td></tr>
+      <tr><td><i class="sw" style="background:#FF5544"></i>red</td><td><code>#FF5544</code></td><td>Abort, recall, transmit active</td></tr>
+      <tr><td><i class="sw" style="background:#FFBB33"></i>amber</td><td><code>#FFBB33</code></td><td>Ship loans</td></tr>
+      <tr><td><i class="sw" style="background:#00EEFF"></i>cyan</td><td><code>#00EEFF</code></td><td>Radio frequency LCD only</td></tr>
+    </table></div>
+    <p style="margin-top:10px">Typeface: Inter, a plain sans serif, for everything in the window (weights 400 to 700, tabular numerals for the timer and frequency). Minimum text size is 10px, body text 11 to 13px. No text glows or shadows. Monospace appears only in this spec's code samples. The app is a single dark theme with no light mode.</p>
+  </section>
+
+  <section>
+    <h2>Depth system</h2>
+    <ul>
+      <li><b>Window slab:</b> stacked hard shadows below the frame (2px, 4px, 6px steps in darkening blues) plus a soft 40px drop shadow, a 1px top highlight inside, and a faint blue ambient glow.</li>
+      <li><b>Raised card:</b> vertical gradient <code>#0F2338</code> to <code>#0A1828</code>, 1px inside top highlight, 3px hard under-edge <code>#050e18</code>, soft drop shadow. On hover it lifts 1px.</li>
+      <li><b>Button:</b> same recipe with a 3px under-edge. On press it translates down 3px and the under-edge collapses to zero, so it reads as a physical key.</li>
+      <li><b>Active tab:</b> pressed state. It sits 2px lower with a brighter fill and a blue outer glow.</li>
+      <li><b>Icons:</b> radial gradient discs with an inner top highlight, tinted by event color.</li>
+      <li><b>No window motion:</b> the window stays flat and fixed like a normal app. No tilt, no cursor glow, no sheen. Depth comes only from the static shadows and bevels above.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Behavior</h2>
+    <ul>
+      <li><b>Tabs:</b> single select, Missions on launch. Last selected tab persists between sessions.</li>
+      <li><b>Feed rows:</b> click toggles a detail panel with a 280ms height transition. Multiple rows may be open at once.</li>
+      <li><b>Mission bar:</b> expands to show commander, objective, crew, and Complete and Abort. Each button needs a two-step confirm (first click changes the label to "Confirm", second click fires). The preview shows only the first step.</li>
+      <li><b>Radio:</b> tune steps of 0.1 MHz between 130.0 and 139.9, wrapping. TX toggles transmit and turns the LCD red.</li>
+      <li><b>Push-to-talk shortcuts:</b> the app keeps every shortcut the player has set in the web app version. It reads the same saved keybindings and registers them as global shortcuts (<code>globalShortcut</code> or a low-level key hook for hold-to-talk), so they work while Star Citizen has focus. The key shown beside the RADIO label always reflects the saved binding. The preview uses F8 as a stand-in: hold it to transmit.</li>
+      <li><b>Direct messages:</b> any player name anywhere in the window (feed rows, mission detail) is clickable and opens a direct message thread with that player. Names show a dotted underline and turn lime on hover. The Chat button opens the thread list (newest first, unread dot per thread). Within a thread: back arrow, close, bubbles, text input, Enter to send. Incoming messages raise the unread badge on the Chat button. Your own name is never linked. Direct messages only for now; global chat stays out of scope.</li>
+      <li><b>Pin:</b> toggles always on top. Pinned state persists.</li>
+      <li><b>Compact mode:</b> collapses the window to titlebar, mission bar, and radio strip only (about 150px tall). Hides tabs and feed.</li>
+      <li><b>Reduced motion:</b> all transitions are disabled under <code>prefers-reduced-motion</code>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Electron notes (proposed)</h2>
+    <ul>
+      <li>Window: 340 × 540, min 340 × 150, resizable in height only, <code>frame: false</code>, <code>backgroundColor: '#000710'</code>.</li>
+      <li>Always on top: <code>setAlwaysOnTop(true, 'screen-saver')</code> so it stays above a borderless fullscreen game. Note that exclusive fullscreen will still hide it.</li>
+      <li>Drag: the titlebar uses <code>-webkit-app-region: drag</code>; the three titlebar buttons use <code>no-drag</code>.</li>
+      <li>Tray icon with show, hide, and quit. The close button hides to tray.</li>
+      <li>Renderer reuses the Nexus frontend stack (React, socket.io-client) and talks to the existing backend on port 3099 through the same <code>/api</code> and <code>/socket.io</code> routes.</li>
+      <li>Persisted settings in the main process: window position, pinned, compact, selected tab, opacity.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Open questions</h2>
+    <ul>
+      <li>Should the Missions tab also let the user browse and join open missions, or stay a pure event feed?</li>
+      <li>Is a window opacity slider wanted, for sitting over gameplay?</li>
+      <li>Should offline operators appear in the Crew feed, or only come-online events?</li>
+      <li>Where does the web app store push-to-talk bindings today? If only in browser storage, the backend needs to persist them per user so the Electron app can read them.</li>
+      <li>Does a direct message system exist in the backend yet, or does it need new models, routes and socket events?</li>
+    </ul>
+  </section>
+</div>
+
+</div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  $('#pin').addEventListener('click',function(){this.classList.toggle('on')});
+  $('#mini').addEventListener('click',function(){
+    var w=$('#win'),c=w.dataset.c!=='1'; w.dataset.c=c?'1':''; w.style.height=c?'200px':'540px';
+    if(c)closeChat();
+    $('#tabs').style.display=c?'none':''; $('#feed').style.display=c?'none':''; $('#chatBtn').style.display=c?'none':'';
+  });
+
+  /* radio */
+  var f=131.3,tx=false;
+  function paint(){var l=$('#freq');l.textContent=f.toFixed(1);l.classList.toggle('tx',tx);$('#tx').classList.toggle('on',tx)}
+  function step(d){f=Math.round((f+d)*10)/10;if(f>139.9)f=130;if(f<130)f=139.9;paint()}
+  $('#up').onclick=function(){step(.1)};$('#dn').onclick=function(){step(-.1)};
+  $('#tx').onclick=function(){tx=!tx;paint()};
+  $('#tx').className='btn tx';
+
+  /* timer */
+  var s=5027;setInterval(function(){s++;var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+    $('#timer').textContent=[h,m,x].map(function(n){return String(n).padStart(2,'0')}).join(':')},1000);
+
+  /* mission bar */
+  $('#mBar').addEventListener('click',function(e){
+    var b=e.target.closest('[data-confirm]');
+    if(b){ if(b.dataset.a){b.textContent='Sent';b.disabled=true}else{b.dataset.a='1';b.textContent='Confirm?'} return }
+    this.classList.toggle('open');
+  });
+
+  /* feed data: [tab,color,glyph,title,sub,time,detail] */
+  var data={
+    mission:[
+      ['lime','✓','<em style="color:var(--lime)">Mission complete</em> · Iron Veil','01:28:14 elapsed · 3 crew · +3 RP each','2m','Commander <b>Peter Tork</b><br>Ship <b>HCS Jomlet</b><br>Reward <b>+3 Crew RP, +1 Ship RP</b>'],
+      ['lime','▲','<em style="color:var(--lime)">Mission launched</em> · Iron Veil','3 crew aboard · Peter Tork commanding','1h','Launched from <b>Port Olisar</b>'],
+      ['lime','+','<em style="color:var(--lime)">Mission created</em> · Iron Veil','Peter Tork commanding · 4 slots','1h','Objective <b>Escort convoy to Pyro Gateway</b>'],
+      ['red','■','<em style="color:var(--red)">Mission aborted</em> · Delta-7','Aborted by Grauto before launch','2d','Reason <b>Insufficient crew</b>']
+    ],
+    crew:[
+      ['lime','★','<em style="color:var(--lime)">Rank advancement</em> · Unger Poshet','Recruit to Drifter','9m','Threshold reached at <b>10 Crew RP</b>'],
+      ['blue','✓','<em style="color:var(--blue)">Crew slot filled</em> · Joe Tekke','Joined HCS Jomlet as Turret Operator','14m','Slot <b>Turret Operator</b><br>Mission <b>Op. Iron Veil</b>'],
+      ['blue','●','<em style="color:var(--blue)">Operator online</em> · liltekke','Rank: Recruit','22m','Connected from <b>Nexus web</b>'],
+      ['red','−','<em style="color:var(--red)">Slot withdrawn</em> · Grauto','Left Patrol Delta-9','1h','Slot <b>Pilot</b> reopened']
+    ],
+    ship:[
+      ['red','!','<em style="color:var(--red)">Ship recalled</em> · Ole Ass','Recalled by Grauto mid-op','31m','Owner <b>Grauto</b><br>Borrower <b>Tekke</b><br>Access revoked immediately'],
+      ['amber','⇄','<em style="color:var(--amber)">Access granted</em> · Ole Ass','Loaned to Joe Tekke','1h','Owner <b>Grauto</b><br>Terms <b>Until recalled</b>'],
+      ['lime','+','<em style="color:var(--lime)">Ship RP awarded</em> · HCS Jomlet','+1 Ship RP','1h','Total <b>3 Ship RP</b>']
+    ]
+  };
+  var cur='mission', unread={mission:0,crew:0,ship:0};
+  function row(r,isNew){
+    return '<div class="fi'+(isNew?' new':'')+'"><div class="fi-row"><div class="ico '+r[0]+'">'+r[1]+'</div><div><div class="ft">'+L(r[2])+'</div><div class="fs">'+L(r[3])+'</div></div><div class="ftime">'+r[4]+'</div></div><div class="collapse"><div><div class="fd">'+L(r[5])+'</div></div></div></div>';
+  }
+  function draw(){
+    var rows=data[cur]; $('#feed').innerHTML=rows.length?rows.map(function(r){return row(r)}).join(''):'<div class="empty">No events yet.</div>';
+  }
+  function badges(){['mission','crew','ship'].forEach(function(k){var n=$('#n-'+k);n.textContent=unread[k];n.classList.toggle('show',unread[k]>0)})}
+  $('#tabs').addEventListener('click',function(e){
+    var t=e.target.closest('.tab');if(!t)return;cur=t.dataset.t;unread[cur]=0;
+    $$('.tab').forEach(function(x){x.classList.toggle('on',x===t)});badges();draw();
+  });
+  $('#feed').addEventListener('click',function(e){var r=e.target.closest('.fi');if(r)r.classList.toggle('open')});
+  var style=document.createElement('style');style.textContent='.fi.open .collapse,.mission-bar.open .collapse{grid-template-rows:1fr}';document.head.appendChild(style);
+
+  var sims={
+    mission:['lime','✓','<em style="color:var(--lime)">Mission complete</em> · Delta-9','00:47:02 elapsed · 2 crew','now','Commander <b>Grauto</b><br>Reward <b>+2 Crew RP</b>'],
+    crew:['blue','✓','<em style="color:var(--blue)">Crew slot filled</em> · Grauto','Joined HCS Jomlet as Pilot','now','Slot <b>Pilot</b>'],
+    ship:['amber','⇄','<em style="color:var(--amber)">Access granted</em> · Grim Hex','Loaned to Peter Tork','now','Owner <b>Unger Poshet</b>']
+  };
+  $$('[data-sim]').forEach(function(b){b.addEventListener('click',function(){
+    var k=b.dataset.sim; data[k].unshift(sims[k]);
+    if(k===cur){var feed=$('#feed');feed.insertAdjacentHTML('afterbegin',row(sims[k],true));feed.scrollTop=0}
+    else{unread[k]++;badges()}
+  })});
+  /* ── clickable names ── */
+  var FULL={'Unger':'Unger Poshet','Tekke':'Joe Tekke'};
+  var NAME_RE=/(Unger Poshet|Joe Tekke|Grauto|liltekke|sublimeswell|Unger|Tekke)/g;
+  function L(h){return h.replace(NAME_RE,function(m){return '<span class="nm" data-u="'+(FULL[m]||m)+'" title="Direct message">'+m+'</span>'})}
+  draw();badges();
+  $$('#mBar .row b').forEach(function(b){b.innerHTML=L(b.innerHTML)});
+  document.addEventListener('click',function(e){
+    var n=e.target.closest('.nm'); if(!n)return;
+    e.stopPropagation(); openThread(n.dataset.u);
+  },true);
+
+  /* ── direct messages ── */
+  var threads={
+    'Unger Poshet':[{m:0,t:'Forming up at the hangar in 5.',ts:'8:21'},{m:1,t:'On my way.',ts:'8:22'}],
+    'Joe Tekke':[{m:0,t:'Turret check done, ready when you are.',ts:'8:05'}],
+    'Grauto':[{m:1,t:'Can I get Ole Ass back after the run?',ts:'7:48'}]
+  };
+  var unreadDm={'Joe Tekke':1};
+  var open=false, active=null;
+  function ini(n){return n.split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase()}
+  function totalUnread(){var t=0;for(var k in unreadDm)t+=unreadDm[k];return t}
+  function chatBadge(){var t=totalUnread(),b=$('#chatN');b.textContent=t;b.classList.toggle('show',t>0)}
+  function showList(){
+    active=null; $('#chTitle').textContent='Direct Messages'; $('#chBack').hidden=true;
+    $('#chList').hidden=false; $('#msgs').hidden=true; $('#compose').hidden=true;
+    var names=Object.keys(threads);
+    $('#chList').innerHTML=names.length?names.map(function(n){
+      var l=threads[n][threads[n].length-1];
+      return '<div class="raised th" data-th="'+n+'"><div class="av">'+ini(n)+'</div><div><div class="th-n">'+n+'</div><div class="th-p">'+(l.m?'You: ':'')+l.t+'</div></div>'+(unreadDm[n]?'<i class="th-u"></i>':'<span></span>')+'</div>'}).join('')
+      :'<div class="empty">Click any name in the app to start a message.</div>';
+  }
+  function showThread(n){
+    active=n; unreadDm[n]=0; chatBadge();
+    $('#chTitle').innerHTML='<span class="nm" style="border:0;cursor:default">'+n+'</span>'; $('#chBack').hidden=false;
+    $('#chList').hidden=true; $('#msgs').hidden=false; $('#compose').hidden=false;
+    drawMsgs(); $('#msgIn').focus();
+  }
+  function drawMsgs(){
+    var m=$('#msgs'); m.innerHTML=(threads[active]||[]).map(function(x){return '<div class="bub '+(x.m?'me':'them')+'">'+esc(x.t)+'<small>'+x.ts+'</small></div>'}).join('');
+    m.scrollTop=m.scrollHeight;
+  }
+  function esc(s){return s.replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+  function openChat(){open=true;$('#chat').hidden=false;$('#tabs').style.display='none';$('#feed').style.display='none';$('#chatBtn').classList.add('on')}
+  function closeChat(){open=false;$('#chat').hidden=true;if($('#win').dataset.c!=='1'){$('#tabs').style.display='';$('#feed').style.display=''}$('#chatBtn').classList.remove('on')}
+  function openThread(n){
+    if($('#win').dataset.c==='1')$('#mini').click();
+    if(!threads[n])threads[n]=[]; openChat(); showThread(n);
+  }
+  function now(){var d=new Date();return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')}
+  $('#chatBtn').addEventListener('click',function(){if(open)closeChat();else{openChat();showList()}});
+  $('#chClose').addEventListener('click',closeChat);
+  $('#chBack').addEventListener('click',showList);
+  $('#chList').addEventListener('click',function(e){var t=e.target.closest('[data-th]');if(t)showThread(t.dataset.th)});
+  function send(){
+    var i=$('#msgIn'),v=i.value.trim(); if(!v||!active)return;
+    threads[active].push({m:1,t:v,ts:now()}); i.value=''; drawMsgs();
+  }
+  $('#send').addEventListener('click',send);
+  $('#msgIn').addEventListener('keydown',function(e){if(e.key==='Enter')send()});
+  $('#simDm').addEventListener('click',function(){
+    var n='Unger Poshet'; threads[n].push({m:0,t:'Need one more on the turret. Free?',ts:now()});
+    if(open&&active===n){drawMsgs()}else{unreadDm[n]=(unreadDm[n]||0)+1;chatBadge();if(open&&!active)showList()}
+  });
+  chatBadge();
+
+  /* ── push to talk: hold the saved key (preview uses F8) ── */
+  var held=false;
+  document.addEventListener('keydown',function(e){if(e.key==='F8'&&!held){held=true;e.preventDefault();tx=true;paint()}});
+  document.addEventListener('keyup',function(e){if(e.key==='F8'){held=false;tx=false;paint()}});
+})();
+</script>

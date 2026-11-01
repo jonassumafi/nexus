@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocketContext } from '../context/SocketContext';
 import api from '../services/api';
@@ -10,6 +10,12 @@ import CreateMission from '../components/CreateMission';
 import ColumnResizeHandle from '../components/ColumnResizeHandle';
 import RadioPanel from '../components/RadioPanel';
 import RegistryBoot from '../components/RegistryBoot';
+import ThemePicker from '../components/ThemePicker';
+import TitleBar from '../components/TitleBar';
+import OnlineCount from '../components/OnlineCount';
+import FeedIcon from '../components/FeedIcon';
+import BugReportModal from '../components/BugReportModal';
+import GlobalChat, { useChatUnread } from '../components/GlobalChat';
 import { useRadioConnection } from '../hooks/useRadioConnection';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
 
@@ -29,21 +35,25 @@ const playClick = () => {
 };
 
 const C = {
-  amber:  '#66AADD',
-  gold:   '#99CCFF',
-  dim:    '#2A6A9A',
-  border: '#1A3D55',
-  green:  '#33DDAA',
+  // v0.6.6 — the legacy "C" palette now points at theme-scoped CSS
+  // variables so dashboard column dividers and other long-standing
+  // literals retint when the player switches skins. Semantic (green/red)
+  // keys stay as hex constants on purpose.
+  amber:  'var(--blue)',
+  gold:   'var(--fg1)',
+  dim:    'var(--rim1)',
+  border: 'var(--rim0)',
+  green:  '#44FF88',
   red:    '#FF5544',
-  bgSel:  '#050F1A',
-  deep:   '#0D2030',
-  cyan:   '#00EEFF',
+  bgSel:  'var(--bg1)',
+  deep:   'var(--bg1)',
+  cyan:   'var(--cyan)',
 };
 
 const STATUS_COLOR = {
   'WAITING FOR CREW': '#FFBB33',
   'FINALIZED':        '#FFBB33',
-  'IN PROGRESS':      '#33DDAA',
+  'IN PROGRESS':      '#44FF88',
   'COMPLETE':         '#66AADD',
   'ABORT':            '#FF5544',
 };
@@ -58,9 +68,9 @@ const STATUS_ABBR = {
 
 const STATUS_BADGE_CFG = {
   'WAITING FOR CREW': { bg: 'rgba(255,187,51,0.12)',  border: '#FFBB33', text: '#FFCC66', dot: '#FFBB33', dotAnim: 'pulse-dot 1.4s ease-in-out infinite', label: 'WAITING FOR CREW' },
-  'FINALIZED':        { bg: 'rgba(102,170,221,0.15)', border: '#66AADD', text: '#99CCFF', dot: '#66AADD', dotAnim: 'pulse-dot 1.4s ease-in-out infinite', label: 'PREPARING FOR LAUNCH' },
-  'IN PROGRESS':      { bg: 'rgba(51,221,170,0.12)',  border: '#33DDAA', text: '#66EEBB', dot: '#33DDAA', dotAnim: 'pulse-dot 0.8s ease-in-out infinite', label: 'IN PROGRESS' },
-  'COMPLETE':         { bg: 'rgba(68,136,187,0.12)',  border: '#4488BB', text: '#66AADD', dot: '#4488BB', dotAnim: 'none', label: 'COMPLETE' },
+  'FINALIZED':        { bg: 'rgba(102,170,221,0.15)', border: '#66AADD', text: '#99BBDD', dot: '#66AADD', dotAnim: 'pulse-dot 1.4s ease-in-out infinite', label: 'PREPARING FOR LAUNCH' },
+  'IN PROGRESS':      { bg: 'rgba(51,221,170,0.12)',  border: '#44FF88', text: '#66EEBB', dot: '#44FF88', dotAnim: 'pulse-dot 0.8s ease-in-out infinite', label: 'IN PROGRESS' },
+  'COMPLETE':         { bg: 'rgba(68,136,187,0.12)',  border: '#5F87A8', text: '#66AADD', dot: '#5F87A8', dotAnim: 'none', label: 'COMPLETE' },
   'ABORT':            { bg: 'rgba(255,85,68,0.12)',   border: '#FF5544', text: '#FF8877', dot: '#FF5544', dotAnim: 'none', label: 'ABORTED' },
 };
 
@@ -71,38 +81,49 @@ const EVENT_LABEL = {
   SHIP_FILL_BONUS:  'earned ship bonus',
 };
 
-// Four-color feed palette:
-//   LIME   #44FF88 — positive/earned  (slot fills, mission progress, RP gains)
-//   BLUE   #66AADD — neutral/info     (creation, joins, disconnects, borrows)
-//   RED    #FF5544 — termination      (abort, queue expiry)
-//   PURPLE #AA66DD — AI summaries only
-const FEED_LIME = { accent: '#44FF88', bg: 'rgba(68,255,136,0.08)',  text: '#CCFFE0' };
-const FEED_BLUE = { accent: '#66AADD', bg: 'rgba(102,170,221,0.08)', text: '#CCE8FF' };
-const FEED_RED  = { accent: '#FF5544', bg: 'rgba(255,85,68,0.08)',   text: '#FFD4D0' };
-const FEED_PURP = { accent: '#AA66DD', bg: 'rgba(170,102,221,0.08)', text: '#E8D4FF' };
+// Four-category feed palette — each row is categorized then rendered with
+// the concept's .fi/.fr/.ico pattern. `tone` picks the global icon-color
+// utility class (lime/blue/red/amber/purple); `glyph` is the glyph shown
+// inside the icon circle.
+// Semantic color mapping — spread events across the full palette so the
+// feed reads as a dashboard, not a wall of one color. Each tone is picked
+// to match the *nature* of the event, not just its outcome:
+//   blue   crew / people-events (joined, online)
+//   lime   positive milestones (launched, logged, rank up)
+//   cyan   completion / finished state
+//   amber  cargo / ships / loans / "preparing" states
+//   red    departures / aborts / failures
+//   dim    offline / expired / neutral loss
+//   purple rare / achievement / AI
+// Tone (ring color) palette, collapsed to one color per *theme* of event:
+//   blue   people joining / signing on   (slot_filled, player_connected, mission_created)
+//   red    departures / failure           (slot_withdrawn, mission_aborted, queue_expired)
+//   amber  ships / loans / preparation    (mission_prep, ship_borrowed, ship_fill_bonus)
+//   lime   positive momentum              (mission_launched, post_mission_log)
+//   cyan   finished / resolved state      (mission_complete)
+//   purple achievement / AI               (rank_advanced, ai_summary)
+//   dim    quiet / offline                (player_disconnected)
+// The silhouette (via <FeedIcon type={...}/>) carries the specific event;
+// the ring color is the second channel.
 const FEED_CATEGORY = {
-  // LIME — earned / positive
-  slot_filled:         FEED_LIME,
-  mission_launched:    FEED_LIME,
-  mission_complete:    FEED_LIME,
-  ship_fill_bonus:     FEED_LIME,
-  rank_advanced:       FEED_LIME,   // legacy event_type
-  rank_advancement:    FEED_LIME,   // new broadcast event_type
-  post_mission_log:    FEED_LIME,
-  // BLUE — neutral / info
-  mission_created:     FEED_BLUE,
-  slot_withdrawn:      FEED_BLUE,
-  mission_prep:        FEED_BLUE,
-  ship_borrowed:       FEED_BLUE,
-  player_connected:    FEED_BLUE,
-  player_disconnected: FEED_BLUE,
-  // RED — termination
-  mission_aborted:     FEED_RED,
-  queue_expired:       FEED_RED,
-  // PURPLE — AI-generated
-  ai_summary:          FEED_PURP,
+  mission_created:     { tone: 'blue'   },
+  mission_prep:        { tone: 'amber'  },
+  mission_launched:    { tone: 'lime'   },
+  mission_complete:    { tone: 'cyan'   },
+  mission_aborted:     { tone: 'red'    },
+  slot_filled:         { tone: 'blue'   },
+  slot_withdrawn:      { tone: 'red'    },
+  ship_fill_bonus:     { tone: 'amber'  },
+  ship_borrowed:       { tone: 'amber'  },
+  rank_advanced:       { tone: 'purple' },
+  rank_advancement:    { tone: 'purple' },
+  post_mission_log:    { tone: 'lime'   },
+  player_connected:    { tone: 'blue'   },
+  player_disconnected: { tone: 'dim'    },
+  queue_expired:       { tone: 'red'    },
+  ai_summary:          { tone: 'purple' },
 };
-const DEFAULT_FEED_CAT = FEED_BLUE;
+const DEFAULT_FEED_CAT = { tone: 'blue' };
 
 function formatFeedText(ev) {
   switch (ev.event_type) {
@@ -161,16 +182,47 @@ const MISSION_TYPE_COLORS = {
   'Combat':         { bg: 'rgba(255,85,68,0.15)',   border: '#FF5544', text: '#FF8877' },
   'Escort':         { bg: 'rgba(0,255,102,0.10)',   border: '#00FF66', text: '#44FF88' },
   'Logistics':      { bg: 'rgba(255,187,51,0.12)',  border: '#FFBB33', text: '#FFCC66' },
-  'Reconnaissance': { bg: 'rgba(102,170,221,0.15)', border: '#66AADD', text: '#99CCFF' },
+  'Reconnaissance': { bg: 'rgba(102,170,221,0.15)', border: '#66AADD', text: '#99BBDD' },
   'Salvage':        { bg: 'rgba(170,102,221,0.15)', border: '#AA66DD', text: '#CC99FF' },
   'Mining':         { bg: 'rgba(255,170,51,0.12)',  border: '#FFAA33', text: '#FFBB66' },
   'Bounty':         { bg: 'rgba(255,51,102,0.15)',  border: '#FF3366', text: '#FF6688' },
-  'Patrol':         { bg: 'rgba(51,221,170,0.12)',  border: '#33DDAA', text: '#66EEBB' },
+  'Patrol':         { bg: 'rgba(51,221,170,0.12)',  border: '#44FF88', text: '#66EEBB' },
   'Assassination':  { bg: 'rgba(221,51,51,0.15)',   border: '#DD3333', text: '#FF6666' },
   'Rescue':         { bg: 'rgba(51,187,255,0.12)',  border: '#33BBFF', text: '#66CCFF' },
   'Assault':        { bg: 'rgba(255,102,51,0.15)',  border: '#FF6633', text: '#FF8855' },
 };
-const DEFAULT_BADGE = { bg: 'rgba(42,106,154,0.15)', border: '#2A6A9A', text: '#99CCFF' };
+const DEFAULT_BADGE = { bg: 'rgba(42,106,154,0.15)', border: '#2A5A7A', text: '#99BBDD' };
+
+// Human-readable "N ago" for mission post times. Fine-grained up to the
+// 3-hour mark; past that the specific count isn't useful (an old mission
+// is just an old mission) so we collapse to "More than 3 hours ago". The
+// `_tick` argument isn't used in the computation — it exists so React
+// components can pass a ticking value as a dependency to force a
+// re-render each minute, keeping the display live.
+function formatRelativeTime(ts, _tick) {
+  const t = new Date(ts).getTime();
+  if (!Number.isFinite(t)) return '';
+  const deltaMs = Math.max(0, Date.now() - t);
+  const sec = Math.floor(deltaMs / 1000);
+  if (sec < 45)   return 'just now';
+  const min = Math.round(sec / 60);
+  if (min < 60)   return `${min} minute${min === 1 ? '' : 's'} ago`;
+  const hr  = min / 60;
+  if (hr <= 3)    return `${Math.round(hr)} hour${Math.round(hr) === 1 ? '' : 's'} ago`;
+  return 'More than 3 hours ago';
+}
+
+// Shared ticker — bumps once per minute. Components can subscribe via
+// useRelativeTimeTick() so their relative-time labels refresh without
+// each one owning its own interval.
+function useRelativeTimeTick() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+  return tick;
+}
 
 function stripMissionPrefix(name = '') {
   const idx = name.indexOf(':');
@@ -198,7 +250,7 @@ function StatusBadge({ status }) {
       display: 'inline-flex', alignItems: 'center', gap: 6,
       fontSize: 13, letterSpacing: '0.12em',
       padding: '4px 12px', marginBottom: 10,
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      fontFamily: "'Inter', system-ui, sans-serif",
       background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.text,
     }}>
       <div style={{
@@ -229,9 +281,9 @@ function Btn({ onClick, children, color = C.dim, disabled = false }) {
       onMouseLeave={() => setHover(false)}
       style={{
         background: 'none',
-        border: `1px solid ${disabled ? C.deep : hover ? color : '#4488BB'}`,
+        border: `1px solid ${disabled ? C.deep : hover ? color : '#5F87A8'}`,
         color: disabled ? C.deep : hover ? color : '#66AADD',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontFamily: "'Inter', system-ui, sans-serif",
         fontSize: 18,
         padding: '10px 20px',
         cursor: disabled ? 'default' : 'pointer',
@@ -254,95 +306,162 @@ function computeDocNo(me) {
   return `NTS-${s.slice(-4).toUpperCase()}-${s.slice(-8, -4).toUpperCase()}`;
 }
 
+// Resolves whatever's stored on user.avatar into a valid <img> src. Two cases:
+//   1) full URL (http/https/data)     — an onboarding-generated portrait; use directly
+//   2) raw Discord hash               — construct the Discord CDN URL from discord_id
+// Returns null when neither can be produced, so the caller falls through to the
+// coloured placeholder background instead of rendering a broken image.
+function resolveAvatar(me) {
+  const a = me?.avatar;
+  if (!a) return null;
+  if (/^(https?:|data:|\/)/i.test(a)) return a;
+  if (me?.discord_id) {
+    const ext = a.startsWith('a_') ? 'gif' : 'png';
+    return `https://cdn.discordapp.com/avatars/${me.discord_id}/${a}.${ext}?size=256`;
+  }
+  return null;
+}
+
 function IdCardWidget({ me, rpPct, rpLabel, onClick }) {
-  const [hover, setHover] = useState(false);
-  const docNo = computeDocNo(me);
+  const avatarSrc = resolveAvatar(me);
+  // Dark banner-matching operator chip. No paper surface, no boxed border —
+  // just an inline portrait + identity readout that visually extends the
+  // topbar gradient. The paper dossier opens on click in IdCardModal.
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
-        width: 560,
-        background: '#FFFFFF',
-        border: `1px solid ${hover ? '#00EEFF' : '#2A6A9A'}`,
-        boxShadow: hover ? '0 0 8px rgba(0,238,255,0.3)' : 'none',
-        cursor: 'pointer',
         display: 'flex',
-        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-      }}
-    >
-      {/* Left column — portrait strip */}
-      <div style={{
-        width: 80,
-        background: '#1A3A50',
-        borderRight: '1px solid #2A6A9A',
+        alignItems: 'center',
+        gap: 14,
+        height: '100%',
+        padding: '0 12px 0 14px',
+        cursor: 'pointer',
         flexShrink: 0,
+        background: 'transparent',
+        fontFamily: 'var(--font)',
+        transition: 'opacity .15s',
+      }}
+      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+    >
+      {/* Portrait disc */}
+      <div style={{
+        width: 56, height: 56,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 35% 30%, #24557a, #0c2437)',
+        border: '1px solid var(--rim1)',
+        boxShadow: '0 1px 0 rgba(150,210,255,.2) inset, 0 3px 0 #04101a, 0 6px 10px rgba(0,0,0,.5)',
         overflow: 'hidden',
+        flexShrink: 0,
       }}>
-        {me?.portrait_url && (
+        {avatarSrc && (
           <img
-            src={me.portrait_url}
+            src={avatarSrc}
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         )}
       </div>
-      {/* Right column — card body */}
+      {/* Body */}
       <div style={{
-        padding: '12px 20px',
-        background: '#FFFFFF',
-        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: 2,
         minWidth: 0,
       }}>
-        <div style={{ fontSize: 14, color: '#2A3A4A', letterSpacing: '0.14em' }}>
-          UEE IDENTIFICATION — NEXUS
+        <div style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.14em',
+          color: 'var(--fg3)',
+          textTransform: 'uppercase',
+        }}>
+          Operator
         </div>
         <div style={{
-          fontSize: 26, color: '#0D1A24', fontWeight: 'bold',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          fontSize: 16,
+          fontWeight: 700,
+          color: 'var(--fg0)',
+          lineHeight: 1.1,
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          textOverflow: 'ellipsis',
+          maxWidth: 240,
         }}>
-          {me?.citizen_name ?? 'UNKNOWN OPERATOR'}
+          {me?.citizen_name ?? 'Unknown operator'}
         </div>
         <div style={{
-          fontSize: 20, color: '#0D1A24',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          fontSize: 11,
+          fontWeight: 600,
+          color: 'var(--blue)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
         }}>
-          {me?.rp_rank?.title ?? 'DRIFTER'}
+          {me?.rp_rank?.title ?? 'Drifter'}
         </div>
-        <div style={{ borderTop: '1px solid #C8B898', margin: '10px 0' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 16, color: '#0D1A24', fontWeight: 'bold' }}>RP</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.04em', minWidth: 180 }}>
+          <span style={{ fontWeight: 600 }}>RP</span>
           <div style={{
-            flex: 1, height: 8,
-            background: '#C8B898',
-            position: 'relative', overflow: 'hidden',
+            flex: 1,
+            height: 5,
+            borderRadius: 3,
+            background: '#02080e',
+            boxShadow: '0 1px 3px #000 inset',
+            overflow: 'hidden',
+            minWidth: 60,
           }}>
             <div style={{
-              position: 'absolute', top: 0, left: 0, bottom: 0,
-              width: `${rpPct}%`, background: '#1A5A8A',
+              height: '100%',
+              width: `${rpPct}%`,
+              background: 'linear-gradient(90deg, #1f9c5a, var(--lime))',
+              transition: 'width .35s ease',
             }} />
           </div>
-          <span style={{ fontSize: 16, color: '#0D1A24', fontWeight: 'bold' }}>
-            {rpLabel}
-          </span>
-        </div>
-        <div style={{ fontSize: 14, color: '#2A3A4A', marginTop: 8, letterSpacing: '0.06em' }}>
-          DOC NO. {docNo}
+          <span style={{ fontWeight: 600, color: 'var(--fg2)', fontVariantNumeric: 'tabular-nums' }}>{rpLabel}</span>
         </div>
       </div>
     </div>
   );
 }
 
-function IdCardModal({ me, onClose }) {
-  const CARD_FONT = "'JetBrains Mono', 'Courier New', Courier, monospace";
+function IdCardModal({ me, onClose, onRefresh }) {
+  const CARD_FONT = "'Inter', system-ui, sans-serif";
   const docNo = computeDocNo(me);
   const regDate = me?.created_at
     ? new Date(me.created_at).toISOString().split('T')[0]
     : new Date().toISOString().split('T')[0];
-  const portraitUrl = me?.portrait_url || me?.profile_url;
+  const portraitUrl = resolveAvatar(me);
+
+  // Portrait regeneration state — post-onboarding operators whose avatar was
+  // clobbered by the old Discord OAuth callback (or who just want a new
+  // portrait) can regenerate here. The backend /users/generate-portrait
+  // route now persists the URL directly to user.avatar, so a fetchMe()
+  // afterwards refreshes both the widget and this modal.
+  const [regenOpen, setRegenOpen]         = useState(false);
+  const [regenDesc, setRegenDesc]         = useState('');
+  const [regenBusy, setRegenBusy]         = useState(false);
+  const [regenErr, setRegenErr]           = useState('');
+  const [regenDone, setRegenDone]         = useState(false);
+
+  const regenerate = async () => {
+    const description = regenDesc.trim();
+    if (!description || regenBusy) return;
+    setRegenBusy(true);
+    setRegenErr('');
+    setRegenDone(false);
+    try {
+      await api.post('/users/generate-portrait', { description });
+      await onRefresh?.();
+      setRegenDone(true);
+      setRegenDesc('');
+    } catch (err) {
+      setRegenErr(err?.response?.data?.error || 'PORTRAIT GENERATION FAILED');
+    } finally {
+      setRegenBusy(false);
+    }
+  };
 
   // ESC closes the modal alongside the backdrop click and the ✕ button.
   useEffect(() => {
@@ -356,22 +475,20 @@ function IdCardModal({ me, onClose }) {
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.85)',
+        background: 'rgba(0,7,16,0.82)',
+        backdropFilter: 'blur(2px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 9500,
         padding: 20,
       }}
     >
       <button
+        className="btn"
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         aria-label="Close ID card"
         style={{
           position: 'absolute', top: 20, right: 20,
-          width: 36, height: 36,
-          background: 'none', border: '1px solid #66AADD',
-          color: '#66AADD', fontSize: 20, cursor: 'pointer',
-          fontFamily: CARD_FONT,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 36, height: 36, padding: 0, fontSize: 16,
         }}
       >✕</button>
 
@@ -382,11 +499,44 @@ function IdCardModal({ me, onClose }) {
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: 700, margin: '0 auto', width: '100%', fontFamily: CARD_FONT }}
       >
-        <div style={{ background: '#06121C', border: '1px solid #2A6A9A' }}>
+        <div style={{
+          /* Layered paper texture — three stacked backgrounds give the card
+             a legible warm off-white look like a real government document
+             instead of raw intense white:
+               1. Top: diagonal pin-stripe simulating paper fiber (very faint)
+               2. Middle: SVG fractal-noise overlay for grain
+               3. Bottom: vertical warm gradient (lighter top, aged bottom)   */
+          background: [
+            // 1. Fiber direction
+            "repeating-linear-gradient(135deg, rgba(80, 60, 30, 0.025) 0px, rgba(80, 60, 30, 0.025) 1px, transparent 1px, transparent 7px)",
+            // 2. Noise grain
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4   0 0 0 0 0.33   0 0 0 0 0.22   0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+            // 3. Warm vertical gradient
+            "linear-gradient(180deg, #F4EDDC 0%, #EFE7D1 55%, #E6DCBE 100%)",
+          ].join(', '),
+          border: '1px solid #2A5A7A',
+          boxShadow: 'inset 0 0 1px rgba(90, 70, 40, 0.25), 0 20px 50px rgba(0, 0, 0, .4)',
+          position: 'relative',
+        }}>
+          {/* Faint watermark emblem — subtle UEE ring behind the body text.
+              Only shows at close inspection; invisible from a glance. */}
+          <div style={{
+            position: 'absolute',
+            top: 110, left: '50%',
+            transform: 'translateX(-50%)',
+            width: 220, height: 220,
+            opacity: 0.045,
+            pointerEvents: 'none',
+            backgroundImage:
+              "radial-gradient(circle, transparent 44%, #2A3A4A 44%, #2A3A4A 46%, transparent 46%), " +
+              "radial-gradient(circle, transparent 34%, #2A3A4A 34%, #2A3A4A 35%, transparent 35%)",
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+          }} />
           {/* Header */}
           <div style={{
             padding: '14px 20px',
-            borderBottom: '1px solid #2A6A9A',
+            borderBottom: '1px solid #2A5A7A',
             background: '#0A1A28',
             display: 'flex',
             justifyContent: 'space-between',
@@ -430,8 +580,8 @@ function IdCardModal({ me, onClose }) {
               <div style={{
                 width: '100%',
                 aspectRatio: '3/4',
-                border: '1px solid #2A6A9A',
-                background: '#11202F',
+                border: '1px solid #2A5A7A',
+                background: '#1A3A50',
                 overflow: 'hidden',
               }}>
                 {portraitUrl && (
@@ -455,10 +605,10 @@ function IdCardModal({ me, onClose }) {
                 { label: 'REG. DATE',      value: regDate },
               ].map((field, i) => (
                 <div key={i}>
-                  <div style={{ fontSize: 11, color: '#66AADD', letterSpacing: '0.12em', marginBottom: 4, fontWeight: 'bold' }}>
+                  <div style={{ fontSize: 11, color: '#2A3A4A', letterSpacing: '0.12em', marginBottom: 4, fontWeight: 'bold' }}>
                     {field.label}
                   </div>
-                  <div style={{ fontSize: 17, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: 17, color: '#0D1A24', fontWeight: 'bold', letterSpacing: '0.04em' }}>
                     {field.value || '—'}
                   </div>
                 </div>
@@ -469,7 +619,7 @@ function IdCardModal({ me, onClose }) {
           {/* Footer */}
           <div style={{
             padding: '10px 20px',
-            borderTop: '1px solid #2A6A9A',
+            borderTop: '1px solid #2A5A7A',
             background: '#0A1A28',
             fontSize: 10,
             color: '#FFBB33',
@@ -478,13 +628,116 @@ function IdCardModal({ me, onClose }) {
             {'P<UEE<<CITIZEN<RECORD<<<<<<<<<<<<<<<<<<<'}
           </div>
         </div>
+
+        {/* Portrait regeneration panel — collapsed by default. */}
+        <div style={{
+          marginTop: 16,
+          border: '1px solid #1A3A50',
+          background: '#040D15',
+          fontFamily: CARD_FONT,
+        }}>
+          <button
+            onClick={() => setRegenOpen(o => !o)}
+            style={{
+              width: '100%',
+              padding: '10px 16px',
+              background: 'none',
+              border: 'none',
+              color: '#66AADD',
+              fontFamily: CARD_FONT,
+              fontSize: 12,
+              letterSpacing: '0.12em',
+              cursor: 'pointer',
+              textAlign: 'left',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span>◈ REGENERATE PORTRAIT</span>
+            <span style={{ color: '#5F87A8', fontSize: 11 }}>{regenOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {regenOpen && (
+            <div style={{ padding: '4px 16px 14px' }}>
+              <div style={{
+                fontSize: 10, color: '#66AADD', letterSpacing: '0.08em',
+                marginBottom: 8, lineHeight: 1.5,
+              }}>
+                Describe your character's appearance. The AI generates a new
+                portrait and persists it — future Discord logins will not
+                overwrite it.
+              </div>
+              <textarea
+                value={regenDesc}
+                onChange={e => { setRegenDesc(e.target.value.slice(0, 500)); setRegenDone(false); }}
+                rows={3}
+                placeholder="e.g. Weathered pilot, mid-forties, cybernetic left eye, cropped grey hair, leather flight jacket"
+                style={{
+                  width: '100%',
+                  background: '#000',
+                  border: '1px solid #2A5A7A',
+                  color: '#99BBDD',
+                  fontFamily: CARD_FONT,
+                  fontSize: 12,
+                  padding: '8px 10px',
+                  outline: 'none',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  letterSpacing: '0.04em',
+                }}
+              />
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginTop: 6, gap: 12,
+              }}>
+                <div style={{ fontSize: 10, color: '#5F87A8', minHeight: 12 }}>
+                  {regenErr && <span style={{ color: '#FF5544' }}>{regenErr}</span>}
+                  {!regenErr && regenDone && <span style={{ color: '#44FF88' }}>✓ PORTRAIT UPDATED</span>}
+                  {!regenErr && !regenDone && <span>{regenDesc.length} / 500</span>}
+                </div>
+                <button
+                  onClick={regenerate}
+                  disabled={regenBusy || !regenDesc.trim()}
+                  style={{
+                    fontFamily: CARD_FONT,
+                    fontSize: 11,
+                    letterSpacing: '0.1em',
+                    padding: '6px 14px',
+                    border: '1px solid #44FF88',
+                    color: regenBusy || !regenDesc.trim() ? '#5F87A8' : '#44FF88',
+                    background: '#000',
+                    cursor: regenBusy || !regenDesc.trim() ? 'default' : 'pointer',
+                    opacity: regenBusy || !regenDesc.trim() ? 0.5 : 1,
+                  }}
+                >
+                  {regenBusy ? 'GENERATING...' : '[ GENERATE PORTRAIT ]'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function TopBar({ me, rankList, missions, onSelectMission, onRegisterShip, onMyShips, onCreateMission, onShipRegistry, myShipsMode, registerMode, createMissionMode, shipRegistryMode, navigate }) {
+function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onRegisterShip, onMyShips, onCreateMission, onShipRegistry, onRefresh, myShipsMode, registerMode, createMissionMode, shipRegistryMode, navigate, chatBtnRef, chatOpen, setChatOpen, chatUnread, setShowBugReport }) {
   const [hoverBtn, setHoverBtn] = useState(null);
+
+  // Electron companion state. `electronAPI` is only present when the app is
+  // running inside the Nexus Companion desktop shell — in a regular browser
+  // tab this stays null and the Pin / Compact buttons never render.
+  const electron = typeof window !== 'undefined' ? window.electronAPI : null;
+  const [pinned, setPinned]   = useState(false);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    if (!electron?.onWindowState) return;
+    return electron.onWindowState((s) => {
+      if (s && typeof s.pinned  === 'boolean') setPinned(s.pinned);
+      if (s && typeof s.compact === 'boolean') setCompact(s.compact);
+    });
+  }, [electron]);
   const [showIdCard, setShowIdCard] = useState(false);
 
   const total = me?.total_rp ?? 0;
@@ -527,9 +780,9 @@ function TopBar({ me, rankList, missions, onSelectMission, onRegisterShip, onMyS
 
   // Default idle state for non-danger buttons.
   const idleStyle = h => ({
-    border: '1px solid #4488BB',
-    color: h ? '#000' : '#99CCFF',
-    background: h ? '#4488BB' : '#000',
+    border: '1px solid #5F87A8',
+    color: h ? '#000' : '#99BBDD',
+    background: h ? '#5F87A8' : '#000',
   });
   // Active-screen indicator (Nexus cyan).
   const activeStyle = h => ({
@@ -556,8 +809,9 @@ function TopBar({ me, rankList, missions, onSelectMission, onRegisterShip, onMyS
         style={{
           background: s.background ?? '#000',
           border: s.border,
+          borderBottom: 'none',
           color: s.color,
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          fontFamily: "'Inter', system-ui, sans-serif",
           fontSize: 18, letterSpacing: '0.12em',
           padding: '6px 16px',
           cursor: 'pointer',
@@ -568,82 +822,193 @@ function TopBar({ me, rankList, missions, onSelectMission, onRegisterShip, onMyS
     );
   };
 
+  const navBtn = (key, label, active, onClick) => (
+    <button
+      key={key}
+      className={`btn${active ? ' nt on' : ''}`}
+      onClick={() => { playClick(); onClick(); }}
+      style={{ fontSize: 12, padding: '7px 14px' }}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <>
-      {/* Tier 1: system label */}
-      <div style={{
-        width: '100%',
-        padding: '4px 20px 0',
-        fontSize: 9,
-        color: '#1A3D55',
-        letterSpacing: '0.18em',
-        background: '#000',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        flexShrink: 0,
-      }}>
-        NEXUS INTERSTELLAR TRAFFIC SYSTEM
-      </div>
-
-      {/* Tier 2: main top bar */}
-      <div style={{
-        background: '#000',
-        borderBottom: '1px solid #1A3D55',
-        padding: '10px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
-        flexShrink: 0,
-        zIndex: 1,
-      }}>
-
-        {/* LEFT: action buttons (horizontal row) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {btn('create', '[ + CREATE MISSION ]',
-            createMissionMode ? activeStyle : idleStyle,
-            () => onCreateMission?.()
-          )}
-          {btn('ships', '[ MY SHIPS ]',
-            myShipsMode ? activeStyle : idleStyle,
-            () => onMyShips?.()
-          )}
-          {btn('register', '⊕ REGISTER SHIP',
-            registerMode ? activeStyle : idleStyle,
-            () => onRegisterShip?.()
-          )}
-          {btn('registry', '[ SHIP REGISTRY ]',
-            shipRegistryMode ? activeStyle : idleStyle,
-            () => onShipRegistry?.()
-          )}
-          {me?.org_id && btn('roster', '[ ORG ROSTER ]',
-            idleStyle,
-            () => {}
-          )}
-          {myMission && btn('mymission', '[ MY MISSION ]',
-            idleStyle,
-            () => onSelectMission(myMission._id)
-          )}
-          <div style={{ width: 1, height: 28, background: '#1A3D55', flexShrink: 0 }} />
-          {btn('disconnect', '[ DISCONNECT ]',
-            dangerStyle,
-            () => navigate('/disconnect')
-          )}
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      {/* Row 1 — brand bar */}
+      <div className="topbar" style={{ paddingRight: 360 }}>
+        <div className="brand">
+          <img
+            src="/images/nexus_logo.png"
+            style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 6 }}
+            alt=""
+          />
+          <div>
+            <div className="bt1">Nexus Interstellar</div>
+            <div className="bt2">Traffic System</div>
+            <OnlineCount />
+          </div>
         </div>
 
-        {/* RIGHT: mini UEE ID card widget — click to expand to full modal */}
+        {/* Window min / max / close now live in the shared <TitleBar />
+            at the very top of the window — the inline duplicate block
+            was removed in v0.6.3. */}
+      </div>
+
+      {/* Row 2 — nav. Extra top-padding to make room for the OnlineCount
+          chip now tucked under the brand text. */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        padding: '14px 16px 10px',
+        gap: 8,
+        background: 'var(--bg1)',
+        borderBottom: '1px solid #000',
+        boxShadow: '0 1px 0 var(--rim0)',
+        flexShrink: 0,
+        flexWrap: 'wrap',
+        paddingRight: 16,
+      }}>
+        <button
+          className="btn"
+          onClick={() => { playClick(); onMissionBoard?.(); }}
+          style={{ fontSize: 12, padding: '7px 14px' }}
+        >
+          Missions
+        </button>
+        <button
+          className="btn go"
+          onClick={() => { playClick(); onCreateMission?.(); }}
+          style={{ fontSize: 12, padding: '7px 14px' }}
+        >
+          + New mission
+        </button>
+        {navBtn('ships',    'My ships',      myShipsMode,      () => onMyShips?.())}
+        {navBtn('register', 'Register ship', registerMode,     () => onRegisterShip?.())}
+        {navBtn('registry', 'Ship registry', shipRegistryMode, () => onShipRegistry?.())}
+
+        {/* Global chat launcher — collapsed state is just this button; the
+            panel floats under it when open. Badge shows unread count since
+            the last time the panel was opened. */}
+        <button
+          ref={chatBtnRef}
+          className={`btn${chatOpen ? ' nt on' : ''}`}
+          onClick={() => { playClick(); setChatOpen(o => !o); }}
+          title="Global chat"
+          style={{ fontSize: 12, padding: '7px 12px', position: 'relative' }}
+        >
+          💬 Chat
+          {chatUnread > 0 && !chatOpen && (
+            <span style={{
+              position: 'absolute',
+              top: -4, right: -4,
+              minWidth: 16, height: 16,
+              padding: '0 4px',
+              borderRadius: 8,
+              background: 'var(--red)',
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 1,
+              boxShadow: '0 0 6px rgba(255,85,68,.65)',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {chatUnread > 99 ? '99+' : chatUnread}
+            </span>
+          )}
+        </button>
+
+        {myMission && navBtn('mymission', 'My mission', false, () => onSelectMission(myMission._id))}
+        <div style={{ flex: 1 }} />
+        {/* Electron-only window controls — invisible in a regular browser tab. */}
+        {electron && (
+          <>
+            <button
+              className={`btn${pinned ? ' nt on' : ''}`}
+              onClick={async () => { playClick(); const next = await electron.togglePin(); setPinned(next); }}
+              style={{ fontSize: 12, padding: '7px 10px' }}
+              title={pinned ? 'Unpin (window will no longer stay on top)' : 'Pin (keep window on top of other apps)'}
+            >
+              {pinned ? '⌖ Pinned' : '⌖ Pin'}
+            </button>
+            <button
+              className="btn"
+              onClick={() => { playClick(); electron.setMode?.('companion'); }}
+              style={{ fontSize: 12, padding: '7px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              title="Switch to the 340×540 companion window"
+            >
+              {/* Shrink-to-small-window glyph: two inward arrows pointing to a tiny frame */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 10V4h6" />
+                <path d="M20 14v6h-6" />
+                <path d="M4 4l7 7" />
+                <path d="M20 20l-7-7" />
+              </svg>
+              Companion
+            </button>
+            <button
+              className="btn"
+              onClick={() => { playClick(); electron.setMode?.('radio'); }}
+              style={{ fontSize: 12, padding: '7px 10px' }}
+              title="Switch to the ultra-compact radio-only widget"
+            >
+              ⬤ Radio-only
+            </button>
+          </>
+        )}
+        <ThemePicker />
+        <button
+          className="btn"
+          onClick={() => { playClick(); setShowBugReport(true); }}
+          title="Report a bug"
+          style={{ fontSize: 12, padding: '7px 10px' }}
+        >
+          🐞 Report a Bug
+        </button>
+        <button
+          className="btn warn"
+          onClick={() => { playClick(); navigate('/disconnect'); }}
+          style={{ fontSize: 12, padding: '7px 14px' }}
+        >
+          Disconnect
+        </button>
+      </div>
+
+      {/* Operator chip — absolutely positioned to sit on the brand row only
+          so it stays on one gradient (no banner-seam exposure). Transparent
+          background means the topbar gradient shows through.
+          `data-nexus-chip` opts this element out of the Electron drag
+          region injected by preload.js. */}
+      {/* v0.6.4 — window min/max/close now live in the shared <TitleBar />
+          at the very top of the window, so the chip no longer needs to
+          reserve space on the right. Right-inset matches the nav row's
+          padding (16px) so the chip's trailing edge lines up with the
+          Disconnect button a few pixels to its left. */}
+      <div data-nexus-chip style={{
+        position: 'absolute',
+        top: 0,
+        right: 16,
+        height: 72,
+        display: 'flex',
+        alignItems: 'center',
+        zIndex: 5,
+      }}>
         <IdCardWidget
           me={me}
           rpPct={rpPct}
           rpLabel={rpLabel}
           onClick={() => setShowIdCard(true)}
         />
-
       </div>
 
       {showIdCard && (
-        <IdCardModal me={me} onClose={() => setShowIdCard(false)} />
+        <IdCardModal me={me} onClose={() => setShowIdCard(false)} onRefresh={onRefresh} />
       )}
-    </>
+    </div>
   );
 }
 
@@ -669,7 +1034,7 @@ function TypeBadge({ missionType, description, small = false }) {
           fontSize: 13,
           letterSpacing: '0.1em',
           padding: small ? '1px 6px' : '4px 10px',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          fontFamily: "'Inter', system-ui, sans-serif",
           cursor: 'default',
         }}
       >
@@ -681,9 +1046,9 @@ function TypeBadge({ missionType, description, small = false }) {
           top: pos.top,
           left: pos.left,
           transform: 'translateY(-100%)',
-          background: '#0D2030',
-          border: '1px solid #1A3D55',
-          color: '#99CCFF',
+          background: '#061018',
+          border: '1px solid #1A3A50',
+          color: '#99BBDD',
           fontSize: 16,
           padding: '6px 12px',
           whiteSpace: 'normal',
@@ -691,7 +1056,7 @@ function TypeBadge({ missionType, description, small = false }) {
           lineHeight: 1.6,
           zIndex: 9999,
           pointerEvents: 'none',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          fontFamily: "'Inter', system-ui, sans-serif",
           letterSpacing: '0.06em',
         }}>
           {description}
@@ -702,6 +1067,7 @@ function TypeBadge({ missionType, description, small = false }) {
 }
 
 function MissionCard({ mission, selected, onClick, missionTypes = {}, shipThumbs = {} }) {
+  const tick = useRelativeTimeTick();
   const selStyle = selected
     ? { borderLeft: `2px solid ${C.cyan}`, boxShadow: `0 0 8px #00EEFF33`, background: C.bgSel }
     : mission.is_org_mission
@@ -740,11 +1106,21 @@ function MissionCard({ mission, selected, onClick, missionTypes = {}, shipThumbs
         <TypeBadge missionType={mission.mission_type} description={typeInfo.description} small />
         <span style={{
           fontSize: 12, fontWeight: 'bold', letterSpacing: '0.08em',
-          color: STATUS_COLOR[mission.status] ?? '#99CCFF',
+          color: STATUS_COLOR[mission.status] ?? '#99BBDD',
         }}>
           {STATUS_ABBR[mission.status] ?? mission.status}
         </span>
       </div>
+
+      {mission.created_at && (
+        <div style={{
+          fontSize: 11, color: 'var(--fg3)', marginTop: 4,
+          letterSpacing: '0.03em',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          Posted {formatRelativeTime(mission.created_at, tick)}
+        </div>
+      )}
 
       {thumbUrl && (
         <img
@@ -757,22 +1133,22 @@ function MissionCard({ mission, selected, onClick, missionTypes = {}, shipThumbs
         />
       )}
 
-      <div style={{ fontSize: 16, color: '#99CCFF', marginTop: 4 }}>
+      <div style={{ fontSize: 16, color: '#99BBDD', marginTop: 4 }}>
         PRIMARY: {primaryShip?.ship_name ?? primaryShip?.type ?? '—'}
         {extraShips > 0 && (
-          <span style={{ color: '#99CCFF' }}> +{extraShips} SHIP{extraShips > 1 ? 'S' : ''}</span>
+          <span style={{ color: '#99BBDD' }}> +{extraShips} SHIP{extraShips > 1 ? 'S' : ''}</span>
         )}
       </div>
 
       {totalSlots > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-          <div style={{ flex: 1, height: 6, background: '#1A3D55', position: 'relative' }}>
-            <div style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0,
-              width: `${fillPct}%`, background: C.amber,
-            }} />
+        <div className="fillbar">
+          <div className="fb">
+            <i
+              className={fillPct >= 66 ? '' : fillPct >= 33 ? 'mid' : 'low'}
+              style={{ width: `${fillPct}%` }}
+            />
           </div>
-          <span style={{ fontSize: 16, color: '#99CCFF' }}>{fillPct}%</span>
+          <span>{fillPct}%</span>
         </div>
       )}
     </div>
@@ -789,6 +1165,7 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
   const [freqReveal, setFreqReveal]     = useState(null);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [hoverComplete, setHoverComplete]     = useState(false);
+  const [addShipOpen, setAddShipOpen]         = useState(false);
   // Post-mission log button state: 'hidden' (mission not complete / wasn't on
   // crew / still loading), 'pending' (eligible, not yet submitted), 'submitted'
   // (eligible, already logged). Server-derived — see /:id/my-participation.
@@ -907,99 +1284,69 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
     }
   };
 
-  // Creator control buttons by mission status
-  const ctrlBtn = (label, onClick, extraStyle = {}) => (
-    <button
-      key={label}
-      onClick={onClick && !working ? () => { playClick(); onClick(); } : undefined}
-      style={{
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        fontSize: 16, letterSpacing: '0.12em',
-        padding: '10px 16px',
-        display: 'block', width: '100%', textAlign: 'center',
-        background: 'none',
-        cursor: onClick && !working ? 'pointer' : 'default',
-        pointerEvents: onClick && !working ? 'auto' : 'none',
-        ...extraStyle,
-      }}
-    >{label}</button>
-  );
-
-  const DIM   = { border: '1px solid #1A3D55', color: '#1A3D55' };
-  const FLAT_BLUE  = { border: '1px solid #2A6A9A', color: '#66AADD' };
-  const PULSE_BLUE = { border: '1px solid #99CCFF', color: '#CCE8FF', animation: 'pulse-btn-blue 1.2s ease-in-out infinite' };
-  const PULSE_GREEN = { border: '1px solid #33DDAA', color: '#66EEBB', animation: 'pulse-btn-green 1.2s ease-in-out infinite' };
-  const ACTIVE_RED  = { border: '1px solid #FF5544', color: '#FF8877' };
+  // Creator control buttons by mission status. The `variant` tag selects the
+  // .btn flavor (default / go / amb / warn / disabled).
+  const ctrlBtn = (label, onClick, variant = 'default') => {
+    const classes = `btn${variant === 'go' ? ' go' : variant === 'amb' ? ' amb' : variant === 'warn' ? ' warn' : ''}`;
+    return (
+      <button
+        key={label}
+        className={classes}
+        disabled={!onClick || working || variant === 'disabled'}
+        onClick={onClick && !working ? () => { playClick(); onClick(); } : undefined}
+        style={{ width: '100%', fontSize: 13, padding: '10px 16px' }}
+      >{label.replace(/\[\s*|\s*\]/g, '')}</button>
+    );
+  };
 
   const creatorButtons = () => {
     if (s === 'WAITING FOR CREW') return [
-      ctrlBtn('[ PREPARE FOR LAUNCH ]', () => handleStatusChange('FINALIZED'), PULSE_BLUE),
-      ctrlBtn('[ LAUNCH MISSION ]',     null, DIM),
-      ctrlBtn('[ ABORT MISSION ]',      () => handleStatusChange('ABORTED'),   ACTIVE_RED),
+      ctrlBtn('Prepare for launch', () => handleStatusChange('FINALIZED'),  'amb'),
+      ctrlBtn('Launch mission',     null,                                   'disabled'),
+      ctrlBtn('Abort mission',      () => handleStatusChange('ABORTED'),    'warn'),
     ];
     if (s === 'FINALIZED') return [
-      ctrlBtn('[ MISSION LOCKED ]',   null, FLAT_BLUE),
-      ctrlBtn('[ LAUNCH MISSION ]',   () => handleStatusChange('IN PROGRESS'), PULSE_GREEN),
-      ctrlBtn('[ ABORT MISSION ]',    () => handleStatusChange('ABORTED'),     ACTIVE_RED),
+      ctrlBtn('Mission locked',  null,                                      'disabled'),
+      ctrlBtn('Launch mission',  () => handleStatusChange('IN PROGRESS'),   'go'),
+      ctrlBtn('Abort mission',   () => handleStatusChange('ABORTED'),       'warn'),
     ];
     if (s === 'IN PROGRESS') {
       if (confirmComplete) {
         return [
-          <div key="complete-confirm" style={{
-            border: '1px solid #33DDAA', padding: '12px', marginBottom: 4,
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          <div key="complete-confirm" className="raised" style={{
+            padding: 12,
+            marginBottom: 8,
+            border: '1px solid rgba(68,255,136,.4)',
           }}>
-            <div style={{ fontSize: 12, color: '#33DDAA', letterSpacing: '0.1em', fontWeight: 'bold', marginBottom: 6 }}>
-              CONFIRM MISSION COMPLETE?
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+              color: 'var(--lime)', textTransform: 'uppercase', marginBottom: 6,
+            }}>
+              Confirm mission complete?
             </div>
-            <div style={{ fontSize: 11, color: '#66AADD', letterSpacing: '0.08em', marginBottom: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: 'var(--fg2)', marginBottom: 10, lineHeight: 1.5 }}>
               This will finalize all crew RP and archive the mission.
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button
+                className="btn go"
+                disabled={working}
                 onClick={!working ? handleCompleteMission : undefined}
-                style={{
-                  flex: 1,
-                  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                  fontSize: 12, letterSpacing: '0.1em',
-                  padding: '7px 8px', border: '1px solid #33DDAA',
-                  color: '#33DDAA', background: '#000', cursor: working ? 'default' : 'pointer',
-                }}
-              >✓ CONFIRM</button>
+                style={{ flex: 1, fontSize: 12, padding: '7px 8px' }}
+              >✓ Confirm</button>
               <button
+                className="btn"
                 onClick={() => setConfirmComplete(false)}
-                style={{
-                  flex: 1,
-                  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                  fontSize: 12, letterSpacing: '0.1em',
-                  padding: '7px 8px', border: '1px solid #66AADD',
-                  color: '#66AADD', background: '#000', cursor: 'pointer',
-                }}
-              >CANCEL</button>
+                style={{ flex: 1, fontSize: 12, padding: '7px 8px' }}
+              >Cancel</button>
             </div>
           </div>,
-          ctrlBtn('[ ABORT MISSION ]', () => handleStatusChange('ABORTED'), ACTIVE_RED),
+          ctrlBtn('Abort mission', () => handleStatusChange('ABORTED'), 'warn'),
         ];
       }
       return [
-        <button
-          key="complete-mission"
-          onClick={!working ? () => { playClick(); setConfirmComplete(true); } : undefined}
-          onMouseEnter={() => setHoverComplete(true)}
-          onMouseLeave={() => setHoverComplete(false)}
-          style={{
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-            fontSize: 15, letterSpacing: '0.1em', fontWeight: 'bold',
-            padding: '10px 0',
-            display: 'block', width: '100%', textAlign: 'center',
-            border: '2px solid #33DDAA',
-            color: hoverComplete ? '#000' : '#33DDAA',
-            background: hoverComplete ? '#33DDAA' : '#000',
-            cursor: working ? 'default' : 'pointer',
-            marginBottom: 4,
-          }}
-        >[ COMPLETE MISSION ]</button>,
-        ctrlBtn('[ ABORT MISSION ]', () => handleStatusChange('ABORTED'), ACTIVE_RED),
+        ctrlBtn('Complete mission', () => setConfirmComplete(true), 'go'),
+        ctrlBtn('Abort mission',    () => handleStatusChange('ABORTED'), 'warn'),
       ];
     }
     return null;
@@ -1007,7 +1354,7 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
 
   return (
     <div style={{
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      fontFamily: "'Inter', system-ui, sans-serif",
       fontSize: 16, color: C.amber,
       height: '100%', display: 'flex', flexDirection: 'column',
       position: 'relative',
@@ -1015,63 +1362,69 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
 
       {/* Frequency reveal overlay */}
       {freqReveal && (
-        <div style={{
+        <div className="raised" style={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
           zIndex: 20,
-          background: '#040D15',
-          border: '1px solid #00EEFF',
-          padding: '24px 32px',
+          padding: '20px 28px',
           textAlign: 'center',
-          minWidth: 280,
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          minWidth: 300,
+          borderColor: 'var(--cyan)',
+          boxShadow: '0 1px 0 rgba(150,210,255,.18) inset, 0 3px 0 #050e18, 0 0 32px rgba(0,238,255,.4), 0 8px 20px rgba(0,0,0,.6)',
         }}>
-          <div style={{ fontSize: 13, color: '#33DDAA', letterSpacing: '0.14em' }}>
-            SLOT RESERVED
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
+            color: 'var(--lime)', textTransform: 'uppercase',
+          }}>
+            Slot reserved
           </div>
-          <div style={{ fontSize: 11, color: '#66AADD', letterSpacing: '0.14em', marginTop: 12 }}>
-            MISSION FREQUENCY
+          <div className="h3" style={{ margin: '14px 0 6px' }}>
+            Mission frequency
           </div>
-          <div style={{ marginTop: 8 }}>
-            <span style={{
-              fontSize: 32, color: '#00EEFF', letterSpacing: '0.2em',
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
+            <span className="lcd" style={{
+              fontSize: 32, padding: '4px 14px',
               animation: 'freqPulse 1s ease-in-out infinite',
             }}>
               {freqReveal}
             </span>
-            <span style={{ fontSize: 16, color: '#66AADD', marginLeft: 6 }}>MHz</span>
+            <span style={{ fontSize: 13, color: 'var(--fg2)' }}>MHz</span>
           </div>
-          <div style={{ fontSize: 10, color: '#66AADD', letterSpacing: '0.14em', marginTop: 12 }}>
-            NEXUS COMM SYSTEM
+          <div style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.14em',
+            color: 'var(--blue)', textTransform: 'uppercase', marginTop: 14,
+          }}>
+            Nexus comm system
           </div>
-          <div style={{ fontSize: 10, color: '#1A3D55', letterSpacing: '0.1em', marginTop: 4 }}>
-            TUNE IN TO JOIN YOUR CREW
+          <div style={{ fontSize: 11, color: 'var(--fg3)', marginTop: 2 }}>
+            Tune in to join your crew.
           </div>
         </div>
       )}
 
       {/* Fixed header */}
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #0D2030', flexShrink: 0 }}>
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--rim0)', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>
 
           {/* Left: mission info */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 28, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.04em', marginBottom: 8 }}>
+            <div style={{
+              fontSize: 24, color: 'var(--fg0)', fontWeight: 700,
+              lineHeight: 1.2, marginBottom: 10,
+            }}>
               {strippedName}
             </div>
-            <StatusBadge status={s} />
-            <div style={{ fontSize: 16, color: '#66AADD', marginBottom: 8 }}>
-              COMMANDER: <span style={{ color: '#99CCFF' }}>{mission.created_by?.citizen_name ?? '—'}</span>
-            </div>
-            <div style={{ marginBottom: mission.objectives ? 14 : 0 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+              <StatusBadge status={s} />
               <TypeBadge missionType={mission.mission_type} description={typeInfo.description} />
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--fg2)', marginBottom: 8 }}>
+              Commander: <span style={{ color: 'var(--fg0)' }}>{mission.created_by?.citizen_name ?? '—'}</span>
             </div>
             {mission.objectives && (
               <>
-                <div style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.16em', marginBottom: 6, marginTop: 14 }}>
-                  OBJECTIVES
-                </div>
-                <div style={{ fontSize: 16, color: '#B88000', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
+                <div className="h3" style={{ marginTop: 14 }}>Objectives</div>
+                <div style={{ fontSize: 14, color: 'var(--fg0)', lineHeight: 1.6, whiteSpace: 'pre-wrap', maxWidth: '62ch' }}>
                   {mission.objectives}
                 </div>
               </>
@@ -1080,13 +1433,11 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
 
           {/* Right: creator controls */}
           {isCreator && s !== 'COMPLETE' && s !== 'ABORT' && (
-            <div style={{ minWidth: 220, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
-              <div style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.14em', marginBottom: 4 }}>
-                MISSION CONTROLS
-              </div>
+            <div style={{ minWidth: 240, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 6, flexShrink: 0 }}>
+              <div className="h3" style={{ textAlign: 'right', marginBottom: 2 }}>Mission controls</div>
               {creatorButtons()}
               {crewNote && (
-                <div style={{ fontSize: 16, color: '#FF5544', textAlign: 'right', marginTop: 4, letterSpacing: '0.06em' }}>
+                <div className="err" style={{ textAlign: 'right', marginTop: 4 }}>
                   {crewNote}
                 </div>
               )}
@@ -1122,14 +1473,47 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
           />
         </div>
 
-        {mission.mission_time && (
-          <div style={{ marginBottom: 8, fontSize: 16, color: '#66AADD' }}>
-            MISSION TIME: {formatTimestamp(mission.mission_time, timezone)}
+        {/* Add-ship control — commander-only, only while WAITING FOR CREW.
+            Toggles a two-section panel: YOUR SHIPS (add immediately) and
+            OTHER SHIPS (request access, wait for owner approval). */}
+        {isCreator && s === 'WAITING FOR CREW' && (
+          <div style={{ marginBottom: 16 }}>
+            {addShipOpen ? (
+              <AddShipPanel
+                mission={mission}
+                onMissionRefresh={onRefresh}
+                onClose={() => setAddShipOpen(false)}
+              />
+            ) : (
+              <button
+                className="btn"
+                onClick={() => { playClick(); setAddShipOpen(true); }}
+                style={{ fontSize: 12, padding: '8px 16px' }}
+              >
+                + Add ship to fleet
+              </button>
+            )}
           </div>
         )}
-        {mission.start_time && (
-          <div style={{ marginBottom: 8, fontSize: 16, color: '#66AADD' }}>
-            LAUNCHED: {formatTimestamp(mission.start_time, timezone)}
+
+        {(mission.mission_time || mission.start_time) && (
+          <div className="raised" style={{ padding: '10px 14px', marginBottom: 12, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            {mission.mission_time && (
+              <div>
+                <div className="h3" style={{ margin: 0 }}>Mission time</div>
+                <div style={{ fontSize: 13, color: 'var(--fg0)', marginTop: 2 }}>
+                  {formatTimestamp(mission.mission_time, timezone)}
+                </div>
+              </div>
+            )}
+            {mission.start_time && (
+              <div>
+                <div className="h3" style={{ margin: 0 }}>Launched</div>
+                <div style={{ fontSize: 13, color: 'var(--fg0)', marginTop: 2 }}>
+                  {formatTimestamp(mission.start_time, timezone)}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1145,7 +1529,7 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
                 background: '#000',
                 border: `1px solid ${C.border}`,
                 color: C.amber,
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                fontFamily: "'Inter', system-ui, sans-serif",
                 fontSize: 16,
                 padding: '8px',
                 resize: 'vertical',
@@ -1169,6 +1553,198 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
   );
 }
 
+// Commander-only fleet-expansion panel for missions still in WAITING FOR
+// CREW. Two sections: YOUR SHIPS (owned or on active loan, not currently
+// deployed) that can be added directly; OTHER SHIPS (registry vessels not
+// yet accessible) that route through the existing ShipAccessRequest flow —
+// owner receives the popup, approves/denies, and once approved the ship
+// moves into YOUR SHIPS on the next panel refresh.
+function AddShipPanel({ mission, onMissionRefresh, onClose }) {
+  const [myShips, setMyShips]                 = useState([]);
+  const [allShips, setAllShips]               = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loading, setLoading]                 = useState(true);
+  const [busyShipId, setBusyShipId]           = useState(null);
+  const [error, setError]                     = useState('');
+
+  const missionShipIds = useMemo(() => {
+    const ids = new Set();
+    if (mission.primary_ship?._id) ids.add(String(mission.primary_ship._id));
+    (mission.supporting_ships || []).forEach(sh => {
+      if (sh?._id) ids.add(String(sh._id));
+    });
+    return ids;
+  }, [mission]);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [mine, all, reqs] = await Promise.all([
+        api.get('/ships/all'),
+        api.get('/ships'),
+        api.get('/ships/access-requests/mine'),
+      ]);
+      setMyShips(mine.data || []);
+      setAllShips(all.data || []);
+      setPendingRequests((reqs.data?.as_requester || []).filter(r => r.status === 'pending'));
+    } catch (e) {
+      setError('FLEET SCAN FAILED');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const myShipIds = useMemo(
+    () => new Set(myShips.map(sh => String(sh._id))),
+    [myShips]
+  );
+  const pendingShipIds = useMemo(
+    () => new Set(pendingRequests.map(r => String(r.ship_id))),
+    [pendingRequests]
+  );
+
+  const yourAvailable = myShips.filter(sh =>
+    !sh.is_mission && !missionShipIds.has(String(sh._id))
+  );
+  const otherAvailable = allShips.filter(sh =>
+    !myShipIds.has(String(sh._id)) &&
+    !sh.is_mission &&
+    !missionShipIds.has(String(sh._id))
+  );
+
+  const addToMission = async (shipId) => {
+    setBusyShipId(shipId);
+    setError('');
+    try {
+      await api.post(`/missions/${mission._id}/add-ship`, { ship_id: shipId });
+      await refresh();
+      onMissionRefresh?.();
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.response?.data?.error || 'FAILED TO ADD SHIP');
+    } finally {
+      setBusyShipId(null);
+    }
+  };
+
+  const requestAccess = async (shipId) => {
+    setBusyShipId(shipId);
+    setError('');
+    try {
+      await api.post(`/ships/${shipId}/request-access`);
+      const { data } = await api.get('/ships/access-requests/mine');
+      setPendingRequests((data?.as_requester || []).filter(r => r.status === 'pending'));
+    } catch (err) {
+      setError(err?.response?.data?.error || 'REQUEST FAILED');
+    } finally {
+      setBusyShipId(null);
+    }
+  };
+
+  const rowStyle = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '7px 10px',
+    border: '1px solid var(--rim0)',
+    borderRadius: 4,
+    marginBottom: 4,
+    background: 'var(--bg1)',
+    gap: 12,
+    transition: 'background .12s',
+  };
+  const empty = (
+    <div className="empty" style={{ padding: '6px 10px', fontSize: 11 }}>
+      None available
+    </div>
+  );
+
+  const ShipRow = ({ ship, action }) => (
+    <div style={rowStyle}>
+      <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+        <span style={{ fontSize: 13, color: 'var(--fg0)', fontWeight: 600 }}>{ship.ship_name}</span>
+        <span style={{ fontSize: 11, color: 'var(--fg2)', marginLeft: 8 }}>
+          {formatModel(ship.ship_model || ship.type) || '—'}
+        </span>
+        {ship.owner_id?.citizen_name && (
+          <span style={{ fontSize: 11, color: 'var(--fg3)', marginLeft: 8 }}>
+            · {ship.owner_id.citizen_name}
+          </span>
+        )}
+      </div>
+      <div style={{ flexShrink: 0 }}>{action}</div>
+    </div>
+  );
+
+  const addBtn = (shipId) => (
+    <button
+      className="btn go"
+      onClick={() => addToMission(shipId)}
+      disabled={busyShipId === shipId}
+      style={{ fontSize: 11, padding: '5px 12px' }}
+    >
+      {busyShipId === shipId ? <><span className="spinner" />Adding…</> : <>+ Add</>}
+    </button>
+  );
+
+  const requestBtn = (shipId) => (
+    <button
+      className="btn"
+      onClick={() => requestAccess(shipId)}
+      disabled={busyShipId === shipId}
+      style={{ fontSize: 11, padding: '5px 12px' }}
+    >
+      {busyShipId === shipId ? <><span className="spinner" />Requesting…</> : <>Request access →</>}
+    </button>
+  );
+
+  const pendingLabel = (
+    <span className="badge b-amber">⏳ Request pending</span>
+  );
+
+  return (
+    <div className="raised" style={{ padding: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="h3" style={{ margin: 0 }}>Add ship to fleet</div>
+        <button
+          className="btn"
+          onClick={() => { playClick(); onClose?.(); }}
+          style={{ fontSize: 11, padding: '5px 12px' }}
+        >
+          Close
+        </button>
+      </div>
+
+      {error && <div className="err" style={{ marginTop: 8 }}>{error}</div>}
+
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg2)', padding: '12px 0', fontSize: 12 }}>
+          <span className="spinner" />Scanning fleet…
+        </div>
+      ) : (
+        <>
+          <div className="h3" style={{ margin: '12px 0 6px' }}>Your ships</div>
+          {yourAvailable.length === 0
+            ? empty
+            : yourAvailable.map(sh => (
+                <ShipRow key={sh._id} ship={sh} action={addBtn(sh._id)} />
+              ))}
+
+          <div className="h3" style={{ margin: '12px 0 6px' }}>Other ships</div>
+          {otherAvailable.length === 0
+            ? empty
+            : otherAvailable.map(sh => (
+                <ShipRow
+                  key={sh._id}
+                  ship={sh}
+                  action={pendingShipIds.has(String(sh._id)) ? pendingLabel : requestBtn(sh._id)}
+                />
+              ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 // Post-mission log button — two-state, rendered above the crew manifest in
 // MissionDetail's scrollable body. Pending state pulses a cyan glow to invite
 // the click; submitted state dims to muted green with a large ✓ and is
@@ -1177,21 +1753,17 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
 function PostMissionLogButton({ status, onClick }) {
   if (status === 'submitted') {
     return (
-      <div style={{
+      <div className="raised" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: 12,
-        padding: '10px 20px',
-        border: '1px solid rgba(51,221,170,0.3)',
-        color: 'rgba(51,221,170,0.4)',
-        background: 'rgba(51,221,170,0.04)',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        fontSize: 14, letterSpacing: '0.14em', fontWeight: 'bold',
-        marginBottom: 16,
-        cursor: 'not-allowed',
+        gap: 10, padding: '10px 16px', marginBottom: 16,
+        borderColor: 'rgba(68,255,136,.2)',
+        color: 'rgba(155,230,184,.8)',
         pointerEvents: 'none',
       }}>
-        <span style={{ fontSize: 28, lineHeight: 1 }}>✓</span>
-        <span>POST-MISSION LOG</span>
+        <span style={{ fontSize: 20, color: 'var(--lime)' }}>✓</span>
+        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Post-mission log submitted
+        </span>
       </div>
     );
   }
@@ -1199,29 +1771,25 @@ function PostMissionLogButton({ status, onClick }) {
     <>
       <style>{`
         @keyframes postLogPulse {
-          0%, 100% { box-shadow: 0 0 4px rgba(0,238,255,0.35); }
-          50%      { box-shadow: 0 0 16px rgba(0,238,255,0.75); }
+          0%, 100% { box-shadow: 0 1px 0 rgba(180,225,255,.25) inset, 0 3px 0 #04101a, 0 0 6px rgba(0,238,255,.35); }
+          50%      { box-shadow: 0 1px 0 rgba(180,225,255,.25) inset, 0 3px 0 #04101a, 0 0 20px rgba(0,238,255,.75); }
         }
       `}</style>
       <button
+        className="btn"
         onClick={onClick}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 10,
           width: '100%',
-          padding: '12px 20px',
-          border: '2px solid #00EEFF',
-          color: '#00EEFF',
-          background: 'rgba(0,238,255,0.06)',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-          fontSize: 14, letterSpacing: '0.14em', fontWeight: 'bold',
+          padding: '11px 18px',
           marginBottom: 16,
-          cursor: 'pointer',
+          fontSize: 13, letterSpacing: '0.08em',
+          borderColor: 'var(--cyan)',
+          color: 'var(--cyan)',
           animation: 'postLogPulse 2s ease-in-out infinite',
         }}
       >
-        <span style={{ fontSize: 18, lineHeight: 1 }}>✎</span>
-        <span>POST-MISSION LOG</span>
+        <span style={{ fontSize: 15 }}>✎</span>
+        <span>Submit post-mission log</span>
       </button>
     </>
   );
@@ -1264,45 +1832,37 @@ function ShipInProgressCard({ ship, isPrimary, shipThumbs }) {
     }
   }
   return (
-    <div style={{
-      background: '#06121C',
-      border: '1px solid #1A3D55',
+    <div className="raised" style={{
       padding: 14,
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
+      alignItems: 'stretch',
     }}>
-      <div style={{
-        fontSize: 9,
-        padding: '1px 6px',
-        letterSpacing: '0.08em',
-        marginBottom: 8,
-        fontWeight: 'bold',
-        border: '1px solid',
-        color: isPrimary ? '#FFBB33' : '#66AADD',
-        borderColor: isPrimary ? '#FFBB33' : '#66AADD',
-      }}>
-        {isPrimary ? '★ PRIMARY' : 'SUPPORT'}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+        <span className={isPrimary ? 'badge b-amber' : 'badge b-blue'}>
+          {isPrimary ? '★ Primary' : 'Support'}
+        </span>
       </div>
       <div style={{
-        fontSize: 12, color: '#CCE8FF', fontWeight: 'bold',
-        letterSpacing: '0.06em', marginBottom: 4, textAlign: 'center',
+        fontSize: 14, color: 'var(--fg0)', fontWeight: 700,
+        textAlign: 'center',
       }}>
         {ship.ship_name || '—'}
       </div>
       <div style={{
-        fontSize: 10, color: '#4488BB',
+        fontSize: 11, color: 'var(--fg3)',
         marginBottom: 10, textAlign: 'center',
       }}>
-        {ship.ship_model || ship.type || '—'}
+        {formatModel(ship.ship_model || ship.type) || '—'}
       </div>
       <div style={{
-        width: 160, height: 110,
-        border: '1px solid #1A3D55',
-        background: '#040D15',
-        overflow: 'hidden', marginBottom: 12,
+        width: '100%', height: 110,
+        border: '1px solid var(--rim0)', borderRadius: 4,
+        background: '#02080e', overflow: 'hidden',
+        marginBottom: 12,
         padding: 8,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 2px 6px #000 inset',
       }}>
         {thumbUrl && (
           <img src={thumbUrl} alt="" style={{
@@ -1313,8 +1873,8 @@ function ShipInProgressCard({ ship, isPrimary, shipThumbs }) {
       </div>
       <div style={{ width: '100%' }}>
         {rows.length === 0 ? (
-          <div style={{ fontSize: 10, color: '#4488BB', textAlign: 'center', padding: '4px 0' }}>
-            NO CREW ROLES
+          <div className="empty" style={{ padding: '6px 0', fontSize: 11 }}>
+            No crew roles
           </div>
         ) : rows.map((row, i) => {
           const occ = row.occupant;
@@ -1322,19 +1882,18 @@ function ShipInProgressCard({ ship, isPrimary, shipThumbs }) {
           return (
             <div key={i} style={{
               display: 'flex', justifyContent: 'space-between',
-              padding: '4px 0', borderBottom: '1px solid #0D2030',
+              padding: '5px 0', borderBottom: '1px solid rgba(26,58,80,.5)',
+              fontSize: 11,
             }}>
-              <span style={{ fontSize: 10, color: '#4488BB', letterSpacing: '0.06em' }}>
-                {String(row.roleName).toUpperCase()}
+              <span style={{ color: 'var(--fg3)', letterSpacing: '0.04em' }}>
+                {row.roleName}
               </span>
               {name ? (
-                <span style={{ fontSize: 11, color: '#CCE8FF', fontWeight: 'bold' }}>
+                <span style={{ color: 'var(--fg0)', fontWeight: 600 }}>
                   {name}
                 </span>
               ) : (
-                <span style={{ fontSize: 10, color: '#44FF88' }}>
-                  — OPEN —
-                </span>
+                <span style={{ color: 'var(--lime)' }}>Open</span>
               )}
             </div>
           );
@@ -1411,36 +1970,36 @@ function InProgressView({ mission, me, onRefresh, onFeedRefresh, shipThumbs }) {
 
   return (
     <div style={{
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      fontFamily: "'Inter', system-ui, sans-serif",
       height: '100%', overflowY: 'auto', padding: '30px 30px 40px', color: C.amber,
     }}>
       {/* TIMER BANNER */}
-      <div style={{
+      <div className="raised" style={{
         textAlign: 'center',
-        padding: '20px 0 10px',
-        borderBottom: '1px solid #1A3D55',
-        marginBottom: 28,
+        padding: '18px 24px',
+        marginBottom: 24,
       }}>
         <div style={{
-          fontSize: 11, color: '#4488BB',
-          letterSpacing: '0.16em', marginBottom: 6,
+          fontSize: 11, fontWeight: 600, color: 'var(--fg3)',
+          letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6,
         }}>
-          MISSION ELAPSED TIME
+          Mission elapsed time
         </div>
-        <div style={{
-          fontSize: 48, color: '#00EEFF',
-          fontWeight: 'bold', letterSpacing: '0.12em',
+        <div className="lcd" style={{
+          display: 'inline-block',
+          fontSize: 40, padding: '6px 20px',
+          letterSpacing: '0.08em',
         }}>
           {formatHMS(elapsed)}
         </div>
         <div style={{
-          fontSize: 14, color: '#99CCFF',
-          fontWeight: 'bold', letterSpacing: '0.1em', marginTop: 6,
+          fontSize: 16, fontWeight: 700, color: 'var(--fg0)',
+          marginTop: 12,
         }}>
           {strippedName}
         </div>
-        <div style={{ fontSize: 11, color: '#4488BB', marginTop: 3 }}>
-          {missionTypeLabel || '—'} · LAUNCHED {formatLaunchDate(launchedAt)} · COMMANDER: {commanderName}
+        <div style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 4 }}>
+          {missionTypeLabel || '—'} · Launched {formatLaunchDate(launchedAt)} · Commander {commanderName}
         </div>
       </div>
 
@@ -1465,102 +2024,65 @@ function InProgressView({ mission, me, onRefresh, onFeedRefresh, shipThumbs }) {
       {isCreator ? (
         <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           {confirmComplete ? (
-            <div style={{
-              border: '1px solid #33DDAA', padding: 16, minWidth: 320,
-              textAlign: 'center', background: '#000',
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+            <div className="raised" style={{
+              padding: 16, minWidth: 320, textAlign: 'center',
+              borderColor: 'rgba(68,255,136,.4)',
             }}>
               <div style={{
-                fontSize: 13, color: '#33DDAA', fontWeight: 'bold',
-                letterSpacing: '0.1em', marginBottom: 6,
+                fontSize: 11, color: 'var(--lime)', fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6,
               }}>
-                CONFIRM MISSION COMPLETE?
+                Confirm mission complete?
               </div>
-              <div style={{ fontSize: 11, color: '#66AADD', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--fg2)', marginBottom: 12 }}>
                 All crew RP will be distributed.
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
+                  className="btn go"
                   onClick={handleComplete}
                   disabled={working}
-                  style={{
-                    flex: 1, background: '#000', border: '1px solid #33DDAA',
-                    color: '#33DDAA', fontSize: 12, padding: '8px 12px',
-                    letterSpacing: '0.1em', fontWeight: 'bold',
-                    fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                    cursor: working ? 'default' : 'pointer',
-                  }}
-                >✓ CONFIRM</button>
+                  style={{ flex: 1, fontSize: 12, padding: '8px 12px' }}
+                >✓ Confirm</button>
                 <button
+                  className="btn"
                   onClick={() => setConfirmComplete(false)}
-                  style={{
-                    flex: 1, background: '#000', border: '1px solid #66AADD',
-                    color: '#66AADD', fontSize: 12, padding: '8px 12px',
-                    letterSpacing: '0.1em',
-                    fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                    cursor: 'pointer',
-                  }}
-                >CANCEL</button>
+                  style={{ flex: 1, fontSize: 12, padding: '8px 12px' }}
+                >Cancel</button>
               </div>
             </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
               <button
+                className="btn go lg"
                 onClick={() => { playClick(); setConfirmComplete(true); }}
-                onMouseEnter={() => setHoverComplete(true)}
-                onMouseLeave={() => setHoverComplete(false)}
                 disabled={working}
-                style={{
-                  fontSize: 14, fontWeight: 'bold', letterSpacing: '0.12em',
-                  color: hoverComplete ? '#000' : '#33DDAA',
-                  border: '2px solid #33DDAA',
-                  background: hoverComplete ? '#33DDAA' : '#000',
-                  padding: '12px 36px',
-                  cursor: working ? 'default' : 'pointer',
-                  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                }}
               >
-                [ ✓ COMPLETE MISSION ]
+                ✓ Complete mission
               </button>
               <button
+                className="btn warn"
                 onClick={handleAbort}
-                onMouseEnter={() => setHoverAbort(true)}
-                onMouseLeave={() => setHoverAbort(false)}
                 disabled={working}
-                style={{
-                  fontSize: 12, letterSpacing: '0.1em',
-                  color: hoverAbort ? '#000' : '#FF5544',
-                  border: '1px solid #FF5544',
-                  background: hoverAbort ? '#FF5544' : '#000',
-                  padding: '8px 20px',
-                  cursor: working ? 'default' : 'pointer',
-                  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                }}
               >
-                [ ABORT ]
+                Abort
               </button>
             </div>
           )}
-          {errMsg && (
-            <div style={{ fontSize: 11, color: '#FF5544' }}>{errMsg}</div>
-          )}
+          {errMsg && <div className="err">{errMsg}</div>}
         </div>
       ) : (
-        <div style={{
-          marginTop: 28,
-          border: '1px solid #1A3D55',
-          background: '#06121C',
-          padding: '14px 20px',
-          textAlign: 'center',
+        <div className="raised" style={{
+          marginTop: 28, padding: '14px 20px', textAlign: 'center',
         }}>
           <div style={{
-            fontSize: 12, color: '#FFBB33', fontWeight: 'bold',
-            letterSpacing: '0.08em', marginBottom: 4,
+            fontSize: 11, color: 'var(--amber)', fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4,
           }}>
-            RP WILL BE DISTRIBUTED TO ALL CREW UPON MISSION COMPLETION
+            RP will be distributed to all crew upon mission completion
           </div>
-          <div style={{ fontSize: 11, color: '#66AADD' }}>
-            Submit your post-mission log afterward to earn an additional +3 RP
+          <div style={{ fontSize: 12, color: 'var(--fg2)' }}>
+            Submit your post-mission log afterward to earn an additional <b style={{ color: 'var(--lime)' }}>+3 RP</b>.
           </div>
         </div>
       )}
@@ -1603,102 +2125,72 @@ function PostMissionLogModal({ prompt, onClose, onSubmitted }) {
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'rgba(0,0,0,0.85)',
+      background: 'rgba(0,0,0,0.8)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999,
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
     }}>
-      <div style={{
-        background: '#06121C',
-        border: '1px solid #33DDAA',
-        padding: 30,
-        maxWidth: 600, width: '90%',
+      <div className="raised" style={{
+        padding: 28,
+        maxWidth: 600,
+        width: '90%',
+        borderColor: 'rgba(68,255,136,.4)',
       }}>
         <div style={{
-          fontSize: 18, color: '#33DDAA',
-          fontWeight: 'bold', letterSpacing: '0.12em', marginBottom: 8,
+          fontSize: 11, fontWeight: 600, letterSpacing: '0.14em',
+          color: 'var(--lime)', textTransform: 'uppercase', marginBottom: 4,
         }}>
-          POST-MISSION LOG
+          Post-mission log
         </div>
-        <div style={{
-          fontSize: 13, color: '#99CCFF', marginBottom: 16,
-        }}>
-          OPERATION {stripMissionPrefix(prompt.mission_name || '').toUpperCase()}
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg0)', marginBottom: 16 }}>
+          {stripMissionPrefix(prompt.mission_name || '') || 'Mission'}
         </div>
 
         {successMsg ? (
           <div style={{
-            fontSize: 14, color: '#33DDAA', fontWeight: 'bold',
-            textAlign: 'center', letterSpacing: '0.1em', padding: '30px 0',
+            fontSize: 14, color: 'var(--lime)', fontWeight: 600,
+            textAlign: 'center', padding: '28px 0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
           }}>
-            {successMsg}
+            <span className="live-dot" />
+            {successMsg.replace(/^✓\s*/, '')}
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 12, color: '#66AADD', marginBottom: 16, lineHeight: 1.6 }}>
-              Submit your mission log to earn +3 RP. Describe what happened during the operation.
+            <div style={{ fontSize: 13, color: 'var(--fg2)', marginBottom: 14, lineHeight: 1.6 }}>
+              Submit your mission log to earn <b style={{ color: 'var(--lime)' }}>+3 RP</b>. Describe what happened during the operation.
             </div>
             <textarea
+              className="inp"
               value={text}
               onChange={e => setText(e.target.value)}
               maxLength={1000}
               disabled={submitting}
-              placeholder="Enter your mission log here..."
+              placeholder="Enter your mission log here…"
               onFocus={() => setTextareaFocus(true)}
               onBlur={() => setTextareaFocus(false)}
-              style={{
-                width: '100%', minHeight: 160,
-                background: '#000',
-                border: `1px solid ${textareaFocus ? '#00EEFF' : '#2A6A9A'}`,
-                color: '#CCE8FF', fontSize: 14, padding: 10,
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                boxSizing: 'border-box', resize: 'vertical', outline: 'none',
-              }}
+              style={{ minHeight: 160 }}
             />
-            <div style={{
-              fontSize: 10, color: '#4488BB',
-              textAlign: 'right', marginTop: 4,
-            }}>
+            <div style={{ fontSize: 11, color: 'var(--fg3)', textAlign: 'right', marginTop: 4 }}>
               {text.length} / 1000
             </div>
             {errMsg && (
-              <div style={{ fontSize: 11, color: '#FF5544', marginTop: 8, textAlign: 'center' }}>
-                {errMsg}
-              </div>
+              <div className="err" style={{ textAlign: 'center', marginTop: 8 }}>{errMsg}</div>
             )}
             <button
+              className="btn go"
               onClick={submit}
               disabled={!canSubmit}
-              onMouseEnter={() => setHoverSubmit(true)}
-              onMouseLeave={() => setHoverSubmit(false)}
-              style={{
-                width: '100%', fontSize: 14, fontWeight: 'bold',
-                letterSpacing: '0.1em', padding: '12px 0',
-                border: '2px solid #33DDAA',
-                color: !canSubmit
-                  ? '#1A3D55'
-                  : (hoverSubmit ? '#000' : '#33DDAA'),
-                background: !canSubmit
-                  ? '#000'
-                  : (hoverSubmit ? '#33DDAA' : '#000'),
-                cursor: canSubmit ? 'pointer' : 'default',
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                marginTop: 16,
-                opacity: !canSubmit && !submitting ? 0.6 : 1,
-              }}
+              style={{ width: '100%', fontSize: 14, padding: '12px 0', marginTop: 14 }}
             >
-              [ {submitting ? 'SUBMITTING...' : 'SUBMIT LOG'} ]
+              {submitting ? <><span className="spinner" />Submitting…</> : 'Submit log'}
             </button>
-            <div
+            <button
               onClick={onClose}
-              style={{
-                fontSize: 11, color: '#4488BB',
-                cursor: 'pointer', textAlign: 'center', marginTop: 10,
-                letterSpacing: '0.08em',
-              }}
+              className="btn"
+              style={{ width: '100%', fontSize: 12, padding: '7px 0', marginTop: 8 }}
             >
-              SKIP
-            </div>
+              Skip
+            </button>
           </>
         )}
       </div>
@@ -1706,81 +2198,59 @@ function PostMissionLogModal({ prompt, onClose, onSubmitted }) {
   );
 }
 
+// AI summary gets its own full-width body since its content is long-form
+// prose rather than a one-liner. Everything else uses the compact icon-row.
 function FeedItem({ item, timezone }) {
   const ts = formatFeedTimestamp(item.timestamp, timezone);
   const cat = FEED_CATEGORY[item.event_type] ?? DEFAULT_FEED_CAT;
 
-  const scanline = (
-    <div style={{
-      position: 'absolute',
-      inset: 0,
-      background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
-      pointerEvents: 'none',
-    }} />
-  );
-
-  const wrap = {
-    background: cat.bg,
-    border: `1px solid ${cat.accent}`,
-    padding: '10px 14px',
-    marginBottom: 8,
-    position: 'relative',
-    overflow: 'hidden',
-    fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-  };
-
-  const tsStyle = {
-    fontSize: 10,
-    color: cat.accent,
-    letterSpacing: '0.06em',
-    marginBottom: 4,
-    position: 'relative',
-  };
-
-  const txtStyle = {
-    fontSize: 14,
-    color: cat.text,
-    lineHeight: 1.6,
-    position: 'relative',
-  };
-
-  if (item.event_type === 'ship_borrowed') {
-    return (
-      <div style={wrap}>
-        {scanline}
-        <div style={tsStyle}>{ts}</div>
-        <div style={txtStyle}>
-          {item.citizen_name} added{' '}
-          <span style={{ color: '#FFBB33', fontWeight: 'bold' }}>{item.ship_name}</span>
-          {' '}to {item.mission_name}
-        </div>
-      </div>
-    );
-  }
-
   if (item.event_type === 'ai_summary') {
     return (
-      <div style={wrap}>
-        {scanline}
-        <div style={tsStyle}>{ts}</div>
-        <div style={{ fontSize: 14, color: '#CCAAFF', letterSpacing: '0.14em', fontWeight: 'bold', position: 'relative' }}>
-          NEXUS TRAFFIC AUTHORITY
+      <div className="fi">
+        <div className="fr">
+          <div className={`ico ${cat.tone}`}><FeedIcon type={item.event_type} /></div>
+          <div style={{ minWidth: 0 }}>
+            <div className="ft" style={{ color: 'var(--purple)' }}>
+              Nexus Traffic Authority
+            </div>
+            <div className="fs">has reviewed recent fleet activity and issued the following summary.</div>
+          </div>
+          <div className="ftime">{ts}</div>
         </div>
-        <div style={{ fontSize: 14, color: '#AA66DD', marginTop: 2, position: 'relative' }}>
-          has reviewed recent fleet activity and issued the following summary:
-        </div>
-        <div style={{ fontSize: 14, color: '#E8D4FF', lineHeight: 1.7, marginTop: 6, position: 'relative' }}>
+        <div className="fd" style={{ color: 'var(--fg1)', lineHeight: 1.65, marginTop: 6 }}>
           {item.summary_text}
         </div>
       </div>
     );
   }
 
+  if (item.event_type === 'ship_borrowed') {
+    return (
+      <div className="fi">
+        <div className="fr">
+          <div className={`ico ${cat.tone}`}><FeedIcon type={item.event_type} /></div>
+          <div style={{ minWidth: 0 }}>
+            <div className="ft">
+              <span className="nm">{item.citizen_name}</span>{' '}added{' '}
+              <em style={{ color: 'var(--amber)' }}>{item.ship_name}</em>{' '}to{' '}
+              <em style={{ color: 'var(--fg1)' }}>{item.mission_name}</em>
+            </div>
+          </div>
+          <div className="ftime">{ts}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={wrap}>
-      {scanline}
-      <div style={tsStyle}>{ts}</div>
-      <div style={txtStyle}>{formatFeedText(item)}</div>
+    <div className="fi">
+      <div className="fr">
+        <div className={`ico ${cat.tone}`}><FeedIcon type={item.event_type} /></div>
+        <div style={{ minWidth: 0 }}>
+          <div className="ft">{formatFeedText(item)}</div>
+        </div>
+        <div className="ftime">{ts}</div>
+      </div>
     </div>
   );
 }
@@ -1801,15 +2271,14 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
   const [reqLoading, setReqLoading] = useState(false);
 
   return (
-    <div style={{
-      background: '#06121C', border: '1px solid #1A3D55', padding: 12,
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-    }}>
+    <div className="raised" style={{ padding: 12 }}>
       <div style={{
-        width: '100%', height: 80, background: '#040D15', border: '1px solid #0D2030',
+        width: '100%', height: 80, background: '#02080e',
+        border: '1px solid var(--rim0)', borderRadius: 4,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 10, overflow: 'hidden',
         padding: 8, boxSizing: 'border-box',
+        boxShadow: '0 2px 6px #000 inset',
       }}>
         {thumbUrl ? (
           <img src={thumbUrl} alt="" style={{
@@ -1817,14 +2286,14 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
             filter: 'invert(1) sepia(1) saturate(3) hue-rotate(175deg) brightness(0.55) contrast(1.2)',
           }} />
         ) : (
-          <div style={{ fontSize: 10, color: '#1A3D55', letterSpacing: '0.06em' }}>NO IMAGE</div>
+          <div style={{ fontSize: 10, color: '#1A3A50', letterSpacing: '0.06em' }}>NO IMAGE</div>
         )}
       </div>
 
       <div style={{ fontSize: 13, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.06em', marginBottom: 3 }}>
         {ship.ship_name || '—'}
       </div>
-      <div style={{ fontSize: 10, color: '#4488BB', letterSpacing: '0.04em', marginBottom: 6 }}>
+      <div style={{ fontSize: 10, color: '#5F87A8', letterSpacing: '0.04em', marginBottom: 6 }}>
         {modelDisplay}
       </div>
 
@@ -1837,11 +2306,11 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #0D2030', paddingTop: 8, marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #061018', paddingTop: 8, marginBottom: 8 }}>
         {[['SHIP RP', stats.lifetime_rp], ['AVG FILL', `${stats.avg_fill_rate}%`], ['MISSIONS', stats.missions_analyzed]].map(([label, val]) => (
           <div key={label} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 11, color: '#00EEFF', fontWeight: 'bold' }}>{val}</div>
-            <div style={{ fontSize: 9, color: '#4488BB', letterSpacing: '0.06em' }}>{label}</div>
+            <div style={{ fontSize: 9, color: '#5F87A8', letterSpacing: '0.06em' }}>{label}</div>
           </div>
         ))}
       </div>
@@ -1854,11 +2323,8 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
 
         if (myRequest?.status === 'approved') {
           return (
-            <div style={{
-              borderTop: '1px solid #1A3D55', padding: '6px 8px', background: '#040D15',
-              fontSize: 10, color: '#33DDAA', letterSpacing: '0.06em',
-            }}>
-              ● VESSEL BORROWED
+            <div className="badge b-lime" style={{ marginTop: 4 }}>
+              ● Vessel borrowed
             </div>
           );
         }
@@ -1874,7 +2340,7 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
                 ⏳ REQUEST PENDING
               </span>
               <span
-                style={{ fontSize: 9, color: '#4488BB', textDecoration: 'underline', cursor: 'pointer' }}
+                style={{ fontSize: 9, color: '#5F87A8', textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={async (e) => {
                   e.stopPropagation();
                   if (reqLoading) return;
@@ -1894,6 +2360,7 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
 
         return (
           <button
+            className="btn"
             disabled={reqLoading}
             onClick={async () => {
               if (reqLoading) return;
@@ -1904,40 +2371,27 @@ function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, o
               } catch {}
               setReqLoading(false);
             }}
-            style={{
-              width: '100%', background: '#040D15', border: 'none',
-              borderTop: '1px solid #1A3D55',
-              color: reqLoading ? '#1A3D55' : '#99CCFF',
-              fontSize: 10, letterSpacing: '0.08em', padding: '6px 8px', cursor: reqLoading ? 'not-allowed' : 'pointer',
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              textAlign: 'left',
-            }}
+            style={{ width: '100%', fontSize: 12, padding: '7px 10px', marginTop: 6 }}
           >
-            <span>{reqLoading ? 'SENDING...' : 'REQUEST ACCESS'}</span>
-            <span style={{ color: '#1A3D55' }}>→</span>
+            {reqLoading ? <><span className="spinner" />Sending…</> : <>Request access →</>}
           </button>
         );
       })()}
 
       <button
+        className="btn"
         onClick={onToggle}
-        style={{
-          width: '100%', background: 'none', border: '1px solid #1A3D55', color: '#4488BB',
-          fontSize: 10, letterSpacing: '0.08em', padding: '5px 0', cursor: 'pointer',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6,
-        }}
+        style={{ width: '100%', fontSize: 11, padding: '5px 0', marginTop: 6 }}
       >
-        SHIP HISTORY {isOpen ? '▼' : '▶'}
+        Ship history {isOpen ? '▼' : '▶'}
       </button>
 
       {isOpen && (
         <div style={{
-          marginTop: 8, padding: '8px 10px', background: '#040D15', border: '1px solid #0D2030',
+          marginTop: 8, padding: '8px 10px', background: '#040D15', border: '1px solid #061018',
           fontSize: 11, color: '#66AADD', lineHeight: 1.6, letterSpacing: '0.04em',
         }}>
-          {ship.description || <span style={{ color: '#1A3D55' }}>NO HISTORY ON FILE</span>}
+          {ship.description || <span style={{ color: '#1A3A50' }}>NO HISTORY ON FILE</span>}
         </div>
       )}
     </div>
@@ -1954,48 +2408,45 @@ function OwnerAccessPopup({ popup, shipThumbs, onApprove, onDeny, onDismiss }) {
   if (minimized) {
     return (
       <div
+        className="raised"
         onClick={() => setMinimized(false)}
         style={{
           width: 280, padding: '8px 14px',
-          background: '#040D15', border: '2px solid #00EEFF',
-          boxShadow: '0 0 16px rgba(0,238,255,0.35)',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          borderColor: 'var(--cyan)',
+          boxShadow: '0 1px 0 rgba(150,210,255,.12) inset, 0 3px 0 #050e18, 0 0 20px rgba(0,238,255,.4)',
           cursor: 'pointer', userSelect: 'none',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#00EEFF', letterSpacing: '0.08em' }}>
-            ⚓ ACCESS REQUEST — {popup.shipName}
+          <span style={{ fontSize: 11, color: 'var(--cyan)', fontWeight: 600, letterSpacing: '0.06em' }}>
+            ⚓ Access request — {popup.shipName}
           </span>
-          <span style={{ fontSize: 10, color: '#4488BB' }}>▲</span>
+          <span style={{ fontSize: 10, color: 'var(--fg3)' }}>▲</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      width: 340, background: '#040D15', border: '2px solid #00EEFF',
-      boxShadow: '0 0 20px rgba(0,238,255,0.4), 0 0 48px rgba(0,238,255,0.15)',
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+    <div className="raised" style={{
+      width: 340,
+      borderColor: 'var(--cyan)',
+      boxShadow: '0 1px 0 rgba(150,210,255,.18) inset, 0 3px 0 #050e18, 0 0 24px rgba(0,238,255,.4), 0 0 48px rgba(0,238,255,.15)',
     }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '8px 12px', borderBottom: '1px solid #1A3D55',
-      }}>
-        <span style={{ fontSize: 11, color: '#00EEFF', letterSpacing: '0.1em' }}>
-          INCOMING ACCESS REQUEST
+      <div className="sh" style={{ padding: '8px 12px' }}>
+        <span style={{ fontSize: 11, color: 'var(--cyan)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Incoming access request
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
           <span
             onClick={() => setMinimized(true)}
-            style={{ fontSize: 10, color: '#4488BB', cursor: 'pointer', letterSpacing: '0.06em' }}
+            style={{ fontSize: 10, color: '#5F87A8', cursor: 'pointer', letterSpacing: '0.06em' }}
           >
             ▼
           </span>
           <span
             onClick={onDismiss}
-            style={{ fontSize: 10, color: '#4488BB', cursor: 'pointer', letterSpacing: '0.06em' }}
+            style={{ fontSize: 10, color: '#5F87A8', cursor: 'pointer', letterSpacing: '0.06em' }}
           >
             ✕
           </span>
@@ -2004,7 +2455,7 @@ function OwnerAccessPopup({ popup, shipThumbs, onApprove, onDeny, onDismiss }) {
 
       <div style={{ padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <div style={{
-          width: 64, height: 48, background: '#040D15', border: '1px solid #0D2030',
+          width: 64, height: 48, background: '#040D15', border: '1px solid #061018',
           flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
           padding: 8, boxSizing: 'border-box',
@@ -2015,52 +2466,44 @@ function OwnerAccessPopup({ popup, shipThumbs, onApprove, onDeny, onDismiss }) {
               filter: 'invert(1) sepia(1) saturate(3) hue-rotate(175deg) brightness(0.55)',
             }} />
           ) : (
-            <span style={{ fontSize: 9, color: '#1A3D55' }}>NO IMG</span>
+            <span style={{ fontSize: 9, color: '#1A3A50' }}>NO IMG</span>
           )}
         </div>
         <div>
           <div style={{ fontSize: 13, color: '#CCE8FF', fontWeight: 'bold' }}>{popup.shipName}</div>
-          <div style={{ fontSize: 10, color: '#4488BB', marginTop: 2 }}>
+          <div style={{ fontSize: 10, color: '#5F87A8', marginTop: 2 }}>
             {popup.shipModel ? formatModel(popup.shipModel) : '—'}
           </div>
           <div style={{ fontSize: 10, color: '#66AADD', marginTop: 6 }}>
-            REQUESTER: <span style={{ color: '#99CCFF' }}>{popup.requesterName}</span>
+            REQUESTER: <span style={{ color: '#99BBDD' }}>{popup.requesterName}</span>
           </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, padding: '0 12px 12px' }}>
         <button
+          className="btn go"
           disabled={loading}
           onClick={async () => {
             setLoading(true);
             await onApprove(popup);
             setLoading(false);
           }}
-          style={{
-            flex: 1, background: loading ? '#0D2030' : '#33DDAA', border: 'none',
-            color: '#000', fontSize: 11, fontWeight: 'bold', padding: '7px 0',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-            letterSpacing: '0.1em', cursor: loading ? 'not-allowed' : 'pointer',
-          }}
+          style={{ flex: 1, fontSize: 12, padding: '7px 0' }}
         >
-          APPROVE
+          Approve
         </button>
         <button
+          className="btn warn"
           disabled={loading}
           onClick={async () => {
             setLoading(true);
             await onDeny(popup);
             setLoading(false);
           }}
-          style={{
-            flex: 1, background: 'none', border: '1px solid #FF5544',
-            color: '#FF5544', fontSize: 11, padding: '7px 0',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-            letterSpacing: '0.1em', cursor: loading ? 'not-allowed' : 'pointer',
-          }}
+          style={{ flex: 1, fontSize: 12, padding: '7px 0' }}
         >
-          DENY
+          Deny
         </button>
       </div>
     </div>
@@ -2070,9 +2513,9 @@ function OwnerAccessPopup({ popup, shipThumbs, onApprove, onDeny, onDismiss }) {
 // ─── Lessee notification bar ────────────────────────────────────────────────
 
 const LESSEE_COLORS = {
-  approved: '#33DDAA',
+  approved: '#44FF88',
   denied:   '#FF5544',
-  expired:  '#4488BB',
+  expired:  '#5F87A8',
   recalled: '#FFBB33',
 };
 const LESSEE_LABELS = {
@@ -2090,43 +2533,42 @@ function LesseeNotif({ notif, onClose }) {
   if (minimized) {
     return (
       <div
+        className="raised"
         onClick={() => setMinimized(false)}
         style={{
           width: 280, padding: '7px 12px',
-          background: '#040D15', border: `1px solid ${color}`,
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-          cursor: 'pointer',
+          borderColor: color, cursor: 'pointer',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 10, color, letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: 11, color, letterSpacing: '0.04em', fontWeight: 600 }}>
             {label}: {notif.shipName}
           </span>
-          <span style={{ fontSize: 9, color: '#4488BB' }}>▲</span>
+          <span style={{ fontSize: 10, color: 'var(--fg3)' }}>▲</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      width: 300, background: '#040D15', border: `1px solid ${color}`,
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+    <div className="raised" style={{
+      width: 300,
+      borderColor: color,
       padding: '10px 12px',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ fontSize: 11, color, fontWeight: 'bold', letterSpacing: '0.08em' }}>{label}</span>
+        <span style={{ fontSize: 11, color, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
         <div style={{ display: 'flex', gap: 10 }}>
-          <span onClick={() => setMinimized(true)} style={{ fontSize: 10, color: '#4488BB', cursor: 'pointer' }}>▼</span>
-          <span onClick={onClose} style={{ fontSize: 10, color: '#4488BB', cursor: 'pointer' }}>✕</span>
+          <span onClick={() => setMinimized(true)} style={{ fontSize: 10, color: 'var(--fg3)', cursor: 'pointer' }}>▼</span>
+          <span onClick={onClose} style={{ fontSize: 10, color: 'var(--fg3)', cursor: 'pointer' }}>✕</span>
         </div>
       </div>
-      <div style={{ fontSize: 12, color: '#99CCFF', letterSpacing: '0.04em' }}>
+      <div style={{ fontSize: 13, color: 'var(--fg0)' }}>
         {notif.shipName}
       </div>
       {notif.kind === 'approved' && notif.loanExpiresAt && (
-        <div style={{ fontSize: 10, color: '#66AADD', marginTop: 4 }}>
-          LOAN EXPIRES: {new Date(notif.loanExpiresAt).toLocaleTimeString()}
+        <div style={{ fontSize: 11, color: 'var(--fg2)', marginTop: 4 }}>
+          Loan expires: {new Date(notif.loanExpiresAt).toLocaleTimeString()}
         </div>
       )}
     </div>
@@ -2176,37 +2618,38 @@ function ShipRegistryView({ shipThumbs, me }) {
       {phase === 'boot' && <RegistryBoot onComplete={handleBootDone} />}
       {phase === 'registry' && (
         <div style={{
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-          height: '100%', overflowY: 'auto', padding: '20px 24px', color: C.amber,
+          fontFamily: 'var(--font)',
+          height: '100%', overflowY: 'auto',
+          color: 'var(--fg1)',
+          display: 'flex', flexDirection: 'column',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 18, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.12em' }}>
-              NEXUS SHIP REGISTRY
-            </div>
-            <div style={{ fontSize: 13, color: '#66AADD', letterSpacing: '0.1em' }}>
-              {ships.length} VESSELS REGISTERED
-            </div>
+          <div className="sh">
+            <span style={{
+              fontSize: 13, fontWeight: 700, color: 'var(--fg0)',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+            }}>
+              Nexus ship registry
+            </span>
+            <span className="badge b-blue">
+              {ships.length} vessels registered
+            </span>
           </div>
 
-          <input
-            type="text"
-            placeholder="SEARCH VESSELS..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              background: '#000', border: '1px solid #1A3D55',
-              color: '#99CCFF', fontSize: 14, padding: '8px 12px',
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-              letterSpacing: '0.08em', outline: 'none', marginBottom: 20,
-            }}
-          />
+          <div style={{ padding: '14px 16px' }}>
+            <input
+              className="inp"
+              type="text"
+              placeholder="Search vessels…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ marginBottom: 16 }}
+            />
 
-          {filtered.length === 0 ? (
-            <div style={{ color: '#66AADD', fontSize: 16 }}>NO VESSELS FOUND</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              {filtered.map(ship => (
+            {filtered.length === 0 ? (
+              <div className="empty">No vessels found</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                {filtered.map(ship => (
                 <ShipRegistryCard
                   key={ship._id}
                   ship={ship}
@@ -2230,8 +2673,9 @@ function ShipRegistryView({ shipThumbs, me }) {
                   }}
                 />
               ))}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -2248,6 +2692,16 @@ export default function Dashboard() {
   const [shipThumbs, setShipThumbs]         = useState({});
   const [selectedId, setSelectedId]         = useState(null);
   const [feedEvents, setFeedEvents]         = useState([]);
+  const [feedCollapsed, setFeedCollapsed]   = useState(() => {
+    try { return localStorage.getItem('nexus_feed_collapsed') === '1'; } catch { return false; }
+  });
+  const [showBugReport, setShowBugReport]   = useState(false);
+  const [chatOpen, setChatOpen]             = useState(false);
+  const chatBtnRef                          = useRef(null);
+  const { count: chatUnread, markSeen: markChatSeen } = useChatUnread();
+  const [missionListCollapsed, setMissionListCollapsed] = useState(() => {
+    try { return localStorage.getItem('nexus_missionlist_collapsed') === '1'; } catch { return false; }
+  });
   const [loadingMissions, setLoadingMissions] = useState(true);
   const [loadingFeed, setLoadingFeed]       = useState(true);
   const [timezone, setTimezone]             = useState('UTC');
@@ -2507,7 +2961,29 @@ export default function Dashboard() {
     };
   }, [socket, fetchMissions, fetchMe, prependEvent]);
 
-  const selectedMission = missions.find(m => m._id === selectedId) ?? missions[0] ?? null;
+  // Center-panel view routing — mission detail and mode views (MY SHIPS /
+  // REGISTER SHIP / CREATE MISSION / SHIP REGISTRY) are mutually exclusive.
+  // All entry points route through these two helpers so stale state cannot
+  // linger (e.g. clicking a mission while SHIP REGISTRY is open must close
+  // the registry; entering any mode must drop the mission selection).
+  const selectMission = (id) => {
+    setSelectedId(id);
+    setMyShipsMode(false);
+    setRegisterMode(false);
+    setCreateMissionMode(false);
+    setShipRegistryMode(false);
+    setSelectedShip(null);
+  };
+  const enterMode = (mode) => {
+    setSelectedId(null);
+    setSelectedShip(null);
+    setMyShipsMode(mode === 'myShips');
+    setRegisterMode(mode === 'register');
+    setCreateMissionMode(mode === 'create');
+    setShipRegistryMode(mode === 'registry');
+  };
+
+  const selectedMission = missions.find(m => m._id === selectedId) ?? null;
 
   const availableCount = missions.filter(m =>
     m.status === 'WAITING FOR CREW' || m.status === 'FINALIZED'
@@ -2524,11 +3000,18 @@ export default function Dashboard() {
       position: 'fixed', inset: 0,
       background: '#000',
       display: 'flex', flexDirection: 'column',
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      fontFamily: "'Inter', system-ui, sans-serif",
       color: C.amber,
       overflow: 'hidden',
     }}>
-
+      <TitleBar title="NEXUS" subtitle="Dashboard" />
+      <BugReportModal open={showBugReport} onClose={() => setShowBugReport(false)} />
+      <GlobalChat
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        anchorRef={chatBtnRef}
+        markSeen={markChatSeen}
+      />
 
       {/* Owner access-request popups — fixed bottom-right, stacked */}
       {accessRequestPopups.length > 0 && (
@@ -2593,23 +3076,30 @@ export default function Dashboard() {
         me={me}
         rankList={rankList}
         missions={missions}
-        onSelectMission={(id) => setSelectedId(id)}
-        onRegisterShip={() => { setMyShipsMode(false); setCreateMissionMode(false); setShipRegistryMode(false); setRegisterMode(true); }}
-        onMyShips={() => { setMyShipsMode(true); setRegisterMode(false); setCreateMissionMode(false); setShipRegistryMode(false); }}
-        onCreateMission={() => { setCreateMissionMode(true); setMyShipsMode(false); setRegisterMode(false); setShipRegistryMode(false); }}
-        onShipRegistry={() => { setShipRegistryMode(true); setMyShipsMode(false); setRegisterMode(false); setCreateMissionMode(false); }}
+        onSelectMission={(id) => selectMission(id)}
+        onMissionBoard={() => enterMode('dashboard')}
+        onRefresh={fetchMe}
+        onRegisterShip={() => enterMode('register')}
+        onMyShips={() => enterMode('myShips')}
+        onCreateMission={() => enterMode('create')}
+        onShipRegistry={() => enterMode('registry')}
         myShipsMode={myShipsMode}
         registerMode={registerMode}
         createMissionMode={createMissionMode}
         shipRegistryMode={shipRegistryMode}
         navigate={navigate}
+        chatBtnRef={chatBtnRef}
+        chatOpen={chatOpen}
+        setChatOpen={setChatOpen}
+        chatUnread={chatUnread}
+        setShowBugReport={setShowBugReport}
       />
 
       {/* 3-panel grid (or MY SHIPS panel when myShipsMode) */}
       <div style={{
         flex: 1,
         display: myShipsMode ? 'block' : 'grid',
-        gridTemplateColumns: `${leftWidth}px 1fr ${rightWidth}px`,
+        gridTemplateColumns: `${missionListCollapsed ? 44 : leftWidth}px 1fr ${rightWidth}px`,
         minHeight: 0,
         zIndex: 1,
         overflow: 'hidden',
@@ -2620,12 +3110,8 @@ export default function Dashboard() {
             selectedShip={selectedShip}
             setSelectedShip={setSelectedShip}
             onBack={() => { setMyShipsMode(false); setSelectedShip(null); }}
-            onRegisterShip={() => setRegisterMode(true)}
-            onViewLiveMission={(missionId) => {
-              setMyShipsMode(false);
-              setSelectedShip(null);
-              if (missionId) setSelectedId(missionId);
-            }}
+            onRegisterShip={() => enterMode('register')}
+            onViewLiveMission={(missionId) => selectMission(missionId)}
             leftWidth={leftWidth}
             setLeftWidth={setLeftWidth}
             rightWidth={rightWidth}
@@ -2640,33 +3126,100 @@ export default function Dashboard() {
           borderRight: `1px solid ${C.border}`,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
-          <ColumnResizeHandle side="right" columnRef={leftColumnRef} setWidth={setLeftWidth} />
-          <div style={{
-            padding: '10px 12px',
-            borderBottom: `1px solid ${C.border}`,
-            fontSize: 16, color: '#66AADD',
-            letterSpacing: '0.14em', flexShrink: 0,
-          }}>
-            MISSION BOARD — {availableCount} AVAILABLE
+          {!missionListCollapsed && (
+            <ColumnResizeHandle side="right" columnRef={leftColumnRef} setWidth={setLeftWidth} />
+          )}
+          <div className="sh" style={missionListCollapsed ? { padding: '7px 4px', justifyContent: 'center' } : undefined}>
+            {!missionListCollapsed && <span>Mission Board</span>}
+            {!missionListCollapsed && <span className="badge b-blue">{availableCount} open</span>}
+            <button
+              className="btn"
+              onClick={() => {
+                const next = !missionListCollapsed;
+                setMissionListCollapsed(next);
+                try { localStorage.setItem('nexus_missionlist_collapsed', next ? '1' : '0'); } catch {}
+              }}
+              title={missionListCollapsed ? 'Expand mission board' : 'Collapse mission board'}
+              aria-label={missionListCollapsed ? 'Expand mission board' : 'Collapse mission board'}
+              style={{
+                padding: '3px 8px',
+                fontSize: 12,
+                letterSpacing: 0,
+                minWidth: 32,
+                marginLeft: missionListCollapsed ? 0 : 'auto',
+              }}
+            >
+              {missionListCollapsed ? '»' : '«'}
+            </button>
           </div>
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            {loadingMissions ? (
-              <div style={{ padding: 12, color: '#66AADD', fontSize: 16 }}>SCANNING{dots}</div>
-            ) : missions.length === 0 ? (
-              <div style={{ padding: 12, color: '#66AADD', fontSize: 16 }}>NO ACTIVE MISSIONS</div>
-            ) : (
-              missions.map(m => (
-                <MissionCard
-                  key={m._id}
-                  mission={m}
-                  selected={selectedMission?._id === m._id}
-                  onClick={() => setSelectedId(m._id)}
-                  missionTypes={missionTypes}
-                  shipThumbs={shipThumbs}
-                />
-              ))
-            )}
-          </div>
+
+          {missionListCollapsed ? (
+            // Collapsed rail — stays visibly present so the player always
+            // knows the mission board is still there. Vertical label +
+            // open-count badge + clickable column to re-expand.
+            <div
+              onClick={() => {
+                setMissionListCollapsed(false);
+                try { localStorage.setItem('nexus_missionlist_collapsed', '0'); } catch {}
+              }}
+              title="Click to expand mission board"
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '14px 0',
+                gap: 12,
+                cursor: 'pointer',
+                transition: 'background .15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(102,170,221,.06)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <span className="badge b-blue" style={{ fontSize: 11 }}>{availableCount}</span>
+              <div style={{
+                writingMode: 'vertical-rl',
+                transform: 'rotate(180deg)',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.22em',
+                color: 'var(--blue)',
+                textTransform: 'uppercase',
+                textShadow: '0 0 6px color-mix(in srgb, var(--blue) 45%, transparent)',
+                userSelect: 'none',
+              }}>
+                Mission Board
+              </div>
+              <div style={{
+                fontSize: 10, color: 'var(--fg3)',
+                writingMode: 'vertical-rl',
+                transform: 'rotate(180deg)',
+                letterSpacing: '0.12em',
+                userSelect: 'none',
+              }}>
+                click to open
+              </div>
+            </div>
+          ) : (
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {loadingMissions ? (
+                <div className="empty">Scanning{dots}</div>
+              ) : missions.length === 0 ? (
+                <div className="empty">No active missions</div>
+              ) : (
+                missions.map(m => (
+                  <MissionCard
+                    key={m._id}
+                    mission={m}
+                    selected={selectedMission?._id === m._id}
+                    onClick={() => selectMission(m._id)}
+                    missionTypes={missionTypes}
+                    shipThumbs={shipThumbs}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Center: Mission detail OR Ship Registration */}
@@ -2707,8 +3260,8 @@ export default function Dashboard() {
               />
             )
           ) : !loadingMissions ? (
-            <div style={{ color: '#66AADD', fontSize: 16, padding: '16px 24px' }}>
-              SELECT A MISSION TO VIEW DETAILS
+            <div className="empty" style={{ padding: '48px 24px', fontSize: 13 }}>
+              Select a mission to view details.
             </div>
           ) : null}
         </div>
@@ -2720,23 +3273,43 @@ export default function Dashboard() {
           display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden',
         }}>
           <ColumnResizeHandle side="left" columnRef={rightColumnRef} setWidth={setRightWidth} />
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-            <div style={{
-              padding: '10px 10px',
-              borderBottom: `1px solid ${C.border}`,
-              fontSize: 14, color: '#66AADD',
-              letterSpacing: '0.14em',
-            }}>
-              ACTIVITY FEED
+          <div style={{ flex: feedCollapsed ? '0 0 auto' : 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div className="sh">
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="live-dot" />
+                Activity feed
+              </span>
+              <button
+                className="btn"
+                onClick={() => {
+                  const next = !feedCollapsed;
+                  setFeedCollapsed(next);
+                  try { localStorage.setItem('nexus_feed_collapsed', next ? '1' : '0'); } catch {}
+                }}
+                title={feedCollapsed ? 'Expand activity feed' : 'Collapse activity feed'}
+                aria-label={feedCollapsed ? 'Expand activity feed' : 'Collapse activity feed'}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: 12,
+                  letterSpacing: 0,
+                  minWidth: 32,
+                }}
+              >
+                {feedCollapsed ? '«' : '»'}
+              </button>
             </div>
-            {loadingFeed ? (
-              <div style={{ padding: 10, color: '#66AADD', fontSize: 14 }}>SCANNING{feedDots}</div>
-            ) : feedEvents.length === 0 ? (
-              <div style={{ padding: 10, color: '#66AADD', fontSize: 14 }}>NO ACTIVITY</div>
-            ) : (
-              feedEvents.map((item, i) => (
-                <FeedItem key={item._id ?? `${item.event_type}-${item.timestamp}-${i}`} item={item} timezone={timezone} />
-              ))
+            {!feedCollapsed && (
+              loadingFeed ? (
+                <div className="empty">Scanning{feedDots}</div>
+              ) : feedEvents.length === 0 ? (
+                <div className="empty">No activity</div>
+              ) : (
+                <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                  {feedEvents.map((item, i) => (
+                    <FeedItem key={item._id ?? `${item.event_type}-${item.timestamp}-${i}`} item={item} timezone={timezone} />
+                  ))}
+                </div>
+              )
             )}
           </div>
           <RadioPanel

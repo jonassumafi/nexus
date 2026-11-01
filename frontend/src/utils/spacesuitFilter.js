@@ -64,7 +64,12 @@ export async function buildSpacesuitChain(audioContext, sourceNode, profile) {
   distortion.oversample = '4x';
 
   const mixer = audioContext.createGain();
-  mixer.gain.value = 1;
+  // v0.6.6 — makeup gain. The highpass+lowpass+distortion stages
+  // collectively attenuate the voice ~6 dB; after we added the
+  // squelch bed, operators reported voices sitting too low in the
+  // mix. 2.0× (+6 dB) compensates without clipping (the bitcrusher
+  // soft-saturates anything that would peak above 0 dBFS).
+  mixer.gain.value = 2.0;
 
   const noiseSource = createWhiteNoiseSource(audioContext);
   const noiseGain = audioContext.createGain();
@@ -175,14 +180,14 @@ export function randomVoiceProfile() {
 }
 
 export const VOICE_PROFILE_RANGES = {
-  highpass:       { min: 200,   max: 500,   step: 1,     default: 350    },
-  lowpass:        { min: 2500,  max: 4000,  step: 1,     default: 3250   },
+  highpass:       { min: 100,   max: 800,   step: 1,     default: 350    },
+  lowpass:        { min: 800,   max: 8000,  step: 1,     default: 3250   },
   resonance_freq: { min: 1000,  max: 2000,  step: 1,     default: 1500   },
-  resonance_q:    { min: 1.5,   max: 4.5,   step: 0.1,   default: 3.0    },
-  distortion:     { min: 5,     max: 30,    step: 1,     default: 17     },
-  static_level:   { min: 0.003, max: 0.012, step: 0.001, default: 0.0075 },
-  pitch_shift:    { min: -1.5,  max: 1.5,   step: 0.1,   default: 0      },
-  bit_crush:      { min: 10,    max: 16,    step: 1,     default: 16     },
+  resonance_q:    { min: 1.5,   max: 12,    step: 0.1,   default: 3.0    },
+  distortion:     { min: 5,     max: 80,    step: 1,     default: 17     },
+  static_level:   { min: 0.003, max: 0.05,  step: 0.001, default: 0.0075 },
+  pitch_shift:    { min: -4,    max: 4,     step: 0.1,   default: 0      },
+  bit_crush:      { min: 4,     max: 16,    step: 1,     default: 16     },
 };
 
 function withDefaults(profile) {

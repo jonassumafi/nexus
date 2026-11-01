@@ -9,12 +9,14 @@ const playClick = () => {
 };
 
 const BASE_LINES = [
-  { text: 'TERMINATING SESSION...',              color: '#2A6A9A' },
-  { text: 'FLUSHING CREW ASSIGNMENTS...',        color: '#2A6A9A' },
-  { text: 'CLEARING AUTHORIZATION TOKEN...',     color: '#2A6A9A' },
-  { text: 'DISCONNECTING FROM NEXUS RELAY...',   color: '#2A6A9A' },
-  { text: 'CONNECTION TERMINATED.',              color: '#FF5544' },
+  { text: 'Terminating session…',             tone: 'fg2' },
+  { text: 'Flushing crew assignments…',       tone: 'fg2' },
+  { text: 'Clearing authorization token…',    tone: 'fg2' },
+  { text: 'Disconnecting from Nexus relay…',  tone: 'fg2' },
+  { text: 'Connection terminated.',           tone: 'red' },
 ];
+
+const TONE = { fg2: 'var(--fg2)', red: 'var(--red)', fg3: 'var(--fg3)' };
 
 export default function Disconnect() {
   const { user } = useAuthContext();
@@ -22,7 +24,7 @@ export default function Disconnect() {
 
   const lines = [
     ...BASE_LINES,
-    { text: `GOODBYE, ${user?.citizen_name || 'OPERATOR'}.`, color: '#1A3D55' },
+    { text: `Goodbye, ${user?.citizen_name || 'operator'}.`, tone: 'fg3' },
   ];
 
   useEffect(() => {
@@ -44,19 +46,40 @@ export default function Disconnect() {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0,
-      background: '#000',
+      position: 'fixed',
+      inset: 0,
+      background: 'var(--void)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-      fontSize: 14,
     }}>
-      <div className="scanlines" />
-      <div className="vignette" />
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      <div className="vig" />
+      <div className="raised" style={{
+        position: 'relative',
+        zIndex: 1,
+        padding: '28px 36px',
+        minWidth: 420,
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: 'var(--blue)',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <span className="live-dot" style={{ background: 'var(--red)', boxShadow: '0 0 6px var(--red)' }} />
+          Disconnect
+        </div>
         {lines.slice(0, visibleCount).map((line, i) => (
-          <div key={i} style={{ color: line.color, letterSpacing: '0.08em', lineHeight: 2 }}>
+          <div key={i} style={{
+            color: TONE[line.tone],
+            fontSize: 13,
+            lineHeight: 2,
+          }}>
             {line.text}
           </div>
         ))}

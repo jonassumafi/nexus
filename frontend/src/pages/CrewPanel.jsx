@@ -1,17 +1,4 @@
-import AsciiBox from '../components/AsciiBox';
-
+import StubPanel from '../components/StubPanel';
 export default function CrewPanel() {
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 60px' }}>
-      <div className="scanlines" />
-      <div className="vignette" />
-      <div style={{ width: '100%', maxWidth: 700 }}>
-        <AsciiBox title="CREW PANEL">
-          <div style={{ color: '#2A6A9A', textAlign: 'center', padding: '20px 0' }}>
-            [ CREW PANEL — COMING SOON ]
-          </div>
-        </AsciiBox>
-      </div>
-    </div>
-  );
+  return <StubPanel title="Crew Panel" subtitle="Manage your crew roster. This view currently lives inside the Dashboard." />;
 }

@@ -15,6 +15,17 @@ import CrewPanel    from './pages/CrewPanel.jsx';
 import Onboarding   from './pages/Onboarding.jsx';
 import Disconnect   from './pages/Disconnect.jsx';
 import Admin        from './pages/Admin.jsx';
+import RadioWidget  from './pages/RadioWidget.jsx';
+import Companion    from './pages/Companion.jsx';
+import RootErrorBoundary from './components/RootErrorBoundary.jsx';
+
+// Apply persisted theme + density before React mounts so there's no FOUC.
+try {
+  const t = localStorage.getItem('nexus_theme');
+  if (t) document.documentElement.setAttribute('data-theme', t);
+  const d = localStorage.getItem('nexus_density');
+  document.documentElement.setAttribute('data-dens', d || 'comfort');
+} catch {}
 // Handles /auth/discord/callback?code=xxx — exchanges code for JWT via backend
 function AuthCallback() {
   const [params] = useSearchParams();
@@ -45,7 +56,13 @@ function RouteGuard({ children }) {
   const { isAuthenticated, user } = useAuthContext();
   const location = useLocation();
 
-  // Unauthenticated users access everything freely (Splash, etc.)
+  // Radio widget + companion mode always render — they handle their own
+  // loading / unauthenticated state internally. Previously the RouteGuard
+  // redirected to /dashboard when auth wasn't ready, which caused the
+  // dashboard to render cramped at 320×44 showing only the giant
+  // "Nexus Interstellar" title.
+  if (location.pathname === '/radio' || location.pathname === '/companion') return children;
+  // Unauthenticated users access everything else freely (Splash, etc.)
   if (!isAuthenticated) return children;
 
   // Authenticated but not yet onboarded — force /onboarding; always allow Gate, Splash, and callback
@@ -62,9 +79,10 @@ function RouteGuard({ children }) {
 }
 
 createRoot(document.getElementById('root')).render(
-  <AuthProvider>
-    <SocketProvider>
-      <BrowserRouter>
+  <RootErrorBoundary>
+    <AuthProvider>
+      <SocketProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/*" element={
             <RouteGuard>
@@ -79,11 +97,14 @@ createRoot(document.getElementById('root')).render(
                 <Route path="/onboarding"     element={<Onboarding />} />
                 <Route path="/disconnect"     element={<Disconnect />} />
                 <Route path="/admin"          element={<Admin />} />
+                <Route path="/radio"          element={<RadioWidget />} />
+                <Route path="/companion"      element={<Companion />} />
               </Routes>
             </RouteGuard>
           } />
         </Routes>
-      </BrowserRouter>
-    </SocketProvider>
-  </AuthProvider>
+        </BrowserRouter>
+      </SocketProvider>
+    </AuthProvider>
+  </RootErrorBoundary>
 );

@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Splash Concept</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:dark;--void:#000710;--bg0:#020C14;--bg1:#061018;--bg2:#0A1828;--bg3:#12263A;--rim0:#1A3A50;--rim1:#2A5A7A;--rim2:#3F82B3;--fg0:#CCE8FF;--fg1:#99BBDD;--fg2:#86AFCF;--fg3:#5F87A8;--lime:#44FF88;--blue:#66AADD;--red:#FF5544;--amber:#FFBB33;--cyan:#00EEFF;font-family:'Inter',system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
+.stage{overflow-x:auto;padding-bottom:6px}
+.frame{margin:0 auto;border:1px solid var(--rim0);border-radius:8px;background:var(--bg0);box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.w1280{width:1280px}.w900{width:900px}
+.vig{position:absolute;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.72) 100%)}
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:6px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4)}
+.btn{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:8px 16px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a,0 5px 8px rgba(0,0,0,.4)}
+.btn.go:active{box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 0 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.lg{font-size:15px;padding:12px 26px}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.inp{width:100%;font-size:14px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:5px;padding:9px 11px;box-shadow:0 2px 6px #000 inset;outline:none}
+.inp:focus{border-color:var(--rim2)}
+.inp.bad{border-color:var(--red)}
+textarea.inp{resize:vertical;min-height:120px;line-height:1.6}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--fg2)}
+.hint{font-size:12px;font-weight:400;color:var(--fg3)}
+.err{font-size:12px;font-weight:500;color:var(--red);min-height:16px}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(150,200,240,.25);border-top-color:var(--blue);animation:spin .8s linear infinite;display:inline-block}
+.logo{width:48px;height:48px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 0 #04101a}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:14px}
+.bt1{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.tokpanel{width:100%;max-width:1280px;margin:28px auto 0}
+.tokpanel h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.tokpanel h3::after{content:"";flex:1;height:1px;background:var(--rim0)}
+.tblw{border:1px solid var(--rim0);border-radius:6px;overflow-x:auto;background:var(--bg1)}
+.tokpanel table{width:100%;border-collapse:collapse;font-size:12px}
+.tokpanel th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:7px 12px;border-bottom:1px solid var(--rim1)}
+.tokpanel td{padding:7px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top}
+.tokpanel code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 4px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:7px;vertical-align:-1px;border:1px solid rgba(255,255,255,.25)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.hero{height:720px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:22px;
+  background:radial-gradient(ellipse 60% 55% at 50% 42%,#0E2A44 0%,transparent 70%),radial-gradient(1px 1px at 12% 22%,#9cc8ee 50%,transparent 51%),radial-gradient(1px 1px at 82% 18%,#9cc8ee 50%,transparent 51%),radial-gradient(1.5px 1.5px at 70% 70%,#9cc8ee 50%,transparent 51%),radial-gradient(1px 1px at 25% 78%,#9cc8ee 50%,transparent 51%),radial-gradient(1px 1px at 92% 52%,#9cc8ee 50%,transparent 51%),radial-gradient(1.5px 1.5px at 6% 58%,#9cc8ee 50%,transparent 51%),var(--bg0)}
+.mark{width:120px;height:120px;border-radius:14px;background:linear-gradient(180deg,#0b1d2e,#020a12);border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(150,210,255,.25) inset,0 4px 0 #04101a,0 6px 0 #030c14,0 22px 36px rgba(0,0,0,.6)}
+h1{font-size:46px;font-weight:700;letter-spacing:.12em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.sub{font-size:16px;font-weight:500;letter-spacing:.3em;color:var(--blue);text-transform:uppercase;margin-top:6px}
+.tag{font-size:16px;color:var(--fg2);max-width:46ch;line-height:1.7}
+.cta{display:flex;flex-direction:column;align-items:center;gap:12px}
+.note{font-size:12px;color:var(--fg3);min-height:18px;display:flex;align-items:center;gap:8px}
+.foot{position:absolute;left:0;right:0;bottom:16px;display:flex;justify-content:center;gap:28px;font-size:12px;color:var(--fg3);z-index:6}
+.foot span{display:flex;align-items:center;gap:7px}
+</style>
+
+<div class="stage"><div class="frame w1280">
+  <div class="hero">
+    <div class="mark"><svg width="72" height="72" viewBox="0 0 30 30" fill="none" stroke="#66AADD" stroke-width="1"><circle cx="15" cy="15" r="11"/><circle cx="15" cy="15" r="5"/><path d="M15 1v6M15 23v6M1 15h6M23 15h6"/></svg></div>
+    <div><h1>Nexus Interstellar</h1><div class="sub">Traffic System</div></div>
+    <p class="tag">Reserve a seat, fill the crew, and keep every ship in the lane. Mission coordination for the long haul.</p>
+    <div class="cta">
+      <button class="btn go lg" id="enter"><svg width="20" height="15" viewBox="0 0 71 55" fill="currentColor"><path d="M60 5A58 58 0 0 0 45.600 0.600a40 40 0 0 0-1.800 3.700 54 54 0 0 0-16.200 0A40 40 0 0 0 25.700 0.600 58 58 0 0 0 11.200 5C1.900 18.800-.6 32.300.6 45.600a58 58 0 0 0 17.700 9 44 44 0 0 0 3.800-6.200 38 38 0 0 1-6-2.900l1.500-1.100a41 41 0 0 0 35.400 0l1.500 1.100a38 38 0 0 1-6 2.900 44 44 0 0 0 3.800 6.200 58 58 0 0 0 17.700-9C72.500 29.900 68.600 16.500 60 5ZM23.700 37.300c-3.500 0-6.300-3.200-6.300-7.100s2.800-7.100 6.300-7.100 6.400 3.200 6.300 7.100c0 3.900-2.800 7.100-6.300 7.100Zm23.200 0c-3.500 0-6.300-3.200-6.300-7.100s2.800-7.100 6.300-7.100 6.400 3.200 6.300 7.100c0 3.900-2.800 7.100-6.300 7.100Z"/></svg><span id="el">Enter with Discord</span></button>
+      <div class="note" id="note">Sign in with your Discord account to continue.</div>
+    </div>
+    <div class="vig"></div>
+  </div>
+  <div class="foot"><span><i class="live-dot"></i>Systems online</span><span>Version 1.0</span></div>
+</div></div>
+
+<div class="tokpanel"><h3>Tokens used on this page</h3><div class="tblw"><table>
+<tr><th>Token</th><th>Value</th><th>Use</th></tr>
+<tr><td>Hero glow</td><td><code>radial #0E2A44</code></td><td>Soft blue wash behind the logo mark, static, no motion</td></tr>
+<tr><td>Star dots</td><td><code>1 to 1.5px #9cc8ee</code></td><td>Six fixed radial dots for atmosphere</td></tr>
+<tr><td>Logo mark</td><td><code>120px, 4px + 6px hard shadow</code></td><td>Largest raised surface in the app</td></tr>
+<tr><td>Vignette</td><td><code>transparent 45% to rgba(0,0,0,.72)</code></td><td>Optional edge darkening</td></tr>
+<tr><td>Enter button</td><td><code>.btn.go.lg</code></td><td>Only lime button on the page, 15px label</td></tr>
+</table></div></div>
+
+<script>
+var t;document.getElementById('enter').addEventListener('click',function(){
+  var n=document.getElementById('note'),el=document.getElementById('el'),b=this;clearTimeout(t);
+  b.disabled=true;el.textContent='Contacting Discord';n.innerHTML='<span class="spinner"></span>Redirecting to Discord authorization';
+  t=setTimeout(function(){b.disabled=false;el.textContent='Enter with Discord';n.textContent='Concept only: OAuth would continue to the Gate screen.'},2200);
+});
+</script>

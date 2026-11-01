@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Ember skin reference</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* ============ TOKENS: the only literal colors in this file ============ */
+:root{
+  color-scheme:dark;
+  --bg0:#0c0806; --bg1:#130d09; --bg2:#1c130d; --bg3:#281a11;
+  --rim0:#3a2616; --rim1:#6a4524;
+  --blue:#e3a655; --cyan:#ffc766;
+  /* semantic: constant in every theme */
+  --lime:#44FF88; --red:#FF5544; --amber:#FFBB33;
+
+  /* ============ DERIVED RECIPES (lift these into the app CSS) ============ */
+  /* text */
+  --t1: color-mix(in srgb, var(--blue) 28%, #fff);       /* primary text */
+  --t2: color-mix(in srgb, var(--blue) 62%, #fff);       /* secondary text */
+  --t3: color-mix(in srgb, var(--blue) 88%, #fff);       /* labels, hints */
+  /* surfaces */
+  --win:       color-mix(in srgb, var(--bg1) 92%, #000); /* window background */
+  --card-hi:   color-mix(in srgb, var(--bg3) 96%, var(--blue));
+  --card-lo:   var(--bg2);
+  --inset:     color-mix(in srgb, var(--bg0) 62%, #000); /* input / slot wells */
+  --lcd-glass: color-mix(in srgb, var(--bg0) 48%, #000);
+  --edge:      color-mix(in srgb, var(--bg0) 55%, #000); /* hard under-edge of 3D keys */
+  --hl:        color-mix(in srgb, var(--blue) 20%, transparent); /* top inner highlight */
+  --divider:   color-mix(in srgb, var(--rim0) 80%, transparent);
+  /* neutral key */
+  --key-hi: color-mix(in srgb, var(--blue) 30%, var(--bg1));
+  --key-lo: color-mix(in srgb, var(--blue) 17%, var(--bg0));
+  /* green key (lime tinted by the theme's own black) */
+  --go-hi: color-mix(in srgb, var(--lime) 40%, var(--bg0));
+  --go-lo: color-mix(in srgb, var(--lime) 24%, var(--bg0));
+  --go-rim:color-mix(in srgb, var(--lime) 62%, var(--bg0));
+  --go-txt:color-mix(in srgb, var(--lime) 55%, #fff);
+  /* danger key */
+  --no-hi: color-mix(in srgb, var(--red) 42%, var(--bg0));
+  --no-lo: color-mix(in srgb, var(--red) 26%, var(--bg0));
+  --no-rim:color-mix(in srgb, var(--red) 62%, var(--bg0));
+  --no-txt:color-mix(in srgb, var(--red) 40%, #fff);
+  /* badges */
+  --chip-bg:  color-mix(in srgb, var(--blue) 16%, var(--bg0));
+  --chip-rim: color-mix(in srgb, var(--blue) 42%, var(--bg0));
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0)}
+body{background:var(--bg0);color:var(--t1);font:13px/1.5 Inter,system-ui,sans-serif;padding:20px max(16px,env(safe-area-inset-left,0px));-webkit-font-smoothing:antialiased}
+.tn{font-variant-numeric:tabular-nums}
+.app{max-width:1060px;margin:0 auto;border:1px solid var(--rim1);border-radius:10px;overflow:hidden;
+  background:var(--win);box-shadow:0 1px 0 var(--hl) inset,0 0 0 1px #000,0 12px 32px rgba(0,0,0,.6)}
+
+/* header strip */
+.topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 16px;
+  background:linear-gradient(180deg,var(--bg3),var(--bg2));border-bottom:1px solid var(--rim0);box-shadow:0 1px 0 var(--hl) inset}
+.brand{font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--t1)}
+.brand small{display:block;font-size:11px;letter-spacing:.2em;color:var(--blue);font-weight:600}
+.tabs{display:flex;gap:6px;margin-left:8px;flex-wrap:wrap}
+.tab{font:600 12px Inter;color:var(--t2);padding:7px 12px;border-radius:5px;border:1px solid transparent;background:none}
+.tab.on{color:var(--t1);background:linear-gradient(180deg,var(--key-lo),var(--inset));border-color:var(--rim1);box-shadow:0 2px 4px rgba(0,0,0,.5) inset}
+.sp{flex:1}
+.idchip{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 6px;border-radius:20px;background:var(--inset);border:1px solid var(--rim0)}
+.idchip b{font-size:12px;color:var(--t1)}.idchip span{font-size:11px;color:var(--t2)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;padding:16px}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* raised card */
+.card{border-radius:8px;border:1px solid var(--rim0);padding:14px;
+  background:linear-gradient(180deg,var(--card-hi),var(--card-lo));
+  box-shadow:0 1px 0 var(--hl) inset,0 3px 0 var(--edge),0 6px 12px rgba(0,0,0,.35)}
+.card h3{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);font-weight:700;margin-bottom:10px}
+.card h2{font-size:16px;color:var(--t1);margin-bottom:4px}
+.card p{color:var(--t2);font-size:13px}
+hr,.div{border:0;height:1px;background:var(--divider);margin:12px 0;box-shadow:0 1px 0 var(--hl)}
+
+/* 3D keys */
+.btn{font:600 13px Inter;padding:9px 16px;border-radius:6px;cursor:pointer;border:1px solid var(--rim1);
+  background:linear-gradient(180deg,var(--key-hi),var(--key-lo));color:var(--t1);
+  box-shadow:0 1px 0 var(--hl) inset,0 3px 0 var(--edge);transition:transform .06s,box-shadow .06s}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--hl) inset,0 1px 0 var(--edge)}
+.btn.go{background:linear-gradient(180deg,var(--go-hi),var(--go-lo));border-color:var(--go-rim);color:var(--go-txt)}
+.btn.no{background:linear-gradient(180deg,var(--no-hi),var(--no-lo));border-color:var(--no-rim);color:var(--no-txt)}
+.btn[disabled]{cursor:not-allowed;background:var(--bg2);border-color:var(--rim0);color:color-mix(in srgb,var(--blue) 42%,var(--bg2));box-shadow:0 3px 0 var(--edge)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* LCD */
+.lcd{background:var(--lcd-glass);border:1px solid var(--rim0);border-radius:5px;padding:8px 12px;
+  box-shadow:0 2px 6px #000 inset,0 1px 0 var(--hl);display:inline-flex;align-items:baseline;gap:6px}
+.lcd .v{font:700 26px Inter;color:var(--cyan);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.lcd .u{font-size:11px;color:var(--t3);letter-spacing:.12em;text-transform:uppercase}
+.lcd.pos .v{color:var(--lime)}
+
+/* input */
+label.f{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);font-weight:600;margin-bottom:5px}
+input.in{width:100%;font:500 13px Inter;color:var(--t1);background:var(--inset);border:1px solid var(--rim0);border-radius:5px;padding:9px 11px;box-shadow:0 2px 5px #000 inset}
+input.in::placeholder{color:color-mix(in srgb,var(--blue) 82%,var(--bg0))}
+input.in:focus{outline:2px solid var(--rim1);border-color:var(--blue)}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:5px;font:600 11px Inter;padding:3px 9px;border-radius:4px;letter-spacing:.04em;
+  color:color-mix(in srgb,var(--blue) 40%,#fff);background:var(--chip-bg);border:1px solid var(--chip-rim)}
+.badge.ok{color:var(--go-txt);background:color-mix(in srgb,var(--lime) 15%,var(--bg0));border-color:color-mix(in srgb,var(--lime) 50%,var(--bg0))}
+.badge.warn{color:color-mix(in srgb,var(--amber) 45%,#fff);background:color-mix(in srgb,var(--amber) 15%,var(--bg0));border-color:color-mix(in srgb,var(--amber) 50%,var(--bg0))}
+.badge.bad{color:var(--no-txt);background:color-mix(in srgb,var(--red) 16%,var(--bg0));border-color:color-mix(in srgb,var(--red) 52%,var(--bg0))}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.count{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;font:700 11px Inter;color:var(--bg0);background:var(--lime);padding:0 5px}
+
+/* avatar */
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 12px Inter;color:var(--t1);flex:none;
+  background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--blue) 55%,var(--bg3)),color-mix(in srgb,var(--blue) 18%,var(--bg0)) 75%);
+  border:1px solid var(--rim1);box-shadow:0 1px 0 var(--hl) inset,0 2px 0 var(--edge)}
+.av.sm{width:26px;height:26px;font-size:11px}
+
+/* slot cards */
+.slot{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:6px;border:1px solid var(--rim0);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--bg2) 90%,var(--blue)),var(--bg1));box-shadow:0 1px 0 var(--hl) inset}
+.slot+.slot{margin-top:8px}
+.slot .role{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);font-weight:600;width:64px}
+.slot .who{color:var(--t1);font-weight:500;flex:1;min-width:0}
+.slot.open{background:var(--inset);border-style:dashed;border-color:var(--rim1)}
+.slot.open .who{color:var(--t2)}
+.slot .btn{padding:5px 12px;font-size:12px}
+
+/* slider */
+.sl{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.sl+.sl{margin-top:12px}
+.sl .n{font-size:12px;color:var(--t2);font-weight:500}
+.sl .val{font:700 12px Inter;color:var(--cyan);font-variant-numeric:tabular-nums}
+.track{grid-column:1/-1;height:10px;border-radius:5px;position:relative;background:var(--inset);border:1px solid var(--rim0);box-shadow:0 2px 4px #000 inset}
+.track i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,color-mix(in srgb,var(--blue) 45%,var(--bg0)),var(--blue))}
+.track b{position:absolute;top:50%;width:18px;height:18px;border-radius:50%;transform:translate(-50%,-50%);
+  background:linear-gradient(180deg,var(--key-hi),var(--key-lo));border:1px solid var(--rim1);box-shadow:0 1px 0 var(--hl) inset,0 2px 0 var(--edge)}
+
+/* progress */
+.prog{height:12px;border-radius:6px;background:var(--inset);border:1px solid var(--rim0);box-shadow:0 2px 4px #000 inset;overflow:hidden}
+.prog i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--blue) 50%,var(--bg0)),var(--blue) 70%,var(--cyan))}
+.pl{display:flex;justify-content:space-between;font-size:12px;color:var(--t2);margin-bottom:6px}
+.pl b{color:var(--t1);font-variant-numeric:tabular-nums}
+
+/* radio panel */
+.radio{display:flex;flex-direction:column;gap:10px}
+.rh{display:flex;align-items:center;justify-content:space-between}
+.rh .t{display:flex;align-items:center;gap:7px;font:700 12px Inter;letter-spacing:.14em;color:var(--cyan)}
+.key{font:700 11px Inter;color:var(--t1);background:var(--inset);border:1px solid var(--rim1);border-radius:4px;padding:2px 7px;box-shadow:0 2px 0 var(--edge)}
+.hint{font-size:12px;color:var(--t2)}
+
+/* swatches */
+.sw{display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:8px}
+.sw div{height:46px;border-radius:5px;border:1px solid var(--rim1);display:flex;align-items:flex-end;padding:3px 5px;font:600 10px Inter;color:var(--t1);text-shadow:0 1px 2px #000}
+.foot{padding:10px 16px;border-top:1px solid var(--rim0);background:var(--bg1);font-size:12px;color:var(--t2);display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between}
+@media (max-width:420px){.grid{padding:12px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">Nexus<small>Ember skin</small></div>
+    <nav class="tabs"><span class="tab on">Mission Board</span><span class="tab">Ship Registry</span><span class="tab">My Ships</span></nav>
+    <span class="sp"></span>
+    <div class="idchip"><span class="av sm">UP</span><div><b>Unger Poshet</b><br><span>RP 13 / 50</span></div></div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="card">
+        <h3>Raised card</h3>
+        <h2>Operation Iron Veil</h2>
+        <p>Escort convoy to Pyro Gateway. Commander Peter Tork, HCS Jomlet, three of four crew confirmed.</p>
+        <hr>
+        <div class="row"><span class="badge ok"><i class="dot"></i>Active</span><span class="badge warn"><i class="dot"></i>Staging</span><span class="badge bad"><i class="dot"></i>Aborted</span><span class="badge">Neutral</span></div>
+      </section>
+
+      <section class="card">
+        <h3>Buttons</h3>
+        <div class="row">
+          <button class="btn go">Create Mission</button>
+          <button class="btn no">Disconnect</button>
+          <button class="btn">Ship Registry</button>
+          <button class="btn" disabled>Unavailable</button>
+        </div>
+        <hr>
+        <div class="row"><span class="hint">Unread</span><span class="count">3</span><span class="badge">Crew <span class="count">1</span></span></div>
+      </section>
+
+      <section class="card">
+        <h3>Input</h3>
+        <label class="f" for="x">Objective</label>
+        <input id="x" class="in" placeholder="Describe the objective in ten words or more">
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card">
+        <h3>LCD readouts</h3>
+        <div class="row">
+          <div class="lcd"><span class="v">01:23:56</span><span class="u">Elapsed</span></div>
+          <div class="lcd pos"><span class="v">+3</span><span class="u">RP</span></div>
+        </div>
+        <hr>
+        <div class="pl"><span>Reserve Points</span><b>13 / 50</b></div>
+        <div class="prog"><i style="width:26%"></i></div>
+      </section>
+
+      <section class="card">
+        <h3>Crew slots</h3>
+        <div class="slot"><span class="role">Pilot</span><span class="av sm">PT</span><span class="who">Peter Tork</span><span class="badge ok">Ready</span></div>
+        <div class="slot"><span class="role">Gunner</span><span class="av sm">UP</span><span class="who">Unger Poshet</span><span class="badge">You</span></div>
+        <div class="slot open"><span class="role">Engineer</span><span class="who">Open</span><button class="btn">Join</button></div>
+      </section>
+
+      <section class="card">
+        <h3>Sliders</h3>
+        <div class="sl"><span class="n">Master volume</span><span class="val">72%</span><div class="track"><i style="width:72%"></i><b style="left:72%"></b></div></div>
+        <div class="sl"><span class="n">Window opacity</span><span class="val">85%</span><div class="track"><i style="width:55%"></i><b style="left:55%"></b></div></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card radio">
+        <div class="rh"><span class="t"><i class="dot"></i>RADIO</span><span class="hint">Push to talk <span class="key">V</span></span></div>
+        <div class="row" style="flex-wrap:nowrap">
+          <div class="lcd" style="flex:1"><span class="v">127.4</span><span class="u">MHz</span></div>
+          <button class="btn go">Tune</button>
+        </div>
+        <p class="hint">Range 50.0 to 350.0 MHz</p>
+        <hr>
+        <div class="row"><span class="av">PT</span><span class="av">OW</span><span class="av">JT</span><span class="hint">3 on frequency</span></div>
+      </section>
+
+      <section class="card">
+        <h3>Palette</h3>
+        <div class="sw">
+          <div style="background:var(--bg0)">bg0</div><div style="background:var(--bg1)">bg1</div>
+          <div style="background:var(--bg2)">bg2</div><div style="background:var(--bg3)">bg3</div>
+          <div style="background:var(--rim0)">rim0</div><div style="background:var(--rim1)">rim1</div>
+          <div style="background:var(--blue);color:var(--bg0);text-shadow:none">blue</div>
+          <div style="background:var(--cyan);color:var(--bg0);text-shadow:none">cyan</div>
+          <div style="background:var(--lime);color:var(--bg0);text-shadow:none">lime</div>
+          <div style="background:var(--amber);color:var(--bg0);text-shadow:none">amber</div>
+          <div style="background:var(--red);color:var(--bg0);text-shadow:none">red</div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="foot"><span>Ember: every fill derives from the eight theme tokens via color-mix.</span><span class="tn">bg0 #0c0806 &middot; blue #e3a655 &middot; cyan #ffc766</span></div>
+</div>
+</body>
+</html>

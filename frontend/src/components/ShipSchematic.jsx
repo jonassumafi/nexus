@@ -11,11 +11,11 @@ const C = {
   open:   '#44FF88',
   taken:  '#FFBB33',
   yours:  '#FF5544',
-  dim:    '#2A6A9A',
-  border: '#1A3D55',
-  gold:   '#99CCFF',
+  dim:    '#2A5A7A',
+  border: '#1A3A50',
+  gold:   '#99BBDD',
   amber:  '#66AADD',
-  bg:     '#0D2030',
+  bg:     '#061018',
   deep:   '#050A0F',
 };
 
@@ -182,10 +182,10 @@ function SlotNode({ posName, pos, roleData, currentUserId, canInteract, onSlotCl
       {showTooltip && (
         <div style={{
           position: 'absolute',
-          background: '#0D2030',
-          border: '1px solid #1A3D55',
-          color: '#99CCFF',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          background: '#061018',
+          border: '1px solid #1A3A50',
+          color: '#99BBDD',
+          fontFamily: "'Inter', system-ui, sans-serif",
           fontSize: 16,
           letterSpacing: '0.08em',
           padding: '5px 12px',
@@ -242,7 +242,7 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
   const handleRowLeave    = ()               => { setHoveredSlotIndex(null); };
 
   return (
-    <div style={{ fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace" }}>
+    <div style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
       {/* FIX 3 — nav: 32px name, 16px text, 28px ◀/▶, visibility:hidden for layout stability */}
       {ships.length > 1 && (
@@ -289,7 +289,7 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
         position: 'relative',
         background: '#040D15',
         overflow: 'hidden',
-        borderBottom: '1px solid #0D2030',
+        borderBottom: '1px solid #061018',
         padding: 8,
         boxSizing: 'border-box',
         minHeight: thumbUrl ? 0 : 90,
@@ -367,7 +367,7 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
         <div style={{
           fontSize: 12, color: '#FF5544', textAlign: 'center',
           marginTop: 14, letterSpacing: '0.06em',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}>
           MIN. CREW NOT MET — PILOT + 1 REQUIRED
         </div>
@@ -378,7 +378,7 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
         <div style={{
           display: 'flex', justifyContent: 'center', gap: 24, alignItems: 'center',
           marginTop: 14, marginBottom: 20,
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}>
           {[
             { color: C.open,  label: 'OPEN' },
@@ -393,11 +393,11 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
         </div>
       )}
 
-      {/* FIX 9 — crew manifest: fill % computed live; header uses #1A3D55 + #FFBB33 */}
+      {/* FIX 9 — crew manifest: fill % computed live; header uses #1A3A50 + #FFBB33 */}
       {ship?.crew_roles && Object.keys(ship.crew_roles).length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 16, letterSpacing: '0.08em', marginBottom: 6 }}>
-            <span style={{ color: '#4488BB' }}>CREW MANIFEST — {ship.ship_name ?? ship.type ?? ''}</span>
+            <span style={{ color: '#5F87A8' }}>CREW MANIFEST — {ship.ship_name ?? ship.type ?? ''}</span>
             <span style={{ marginLeft: 8, color: '#FFBB33' }}>{fillPct}% FILLED</span>
           </div>
           {Object.entries(ship.crew_roles).map(([roleName, roleData], index) => {
@@ -440,7 +440,7 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
                     </>
                   )}
                   {!isYours && isFull && (
-                    <span style={{ fontSize: 13, color: '#99CCFF', fontWeight: 'bold' }}>
+                    <span style={{ fontSize: 13, color: '#99BBDD', fontWeight: 'bold' }}>
                       {filled.map(f => f.citizen_name || 'UNKNOWN').join(', ')}
                     </span>
                   )}

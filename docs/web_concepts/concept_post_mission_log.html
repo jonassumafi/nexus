@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nexus Post Mission Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --void:#000710; --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A;
+  --rim0:#1A3A50; --rim1:#2A5A7A; --rim2:#3F82B3;
+  --fg0:#CCE8FF; --fg1:#99BBDD; --fg2:#86AFCF; --fg3:#5F87A8;
+  --lime:#44FF88; --blue:#66AADD; --red:#FF5544; --amber:#FFBB33; --purple:#AA66DD; --cyan:#00EEFF;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;padding-block:16px 40px}
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:5px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4)}
+.btn{font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:6px 12px;border-radius:4px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.tx.on{color:#fff;border-color:var(--red);background:linear-gradient(180deg,#a8321f,#5e150b);box-shadow:0 1px 0 rgba(255,200,190,.4) inset,0 3px 0 #2a0803}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.b-purple{background:rgba(170,102,221,.12);color:var(--purple);border:1px solid rgba(170,102,221,.3)}
+kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:600;color:var(--fg1);padding:1px 7px;border-radius:3px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 2px 0 #04101a}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.collapse>div{overflow:hidden;min-height:0}
+.open>.collapse{grid-template-rows:1fr}
+.inp{font-size:13px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:4px;padding:8px 10px;box-shadow:0 2px 6px #000 inset;outline:none;min-width:0}
+.inp:focus{border-color:var(--rim2)}
+.h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;padding:9px 16px;border-radius:5px;font-size:13px;font-weight:500;color:var(--fg0);background:#14304a;border:1px solid var(--rim2);box-shadow:0 8px 20px rgba(0,0,0,.6);transition:all .25s;z-index:80}
+.toast.show{opacity:1;transform:translateX(-50%)}
+/* shell */
+.app{width:1280px;margin:0 auto;border:1px solid var(--rim0);border-radius:8px;overflow:hidden;background:var(--bg0);box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6)}
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:48px;height:48px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #04101a}
+.bt1{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.idc{display:flex;align-items:stretch;border-radius:5px;overflow:hidden;border:1px solid var(--rim1);box-shadow:0 3px 0 #04101a,0 8px 14px rgba(0,0,0,.45)}
+.idc .ph{width:56px;background:linear-gradient(160deg,#27455f,#0c1d2e);display:flex;align-items:flex-end;justify-content:center}
+.idc .info{padding:8px 12px;min-width:210px;background:linear-gradient(180deg,#14304a,#0b1f33)}
+.idc .k{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--fg3);text-transform:uppercase}
+.idc .nm0{font-size:15px;font-weight:700;color:var(--fg0)}
+.idc .rk{font-size:12px;color:var(--blue)}
+.rpbar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--fg2);margin-top:3px}
+.rpbar .bar{flex:1;height:6px;border-radius:3px;background:#02080e;box-shadow:0 1px 3px #000 inset;overflow:hidden}
+.rpbar .bar i{display:block;height:100%;width:26%;background:linear-gradient(90deg,#2a79b0,var(--blue))}
+.nav{display:flex;gap:8px;padding:10px 16px;background:var(--bg1);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.nav .sp{flex:1}
+.nt{font-size:12px;font-weight:600;letter-spacing:.04em;padding:7px 14px;border-radius:4px;color:var(--fg2);background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.1) inset,0 3px 0 #050e18}
+.nt.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.nt.dc{color:var(--red);border-color:rgba(255,85,68,.4)}
+.sh{flex-shrink:0;padding:10px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);display:flex;justify-content:space-between;align-items:center}
+/* feed */
+.tabs{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 12px 6px}
+.tab{position:relative;font-size:12px;font-weight:600;padding:7px 0;border-radius:4px;color:var(--fg2);background:linear-gradient(180deg,#0C1D2E,#08141f);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.08) inset,0 3px 0 #050e18}
+.tab:hover{color:var(--fg0)}
+.tab.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.tab .n{position:absolute;top:-6px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;color:#04140a;background:var(--lime)}
+.tab .n.show{display:flex}
+.feed{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.fi{border-bottom:1px solid rgba(26,58,80,.55);padding:8px 12px;cursor:pointer}
+.fi:hover{background:var(--bg1)}
+.fr{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center}
+.ico{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 3px 5px rgba(0,0,0,.6)}
+.ico.lime{background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);color:var(--lime);border:1px solid rgba(68,255,136,.4)}
+.ico.blue{background:radial-gradient(circle at 35% 30%,#24557a,#0c2437);color:var(--blue);border:1px solid rgba(102,170,221,.4)}
+.ico.red{background:radial-gradient(circle at 35% 30%,#7a2418,#2e0c07);color:var(--red);border:1px solid rgba(255,85,68,.4)}
+.ico.amber{background:radial-gradient(circle at 35% 30%,#7a5a14,#2e2106);color:var(--amber);border:1px solid rgba(255,187,51,.4)}
+.ft{font-size:13px;font-weight:600;color:var(--fg0)}
+.ft em{font-style:normal}
+.fs{font-size:12px;color:var(--fg2);margin-top:1px}
+.ftime{font-size:11px;color:var(--fg3);white-space:nowrap}
+.fd{padding:6px 0 2px 35px;font-size:12px;color:var(--fg2);line-height:1.7}
+.fd b{color:var(--fg1);font-weight:500}
+.fi.open .collapse{grid-template-rows:1fr}
+/* tables + side panel */
+.tblw{border:1px solid var(--rim0);border-radius:5px;overflow-x:auto;background:var(--bg1)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:8px 12px;border-bottom:1px solid var(--rim1)}
+td{padding:8px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top}
+td code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 5px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(255,255,255,.2)}
+.tokens{width:1280px;margin:28px auto 0}
+.tokens h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.demo{width:1280px;margin:0 auto 12px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--fg3)}
+.seg{display:inline-flex;border:1px solid var(--rim1);border-radius:4px;overflow:hidden}
+.seg button{padding:5px 12px;font-size:12px;font-weight:600;color:var(--fg2);background:#0A1828}
+.seg button.on{color:#fff;background:linear-gradient(180deg,#1f4a70,#0e2c47)}
+
+
+body{background:#000710}
+.stage{position:relative;width:900px;margin:0 auto;min-height:760px;border-radius:8px;overflow:hidden;border:1px solid var(--rim0);background:var(--bg0)}
+.back{position:absolute;inset:0;opacity:.55}
+.back .b1{height:76px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid var(--rim0)}
+.back .b2{margin:16px;height:44px;border-radius:5px;background:#0A1828;border:1px solid var(--rim0)}
+.back .b3{margin:0 16px 12px;height:90px;border-radius:5px;background:#0A1828;border:1px solid var(--rim0)}
+.scrim{position:absolute;inset:0;background:rgba(0,7,16,.8)}
+.modal{position:relative;width:820px;margin:34px auto;border:1px solid var(--rim1);border-radius:8px;background:linear-gradient(180deg,#071522,#020C14 45%);box-shadow:0 1px 0 rgba(150,210,255,.22) inset,0 2px 0 #0a2236,0 4px 0 #071a2a,0 24px 50px rgba(0,0,0,.7);overflow:hidden}
+.mh{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(180deg,#0E2236,#081624);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.mh h1{font-size:17px;font-weight:700;color:var(--fg0)}
+.mh .sub{font-size:12px;color:var(--fg2);margin-top:1px}
+.mb{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px;padding:18px}
+.info{display:flex;flex-direction:column;gap:12px}
+.ic{padding:12px 14px}
+.ic .k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);margin-bottom:6px}
+.ic .row{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;color:var(--fg2)}
+.ic .row b{color:var(--fg0);font-weight:500;text-align:right}
+.reward{display:flex;align-items:center;gap:12px}
+.reward .pts{font-size:30px;font-weight:700;color:var(--lime);font-variant-numeric:tabular-nums;line-height:1}
+.reward small{font-size:12px;color:var(--fg2);line-height:1.4;display:block}
+.rpb{height:8px;border-radius:4px;background:#02080e;box-shadow:0 1px 3px #000 inset;overflow:hidden;margin-top:10px;position:relative}
+.rpb i{display:block;height:100%;background:linear-gradient(90deg,#2a79b0,var(--blue));transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.rpb i.gain{position:absolute;top:0;background:linear-gradient(90deg,#1f9c5a,var(--lime))}
+.rpl{display:flex;justify-content:space-between;font-size:12px;color:var(--fg2);margin-top:5px}
+.form label{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);margin-bottom:6px}
+.counter{font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--fg3);font-variant-numeric:tabular-nums}
+.counter.warn{color:var(--amber)}.counter.bad{color:var(--red)}
+textarea.inp{width:100%;height:290px;resize:none;line-height:1.7;padding:12px 14px;font-size:14px}
+textarea.inp.bad{border-color:var(--red)}
+.hint{font-size:12px;color:var(--fg3);margin-top:8px;min-height:18px}
+.hint.err{color:var(--red)}
+.mf{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0);background:var(--bg1)}
+.ok{padding:34px 18px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px}
+.check{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--lime);background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);border:1px solid rgba(68,255,136,.5);box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 5px 10px rgba(0,0,0,.6)}
+.ok h2{font-size:20px;color:var(--fg0)}
+.okcard{width:520px;max-width:100%;padding:14px 16px;text-align:left}
+.rank{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rank .r{font-size:15px;font-weight:700;color:var(--fg0)}
+.ev{width:520px;max-width:100%;padding:10px 14px;text-align:left;border-left:3px solid var(--lime)}
+.ev .t{font-size:13px;font-weight:600;color:var(--fg0)}
+.ev .s{font-size:12px;color:var(--fg2)}
+.demo{width:900px}
+[hidden]{display:none!important}
+.tokens{width:900px}
+
+</style></head><body>
+
+
+
+<div class="demo">Demo<button class="btn" id="reset">Reset</button><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="near"> Submission crosses a rank threshold</label></div>
+
+<div class="stage">
+  <div class="back"><div class="b1"></div><div class="b2"></div><div class="b3"></div><div class="b3"></div></div>
+  <div class="scrim"></div>
+  <div class="modal" id="modal">
+    <div class="mh"><div><h1>Post-mission log</h1><div class="sub">Mission complete. Tell the crew what happened.</div></div><button class="xbtn btn" style="padding:4px 10px" id="close" title="Close">✕</button></div>
+
+    <div id="formView">
+      <div class="mb">
+        <div class="info">
+          <div class="raised ic"><div class="k">Mission</div>
+            <div class="row"><span>Name</span><b>Operation Iron Veil</b></div>
+            <div class="row"><span>Type</span><b>Escort</b></div>
+            <div class="row"><span>Status</span><span class="badge b-lime">COMPLETE</span></div>
+            <div class="row"><span>Elapsed</span><b style="font-variant-numeric:tabular-nums">01:28:14</b></div></div>
+          <div class="raised ic"><div class="k">Your assignment</div>
+            <div class="row"><span>Citizen</span><b>Unger Poshet</b></div>
+            <div class="row"><span>Ship</span><b>HCS JOMLET</b></div>
+            <div class="row"><span>Role</span><b>Turret</b></div></div>
+          <div class="raised ic"><div class="k">Reward</div>
+            <div class="reward"><span class="pts">+3</span><small>RP for submitting a log<br>(POST_MISSION_LOG)</small></div>
+            <div class="rpb"><i id="rpNow" style="width:26%"></i></div>
+            <div class="rpl"><span id="rpTxt">13 / 50 RP</span><span id="rpRank">Drifter</span></div></div>
+        </div>
+        <div class="form">
+          <label for="log"><span>Log entry</span><span class="counter" id="cnt">0 / 1000</span></label>
+          <textarea class="inp" id="log" placeholder="What happened out there? Contacts, losses, who flew well, what to do differently next time."></textarea>
+          <div class="hint" id="hint">Visible in the mission history and the activity feed. Plain text, up to 1000 characters.</div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn" id="skip">Skip for now</button><div style="display:flex;align-items:center;gap:12px"><span style="font-size:12px;color:var(--fg3)">Skipping forfeits the +3 RP</span><button class="btn go" id="submit">Submit log</button></div></div>
+    </div>
+
+    <div id="okView" hidden>
+      <div class="ok">
+        <div class="check">✓</div>
+        <h2>Log recorded</h2>
+        <span class="badge b-lime" id="gainB">+3 RP awarded</span>
+        <div class="raised okcard">
+          <div class="rank"><div><div class="r" id="okRank">Drifter</div><div style="font-size:12px;color:var(--fg2)" id="okNext">34 RP to Veteran</div></div><span class="badge b-purple" id="rankUp" hidden>RANK ADVANCEMENT</span></div>
+          <div class="rpb"><i id="okBase" style="width:26%"></i><i class="gain" id="okGain" style="left:26%;width:0"></i></div>
+          <div class="rpl"><span id="okTxt">13 / 50 RP</span><span id="okNote">Next rank at 50 RP</span></div>
+        </div>
+        <div class="raised ev"><div class="t">Unger Poshet submitted a post-mission log for OPERATION IRON VEIL · +3 RP</div><div class="s">Appears in the activity feed (MissionLog.event_type post_mission_log)</div></div>
+        <button class="btn" id="done">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tokens"><h2>New tokens for this page</h2><div class="tblw"><table>
+<tr><th>Token</th><th>Value</th><th>Use</th></tr>
+<tr><td>Modal slab</td><td><code>820px, --rim1 border, 2 + 4px hard shadows</code></td><td>Modal flows sit on a 900px stage with a <code>rgba(0,7,16,.8)</code> scrim. No blur.</td></tr>
+<tr><td><i class="sw" style="background:#44FF88"></i>RP gain segment</td><td><code>#1F9C5A to #44FF88</code></td><td>Animated segment appended to the blue RP bar to show points just earned</td></tr>
+<tr><td>Counter states</td><td><code>--fg3, --amber at 900, --red over 1000</code></td><td>Character counter. Submit is disabled over the limit.</td></tr>
+<tr><td><i class="sw" style="background:#AA66DD"></i>Rank advancement badge</td><td><code>--purple</code></td><td>Shown only when the award crosses an <code>rp_ranks</code> threshold</td></tr>
+<tr><td>Success check</td><td><code>56px disc, lime ring</code></td><td>Same disc recipe as the activity icons, scaled up</td></tr>
+</table></div></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var BASE=13,MAX=50,GAIN=3,LIM=1000;
+  function base(){return $('#near').checked?48:BASE}
+  function paintRp(){var b=base();$('#rpNow').style.width=(b/MAX*100)+'%';$('#rpTxt').textContent=b+' / '+MAX+' RP';$('#rpRank').textContent='Drifter'}
+  function validate(){
+    var v=$('#log').value,n=v.length,c=$('#cnt'),h=$('#hint'),s=$('#submit');
+    c.textContent=n+' / '+LIM;c.className='counter'+(n>LIM?' bad':n>=900?' warn':'');
+    $('#log').classList.toggle('bad',n>LIM);
+    if(n>LIM){h.textContent='Trim '+(n-LIM)+' character'+(n-LIM===1?'':'s')+' to submit.';h.className='hint err';s.disabled=true}
+    else{h.textContent='Visible in the mission history and the activity feed. Plain text, up to 1000 characters.';h.className='hint';s.disabled=false}
+  }
+  $('#log').addEventListener('input',validate);
+  $('#submit').addEventListener('click',function(){
+    var v=$('#log').value.trim();
+    if(!v){$('#hint').textContent='A log entry cannot be empty. Write at least a sentence, or skip for now.';$('#hint').className='hint err';$('#log').classList.add('bad');$('#log').focus();return}
+    var b=base(),after=b+GAIN,rank=after>=MAX;
+    $('#formView').hidden=true;$('#okView').hidden=false;
+    $('#okBase').style.width=(b/MAX*100)+'%';$('#okGain').style.left=(b/MAX*100)+'%';$('#okGain').style.width='0';
+    $('#okTxt').textContent=b+' / '+MAX+' RP';$('#okRank').textContent='Drifter';$('#okNext').textContent=(MAX-b)+' RP to Veteran';$('#rankUp').hidden=true;$('#okNote').textContent='Next rank at 50 RP';
+    setTimeout(function(){
+      $('#okGain').style.width=(Math.min(after,MAX)-b)/MAX*100+'%';$('#okTxt').textContent=Math.min(after,MAX)+' / '+MAX+' RP';
+      if(rank){setTimeout(function(){$('#okRank').textContent='Veteran';$('#okNext').textContent='New rank unlocked';$('#rankUp').hidden=false;$('#okNote').textContent='Veteran reached'},900)}
+      else $('#okNext').textContent=(MAX-after)+' RP to Veteran';
+    },250);
+  });
+  $('#skip').addEventListener('click',function(){$('#modal').style.opacity=.35;$('#modal').style.pointerEvents='none';t('Skipped. The +3 RP is forfeited.')});
+  $('#close').addEventListener('click',function(){$('#modal').style.opacity=.35;$('#modal').style.pointerEvents='none'});
+  $('#done').addEventListener('click',function(){$('#modal').style.opacity=.35;$('#modal').style.pointerEvents='none'});
+  $('#reset').addEventListener('click',function(){$('#modal').style.opacity='';$('#modal').style.pointerEvents='';$('#formView').hidden=false;$('#okView').hidden=true;$('#log').value='';paintRp();validate()});
+  $('#near').addEventListener('change',function(){$('#reset').click()});
+  var tt;function t(m){var e=$('#toast');e.textContent=m;e.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){e.classList.remove('show')},2200)}
+  paintRp();validate();
+})();
+</script>
+<div class="toast" id="toast"></div>
+
+</body></html>

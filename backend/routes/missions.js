@@ -9,6 +9,7 @@ const { isAuthenticated } = require('../middleware/permissions');
 const { validateMissionForLaunch, completeMission, resetMissionAssociations, abortMission } = require('../services/missionService');
 const { addRPForMissionLaunch } = require('../services/rpService');
 const { emitToAll, emitToOrg } = require('../services/socketManager');
+const { dispatch } = require('../services/nexusDispatch');
 
 const router = express.Router();
 
@@ -180,9 +181,136 @@ router.post('/', isAuthenticated, async (req, res) => {
       timestamp: new Date(),
     });
 
+    const primaryShipDoc = await Ship.findById(primary_ship).select('ship_name ship_model').lean();
+    dispatch('missionCreated', {
+      missionName: mission.name,
+      type: mission.mission_type,
+      commanderName: req.user.citizen_name || req.user.username,
+      scheduledTime: missionTimeDate ? missionTimeDate.toUTCString() : 'Immediate',
+      primaryVessel: primaryShipDoc
+        ? `${primaryShipDoc.ship_name}${primaryShipDoc.ship_model ? ' · ' + primaryShipDoc.ship_model : ''}`
+        : null,
+    });
+
     res.status(201).json(mission);
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ error: 'Mission name already taken' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /:id/add-ship — commander adds a ship to the fleet while the mission
+// is still WAITING FOR CREW. Enforces access (owner or active loan), ship
+// availability, and per-mission ship cap. Mirrors the ship-attach logic in
+// POST / (mission creation) so behavior is consistent for both entry points.
+router.post('/:id/add-ship', isAuthenticated, async (req, res) => {
+  try {
+    const { ship_id } = req.body;
+    if (!ship_id) return res.status(400).json({ error: 'ship_id required' });
+
+    const mission = await Mission.findById(req.params.id);
+    if (!mission) return res.status(404).json({ error: 'Mission not found' });
+
+    if (String(mission.created_by) !== String(req.user._id)) {
+      return res.status(403).json({ error: 'Not mission commander' });
+    }
+    if (mission.status !== 'WAITING FOR CREW') {
+      return res.status(403).json({ error: 'Ships can only be added while mission is WAITING FOR CREW' });
+    }
+
+    const config = await PlatformConfig.findOne();
+    const maxShips = config ? config.max_ships_per_mission : 3;
+    const supportingCount = (mission.supporting_ships || []).length;
+    if (supportingCount >= maxShips - 1) {
+      return res.status(400).json({ error: `Max ${maxShips - 1} supporting ships` });
+    }
+
+    const ship = await Ship.findById(ship_id);
+    if (!ship) return res.status(404).json({ error: 'Ship not found' });
+
+    const alreadyOnThisMission = String(mission.primary_ship) === String(ship._id) ||
+      (mission.supporting_ships || []).some(s => String(s) === String(ship._id));
+    if (alreadyOnThisMission) {
+      return res.status(400).json({ error: 'Ship already on this mission' });
+    }
+    if (ship.is_mission || ship.current_mission_id) {
+      return res.status(400).json({
+        error: 'SHIP_UNAVAILABLE',
+        message: `${ship.ship_name} is already assigned to an active mission`,
+      });
+    }
+
+    const isOwner = ship.owner_id.equals(req.user._id);
+    let isBorrowed = false;
+    if (!isOwner) {
+      const now = new Date();
+      const userDoc = await User.findById(req.user._id).select('borrowed_ships').lean();
+      isBorrowed = (userDoc?.borrowed_ships || []).some(b =>
+        String(b.ship_id) === String(ship._id) &&
+        b.loan_expires_at && new Date(b.loan_expires_at) > now
+      );
+    }
+    if (!isOwner && !isBorrowed) {
+      return res.status(403).json({
+        error: 'SHIP_ACCESS_DENIED',
+        message: `You do not have access to ${ship.ship_name}`,
+      });
+    }
+
+    // Derive crew_roles from node_positions if the ship has none — same
+    // pattern the create route uses so the new supporting ship is
+    // immediately usable in the crew schematic.
+    let nextCrewRoles = null;
+    const hasExistingRoles = ship.crew_roles && Object.keys(ship.crew_roles).length > 0;
+    if (!hasExistingRoles && Array.isArray(ship.node_positions) && ship.node_positions.length) {
+      nextCrewRoles = {};
+      for (const n of ship.node_positions) {
+        if (!nextCrewRoles[n.role]) nextCrewRoles[n.role] = { slots: 0, filled: [] };
+        nextCrewRoles[n.role].slots += 1;
+      }
+    }
+
+    mission.supporting_ships = [...(mission.supporting_ships || []), ship._id];
+    await mission.save();
+
+    const shipUpdate = { is_mission: true, current_mission_id: mission._id };
+    if (nextCrewRoles) shipUpdate.crew_roles = nextCrewRoles;
+    await Ship.findByIdAndUpdate(ship._id, shipUpdate);
+
+    // Borrowed-ship event — mirrors mission-create so activity feed and
+    // MissionLog stay in sync for lender/borrower tracking.
+    if (!isOwner) {
+      try {
+        await MissionLog.create({
+          mission_id: mission._id,
+          user_id: req.user._id,
+          event_type: 'ship_borrowed',
+          citizen_name: req.user.citizen_name || req.user.username || 'Unknown',
+          mission_name: mission.name,
+          ship_name: ship.ship_name,
+        });
+        emitToAll('ship_borrowed', {
+          event_type: 'ship_borrowed',
+          citizen_name: req.user.citizen_name || req.user.username || 'Unknown',
+          mission_name: mission.name,
+          ship_name: ship.ship_name,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('[AddShip] ship_borrowed emit failed:', e.message);
+      }
+    }
+
+    // Nudge every client to refresh mission list — reuses the existing
+    // channel Dashboard listens on for mission-created events.
+    emitToAll('mission_created', { missionId: mission._id, name: mission.name });
+
+    const updated = await Mission.findById(mission._id)
+      .populate('primary_ship')
+      .populate('supporting_ships')
+      .populate('created_by', 'username citizen_name discord_id');
+    res.json(updated);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -205,7 +333,12 @@ router.get('/', isAuthenticated, async (req, res) => {
       ];
     }
 
+    // Newest first — reverse chronological by creation time so freshly
+    // posted missions land at the top of the list where players expect
+    // to see "recent" activity. Secondary sort on _id ensures stable
+    // ordering when two missions were created in the same millisecond.
     const missions = await Mission.find(filter)
+      .sort({ created_at: -1, _id: -1 })
       .populate('primary_ship')
       .populate('supporting_ships')
       .populate('created_by', 'username citizen_name discord_id');
@@ -376,6 +509,22 @@ router.put('/:id/launch', isAuthenticated, async (req, res) => {
       citizen_name: req.user.citizen_name ?? req.user.username ?? 'UNKNOWN OPERATOR',
       rp_awarded,
     });
+
+    {
+      const launchShips = await Ship.find({ _id: { $in: [mission.primary_ship, ...(mission.supporting_ships || [])] } })
+        .select('crew_roles').lean();
+      let crewCount = 0;
+      for (const s of launchShips) {
+        for (const rd of Object.values(s.crew_roles || {})) crewCount += (rd.filled || []).length;
+      }
+      dispatch('missionLaunched', {
+        missionName: mission.name,
+        type: mission.mission_type,
+        commanderName: req.user.citizen_name || req.user.username,
+        crewCount,
+      });
+    }
+
     res.json(mission);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -542,7 +691,19 @@ router.patch('/:id/status', isAuthenticated, async (req, res) => {
     const emit = mission.org_id ? emitToOrg.bind(null, mission.org_id) : emitToAll;
     const cn = req.user.citizen_name ?? req.user.username ?? 'UNKNOWN OPERATOR';
     if (status === 'FINALIZED')   emit('mission_finalized', { missionId: mission._id, mission_name: mission.name, citizen_name: cn });
-    if (status === 'IN PROGRESS') emit('mission_launched',  { missionId: mission._id, mission_name: mission.name, citizen_name: cn, rp_awarded: 0 });
+    if (status === 'IN PROGRESS') {
+      emit('mission_launched',  { missionId: mission._id, mission_name: mission.name, citizen_name: cn, rp_awarded: 0 });
+      let crewCount = 0;
+      for (const s of [mission.primary_ship, ...(mission.supporting_ships || [])].filter(Boolean)) {
+        for (const rd of Object.values(s.crew_roles || {})) crewCount += (rd.filled || []).length;
+      }
+      dispatch('missionLaunched', {
+        missionName: mission.name,
+        type: mission.mission_type,
+        commanderName: cn,
+        crewCount,
+      });
+    }
 
     res.json(mission);
   } catch (err) {

@@ -6,6 +6,15 @@ const RPLedger = require('../models/RPLedger');
 const ShipRPLedger = require('../models/ShipRPLedger');
 const { addRPForMissionLaunch, awardShipFillBonus, addRPForCrewSlotFilled } = require('./rpService');
 const { emitToUser, emitToAll } = require('./socketManager');
+const { dispatch } = require('./nexusDispatch');
+
+function formatElapsed(seconds) {
+  const s = Math.max(0, Math.floor(seconds || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+}
 
 // Crew slot `filled[]` entries can be either MongoDB ObjectIds (registered web
 // users) or Discord ID strings (legacy/seed users). Split a flat list into both
@@ -307,6 +316,13 @@ async function completeMission(missionId, citizenName = 'UNKNOWN OPERATOR') {
     elapsed_seconds: elapsedSeconds,
   });
 
+  dispatch('missionComplete', {
+    missionName: mission.name,
+    elapsedTime: formatElapsed(elapsedSeconds),
+    commanderName: citizenName,
+    crewCount: crewSnapshot.length,
+  });
+
   // Fire the post-mission log modal prompt for registered users on filled
   // crew slots. Dedup by user_id (a player on multiple ships/roles only gets
   // one prompt).
@@ -374,6 +390,11 @@ async function abortMission(missionId) {
     ? (mission.created_by.citizen_name ?? mission.created_by.username ?? 'UNKNOWN OPERATOR')
     : 'UNKNOWN OPERATOR';
   emitToAll('mission_aborted', { missionId, mission_name: mission.name, citizen_name: citizenName });
+
+  dispatch('missionAborted', {
+    missionName: mission.name,
+    commanderName: citizenName,
+  });
 
   return { success: true };
 }

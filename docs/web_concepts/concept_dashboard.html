@@ -1,0 +1,592 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Dashboard Concept</title>
+<meta name="viewport" content="width=1280">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --void:#000710; --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A; --stage:#000b13;
+  --rim0:#1A3A50; --rim1:#2A5A7A; --rim2:#3F82B3;
+  --fg0:#CCE8FF; --fg1:#99BBDD; --fg2:#86AFCF; --fg3:#5F87A8;
+  --lime:#44FF88; --blue:#66AADD; --red:#FF5544; --amber:#FFBB33; --cyan:#00EEFF; --purple:#AA66DD;
+  /* new for web concepts */
+  --paper:#EDE6D6; --paper-2:#DDD4BF; --paper-ink:#1D1B16; --paper-mute:#6A6350; --paper-line:#BFB59C;
+  --role-pilot:#66AADD; --role-turret:#FF7766; --role-engineer:#FFBB33; --role-medic:#44FF88; --role-cargo:#AA66DD;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;padding:16px 16px 48px;overflow-x:auto}
+.page{width:1280px;margin:0 auto}
+.app{border:1px solid var(--rim0);border-radius:8px;overflow:hidden;background:var(--bg0);box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6)}
+
+/* header */
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #04101a}
+.bt1{font-size:18px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:11px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.nav{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;background:var(--bg1);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.nav .sp{flex:1}
+
+/* paper ID card: the one light surface */
+.idc{display:flex;align-items:stretch;border-radius:4px;overflow:hidden;border:1px solid #8c836b;cursor:pointer;background:var(--paper);color:var(--paper-ink);box-shadow:0 3px 0 #04101a,0 8px 14px rgba(0,0,0,.5);transition:transform .15s}
+.idc:hover{transform:translateY(-1px)}
+.idc .ph{width:50px;background:linear-gradient(160deg,#5b6f80,#2c3a47);display:flex;align-items:flex-end;justify-content:center}
+.idc .info{padding:6px 12px;min-width:220px}
+.idc .k{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--paper-mute);text-transform:uppercase}
+.idc .nm0{font-size:14px;font-weight:700}
+.idc .rk{font-size:12px;color:var(--paper-mute)}
+.idc .rpbar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--paper-mute);margin-top:2px}
+.idc .bar{flex:1;height:6px;border-radius:3px;background:var(--paper-2);overflow:hidden}
+.idc .bar i{display:block;height:100%;width:26%;background:#2a6a9a}
+
+/* shared components */
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:5px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4);transition:transform .15s,border-color .15s}
+.btn{font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:6px 12px;border-radius:4px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.nt.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.amb{color:#1d1300;border-color:#c48a14;background:linear-gradient(180deg,#ffd27a,#e0a022);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #6b4a08}
+.btn.dc{color:var(--red);border-color:rgba(255,85,68,.4)}
+.btn.tx.on{color:#fff;border-color:var(--red);background:linear-gradient(180deg,#a8321f,#5e150b);box-shadow:0 1px 0 rgba(255,200,190,.4) inset,0 3px 0 #2a0803}
+.btn[disabled]{opacity:.55;pointer-events:none}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap;display:inline-block}
+.s-WAIT{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.35)}
+.s-FIN{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.35)}
+.s-PROG{background:rgba(102,170,221,.16);color:var(--blue);border:1px solid rgba(102,170,221,.45)}
+.s-DONE{background:rgba(68,255,136,.06);color:#9be6b8;border:1px solid rgba(68,255,136,.2)}
+.s-ABORT{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.35)}
+.t-badge{font-size:11px;font-weight:600;padding:1px 7px;border-radius:10px;border:1px solid;white-space:nowrap}
+.t-Combat{color:#FF8877;border-color:rgba(255,120,100,.45);background:rgba(255,85,68,.08)}
+.t-Trade{color:var(--amber);border-color:rgba(255,187,51,.45);background:rgba(255,187,51,.08)}
+.t-Exploration{color:var(--blue);border-color:rgba(102,170,221,.45);background:rgba(102,170,221,.08)}
+.t-Salvage{color:#C79BEA;border-color:rgba(170,102,221,.45);background:rgba(170,102,221,.08)}
+.t-Escort{color:var(--lime);border-color:rgba(68,255,136,.4);background:rgba(68,255,136,.07)}
+.nm{color:var(--fg0);cursor:pointer;border-bottom:1px dotted var(--rim2)}
+.nm:hover{color:var(--lime);border-bottom-color:var(--lime)}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.collapse>div{overflow:hidden;min-height:0}
+.empty{padding:28px 12px;text-align:center;font-size:12px;color:var(--fg3)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+.inp{font-size:13px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:4px;padding:7px 10px;box-shadow:0 2px 6px #000 inset;outline:none;min-width:0}
+.inp:focus{border-color:var(--rim2)}
+.sh{flex-shrink:0;padding:10px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.col{min-width:0;min-height:0;display:flex;flex-direction:column}
+.scroll{flex:1;min-height:0;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);margin:4px 0 8px}
+.lcd{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--cyan);letter-spacing:.06em;background:linear-gradient(180deg,#00060c,#02101a);border-radius:4px;padding:3px 10px;box-shadow:0 2px 6px #000 inset;flex:1}
+.lcd.tx{color:var(--red)}
+kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:600;color:var(--fg1);padding:1px 6px;border-radius:3px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 2px 0 #04101a}
+
+/* mission cards */
+.mc{padding:10px 12px;cursor:pointer;border-left:3px solid var(--rim1)}
+.mc[data-s="WAITING FOR CREW"]{border-left-color:var(--amber)}
+.mc[data-s="FINALIZED"]{border-left-color:var(--lime)}
+.mc[data-s="IN PROGRESS"]{border-left-color:var(--blue)}
+.mc[data-s="COMPLETE"]{border-left-color:#4f8a69}
+.mc[data-s="ABORT"]{border-left-color:var(--red)}
+.mc:hover{transform:translateY(-1px);border-color:var(--rim1)}
+.mc.sel{border-color:var(--rim2);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 3px 0 #050e18,0 0 0 1px var(--rim2)}
+.mc-t{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:13px;font-weight:600;color:var(--fg0)}
+.mc-r{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:12px;color:var(--fg2)}
+.mc-r b{color:var(--fg1);font-weight:500}
+.thumbs{display:flex;align-items:center;gap:5px;margin-top:7px}
+.thumb{width:34px;height:22px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;color:var(--fg1);background:linear-gradient(135deg,#27455f,#0c1d2e);border:1px solid var(--rim1);box-shadow:0 2px 3px rgba(0,0,0,.5)}
+.thumb.p{width:44px;border-color:var(--rim2);color:var(--fg0)}
+.fillbar{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:11px;color:var(--fg2)}
+.fb{flex:1;height:6px;border-radius:3px;background:#02080e;box-shadow:0 1px 3px #000 inset;overflow:hidden}
+.fb i{display:block;height:100%;background:linear-gradient(90deg,#1f9c5a,var(--lime))}
+.fb i.mid{background:linear-gradient(90deg,#a8741a,var(--amber))}
+.fb i.low{background:linear-gradient(90deg,#8a3226,var(--red))}
+
+/* detail */
+.center{background:var(--stage);overflow-y:auto;padding:16px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.dt-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.dt-h h2{font-size:20px;font-weight:700;color:var(--fg0);line-height:1.25}
+.dt-h .badges{display:flex;gap:6px;align-items:center;margin-top:5px}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.meta>div{padding:8px 12px}
+.meta .k{font-size:11px;font-weight:600;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
+.meta .v{font-size:14px;color:var(--fg0);margin-top:1px;font-weight:500}
+.meta .v.t{color:var(--cyan);font-variant-numeric:tabular-nums;font-weight:700;font-size:16px}
+.obj{color:var(--fg0);max-width:62ch;margin-bottom:14px;line-height:1.6}
+.shiptabs{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.schem-wrap{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:10px;margin-bottom:14px}
+.schem{position:relative;height:250px;border-radius:5px;border:1px solid var(--rim0);overflow:hidden;
+  background:radial-gradient(circle at 50% 50%,#0c1f31 0%,#040d15 80%);box-shadow:0 2px 8px #000 inset}
+.schem::before{content:"";position:absolute;inset:0;background:linear-gradient(to right,rgba(63,130,179,.10) 1px,transparent 1px) 0 0/25px 25px,linear-gradient(to bottom,rgba(63,130,179,.10) 1px,transparent 1px) 0 0/25px 25px}
+.hull{position:absolute;left:50%;top:50%;width:46%;height:86%;transform:translate(-50%,-50%);border:1px dashed var(--rim1);border-radius:40% 40% 18% 18%/22% 22% 8% 8%;opacity:.55}
+.node{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--c);color:var(--c);background:radial-gradient(circle at 35% 30%,#16324b,#08131e);box-shadow:0 3px 0 #03080d,0 5px 8px rgba(0,0,0,.6);transition:transform .08s,box-shadow .08s}
+.node.empty{border-style:dashed;color:var(--fg3);background:#061018}
+.node.filled{background:radial-gradient(circle at 35% 30%,var(--c),#0b1c2c 75%);color:#04101a}
+.node.me{box-shadow:0 3px 0 #03080d,0 0 0 3px rgba(68,255,136,.55)}
+.node:not(.lock):hover{transform:translateY(-2px)}
+.node:not(.lock):active{transform:translateY(2px);box-shadow:0 0 0 #03080d}
+.node.lock{cursor:default}
+.node.sel0{outline:2px solid #fff;outline-offset:2px}
+.roster{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:250px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.rr{padding:6px 9px;font-size:12px;display:flex;align-items:center;gap:8px}
+.rr i{width:9px;height:9px;border-radius:50%;background:var(--c);flex-shrink:0}
+.rr .who{flex:1;color:var(--fg0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr .who.o{color:var(--fg3)}
+.read{font-size:12px;color:var(--fg2);min-height:20px;margin:-6px 0 12px}
+.acts{display:flex;gap:10px;margin:2px 0 14px;flex-wrap:wrap;align-items:center}
+.acts .why{font-size:12px;color:var(--fg3)}
+.log{display:flex;flex-direction:column;border:1px solid var(--rim0);border-radius:5px;background:var(--bg1);box-shadow:0 2px 6px #000 inset}
+.log div{padding:6px 12px;font-size:12px;border-bottom:1px solid rgba(26,58,80,.6);display:flex;gap:10px;color:var(--fg1)}
+.log div:last-child{border:0}
+.log time{color:var(--fg3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tbl{border:1px solid var(--rim0);border-radius:5px;overflow:hidden;background:var(--bg1);margin-bottom:14px}
+.tbl table{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:7px 12px;border-bottom:1px solid var(--rim1)}
+.tbl td{padding:7px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1)}
+.tbl tr:last-child td{border:0}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stats3>div{padding:10px 12px;text-align:center}
+.stats3 b{display:block;font-size:22px;color:var(--lime);font-variant-numeric:tabular-nums}
+.stats3 span{font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+
+/* rail */
+.side{border-left:1px solid var(--rim0);background:var(--bg0)}
+.tabs{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 12px 6px}
+.tab{position:relative;font-size:12px;font-weight:600;padding:7px 0;border-radius:4px;color:var(--fg2);background:linear-gradient(180deg,#0C1D2E,#08141f);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.08) inset,0 3px 0 #050e18;transition:all .1s}
+.tab:hover{color:var(--fg0)}
+.tab.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.tab .n{position:absolute;top:-6px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;color:#04140a;background:var(--lime)}
+.tab .n.show{display:flex}
+.feed{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.fi{border-bottom:1px solid rgba(26,58,80,.55);padding:8px 12px;cursor:pointer}
+.fi:hover{background:var(--bg1)}
+.fi.new{animation:drop .45s cubic-bezier(.2,1.2,.4,1)}
+@keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+.fr{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center}
+.ico{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 3px 5px rgba(0,0,0,.6)}
+.ico.lime{background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);color:var(--lime);border:1px solid rgba(68,255,136,.4)}
+.ico.blue{background:radial-gradient(circle at 35% 30%,#24557a,#0c2437);color:var(--blue);border:1px solid rgba(102,170,221,.4)}
+.ico.red{background:radial-gradient(circle at 35% 30%,#7a2418,#2e0c07);color:var(--red);border:1px solid rgba(255,85,68,.4)}
+.ico.amber{background:radial-gradient(circle at 35% 30%,#7a5a14,#2e2106);color:var(--amber);border:1px solid rgba(255,187,51,.4)}
+.ft{font-size:13px;font-weight:600;color:var(--fg0)}
+.ft em{font-style:normal}
+.fs{font-size:12px;color:var(--fg2);margin-top:1px}
+.ftime{font-size:11px;color:var(--fg3);white-space:nowrap}
+.fd{padding:6px 0 2px 35px;font-size:12px;color:var(--fg2);line-height:1.7}
+.fd b{color:var(--fg1);font-weight:500}
+.fi.open .collapse,.open>.collapse{grid-template-rows:1fr}
+.chat{flex:1;min-height:0;display:flex;flex-direction:column}
+.chat[hidden]{display:none}
+.ch-t{flex:1;font-size:13px;font-weight:600;color:var(--fg0)}
+.ch-h{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.ch-list{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.th{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:8px 10px;cursor:pointer}
+.th:hover{transform:translateY(-1px)}
+.av{width:30px;height:30px;border-radius:50%;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--blue);background:radial-gradient(circle at 35% 30%,#1f4666,#0b1d2e);border:1px solid var(--rim1)}
+.th-n{font-size:13px;font-weight:600;color:var(--fg0)}
+.th-p{font-size:12px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.th-u{width:9px;height:9px;border-radius:50%;background:var(--lime)}
+.msgs{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.msgs[hidden],.ch-list[hidden],.compose[hidden]{display:none}
+.bub{max-width:82%;padding:7px 10px;border-radius:8px;font-size:13px;line-height:1.5;color:var(--fg0);word-break:break-word}
+.bub small{display:block;font-size:11px;color:var(--fg3);margin-top:2px}
+.bub.them{align-self:flex-start;background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0)}
+.bub.me{align-self:flex-end;background:linear-gradient(180deg,#1f4a70,#0e2c47);border:1px solid var(--rim2)}
+.compose{flex-shrink:0;display:flex;gap:8px;padding:8px 12px;border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0);background:var(--bg1)}
+.compose .inp{flex:1}
+.foot{flex-shrink:0;padding:10px 12px;background:linear-gradient(180deg,#0A1B2B,#061018);border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0);display:flex;flex-direction:column;gap:8px}
+.rhead{display:flex;justify-content:space-between;align-items:center}
+.rlabel{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--cyan)}
+.ptt{font-size:11px;color:var(--fg3);display:flex;align-items:center;gap:6px}
+.rrow{display:flex;align-items:center;gap:8px}
+.rstate{font-size:12px;font-weight:600;color:var(--fg2);text-align:center}
+.range{font-size:11px;color:var(--fg3);text-align:center}
+.err{color:var(--red)}
+.chatbar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 0;border-radius:5px;font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--fg1);background:linear-gradient(180deg,#14304a,#0b1f33);border:1px solid var(--rim1);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s}
+.chatbar:hover{color:var(--fg0)}
+.chatbar:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.chatbar.on{color:#fff;border-color:var(--rim2)}
+.cb-n{min-width:17px;height:17px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:700;letter-spacing:0;display:none;align-items:center;justify-content:center;color:#04140a;background:var(--lime)}
+.cb-n.show{display:flex}
+
+/* modal + toast */
+.scrim{position:fixed;inset:0;background:rgba(0,4,9,.72);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+.scrim.show{display:flex}
+.modal{width:640px;max-width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--rim1);background:var(--bg1);box-shadow:0 30px 60px #000}
+.modal .mh{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);font-weight:600;color:var(--fg0)}
+.modal .mb{padding:16px;color:var(--fg1);line-height:1.7}
+.paper-modal{display:grid;grid-template-columns:150px 1fr 170px;gap:16px;background:var(--paper);color:var(--paper-ink);padding:18px}
+.paper-modal .port{height:190px;background:linear-gradient(160deg,#5b6f80,#2c3a47);border:1px solid #8c836b;display:flex;align-items:flex-end;justify-content:center}
+.paper-modal h4{font-size:19px}
+.paper-modal .k{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--paper-mute);text-transform:uppercase;margin-top:8px}
+.paper-modal p,.paper-modal li{font-size:12px;line-height:1.6;color:var(--paper-ink)}
+.paper-modal ul{padding-left:14px}
+.paper-modal .stat{border:1px solid var(--paper-line);padding:6px 8px;margin-bottom:6px;background:var(--paper-2)}
+.paper-modal .stat b{display:block;font-size:18px}
+.barcode{height:26px;margin-top:10px;background:repeating-linear-gradient(90deg,var(--paper-ink) 0 2px,transparent 2px 4px,var(--paper-ink) 4px 5px,transparent 5px 8px)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;padding:9px 16px;border-radius:5px;font-size:13px;font-weight:500;color:var(--fg0);background:#14304a;border:1px solid var(--rim2);box-shadow:0 8px 20px rgba(0,0,0,.6);transition:all .25s;z-index:60}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+/* token panel */
+.tokens{margin-top:28px}
+.tokens h2{font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.tokens .tw{border:1px solid var(--rim0);border-radius:5px;background:var(--bg1);overflow:hidden}
+.tokens table{width:100%;border-collapse:collapse;font-size:12px}
+.tokens th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:7px 12px;border-bottom:1px solid var(--rim1)}
+.tokens td{padding:7px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top}
+.tokens code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(255,255,255,.25)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.body{display:grid;grid-template-columns:320px 640px 320px;height:760px}
+.board{border-right:1px solid var(--rim0);background:var(--bg0)}
+</style>
+
+<div class="page">
+<div class="app">
+  <header class="hdr">
+    <div class="brand">
+      <div class="logo"><svg width="28" height="28" viewBox="0 0 30 30" fill="none" stroke="#66AADD" stroke-width="1.2"><circle cx="15" cy="15" r="11"/><circle cx="15" cy="15" r="5"/><path d="M15 1v6M15 23v6M1 15h6M23 15h6"/></svg></div>
+      <div><div class="bt1">Nexus Interstellar</div><div class="bt2">Traffic System</div></div>
+    </div>
+    <div class="idc" id="idc" title="Open full ID card">
+      <div class="ph"><svg width="36" height="42" viewBox="0 0 40 46" fill="#9fb4c4"><circle cx="20" cy="15" r="9"/><path d="M2 46c0-13 8-19 18-19s18 6 18 19z"/></svg></div>
+      <div class="info"><div class="k">UEE Identification · Nexus</div><div class="nm0">Unger Poshet</div><div class="rk">Drifter</div>
+        <div class="rpbar"><span>RP</span><div class="bar"><i></i></div><span>13 / 50</span></div></div>
+    </div>
+  </header>
+  <nav class="nav" id="nav">
+    <button class="btn nt on" data-p="Mission Board">Mission Board</button>
+    <button class="btn" data-p="Ship Registry" data-f="concept_ship_registry.html">Ship Registry</button>
+    <button class="btn" data-p="My Ships" data-f="concept_my_ships.html">My Ships</button>
+    <button class="btn" data-p="Register Ship" data-f="concept_ship_registration.html">Register Ship</button>
+    <button class="btn go" data-p="Create Mission" data-f="concept_create_mission.html">Create Mission</button>
+    <span class="sp"></span>
+    <button class="btn dc" id="dc">Disconnect</button>
+  </nav>
+
+  <div class="body">
+    <aside class="col board">
+      <div class="sh"><span>Mission Board</span><span id="bCount" style="color:var(--fg3)"></span></div>
+      <div class="scroll" id="bList"></div>
+    </aside>
+    <main class="center" id="center"></main>
+    <aside class="col side">
+      <div class="sh"><span>Activity</span><span style="display:flex;align-items:center;gap:6px;color:var(--lime);font-size:11px"><i class="live-dot"></i>Live</span></div>
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-t="mission">Missions<span class="n" id="n-mission"></span></button>
+        <button class="tab" data-t="crew">Crew<span class="n" id="n-crew"></span></button>
+        <button class="tab" data-t="ship">Ships<span class="n" id="n-ship"></span></button>
+      </div>
+      <div class="feed" id="feed"></div>
+      <div class="chat" id="chat" hidden>
+        <div class="ch-h">
+          <button class="btn" id="chBack" hidden>◂</button>
+          <div class="ch-t" id="chTitle">Direct Messages</div>
+          <button class="btn" id="chClose">✕</button>
+        </div>
+        <div class="ch-list" id="chList"></div>
+        <div class="msgs" id="msgs" hidden></div>
+        <div class="compose" id="compose" hidden><input class="inp" id="msgIn" placeholder="Message" autocomplete="off"><button class="btn" id="send">Send</button></div>
+      </div>
+      <div class="foot">
+        <div class="rhead">
+          <span class="rlabel"><i class="live-dot"></i>RADIO</span>
+          <span class="ptt" title="From your voice profile (ptt_key)">Push to talk <kbd id="pttK">V</kbd></span>
+        </div>
+        <div id="radio"></div>
+        <button class="chatbar" id="chatBtn"><span>CHAT</span><span class="cb-n" id="chatN"></span></button>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<div class="tokens">
+  <h2>New tokens in this concept</h2>
+  <div class="tw"><table>
+    <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+    <tr><td><i class="sw" style="background:#EDE6D6"></i><code>--paper</code></td><td>#EDE6D6</td><td>ID card surface. The only light surface in the app. Ink <code>--paper-ink</code> #1D1B16, muted <code>--paper-mute</code> #6A6350.</td></tr>
+    <tr><td><i class="sw" style="background:#FFBB33"></i>Status WAITING FOR CREW</td><td>amber</td><td>Pending. FINALIZED lime (ready), IN PROGRESS blue, COMPLETE soft green, ABORT red. Classes <code>.s-WAIT .s-FIN .s-PROG .s-DONE .s-ABORT</code>.</td></tr>
+    <tr><td><i class="sw" style="background:#66AADD"></i>Role colors</td><td>Pilot #66AADD, Turret #FF7766, Engineer #FFBB33, Medic #44FF88, Cargo #AA66DD</td><td>Schematic nodes and roster dots. Tokens <code>--role-*</code>. Filled nodes fill with the role color and show the citizen's initials, open nodes are dashed.</td></tr>
+    <tr><td><code>.t-badge</code></td><td>Combat, Trade, Exploration, Salvage, Escort</td><td>Mission type pills, one accent each, 11px text.</td></tr>
+    <tr><td><code>.node</code></td><td>34px circle, 3px under-edge</td><td>Presses 2px on click like <code>.btn</code>. Own seat gets a lime ring.</td></tr>
+    <tr><td><code>.fb i</code></td><td>lime, amber under 75%, red under 50%</td><td>Crew fill bar, from <code>crew_fill_percentage</code>.</td></tr>
+    <tr><td>Layout</td><td>1280px page, columns 320 / 640 / 320</td><td>Existing information architecture kept: mission list left, detail center, activity rail right.</td></tr>
+  </table></div>
+</div>
+</div>
+
+<div class="scrim" id="navModal"><div class="modal"><div class="mh"><span id="nmT"></span><button class="btn" data-close>✕</button></div><div class="mb" id="nmB"></div></div></div>
+<div class="scrim" id="idModal"><div class="modal" style="width:760px"><div class="mh"><span>Identification</span><button class="btn" data-close>✕</button></div>
+  <div class="paper-modal">
+    <div><div class="port"><svg width="90" height="110" viewBox="0 0 40 46" fill="#9fb4c4"><circle cx="20" cy="15" r="9"/><path d="M2 46c0-13 8-19 18-19s18 6 18 19z"/></svg></div><div class="barcode"></div></div>
+    <div><div class="k" style="margin-top:0">UEE Identification · Nexus</div><h4>Unger Poshet</h4><div class="k">Citizenship</div><p>Stanton Free Territory</p><div class="k">Place of birth</div><p>Terra, Prime</p><div class="k">Biography</div><p>Salvage pilot turned convoy escort. Keeps a clean log and a dirty ship.</p><div class="k">Ships</div><ul><li>HCS TEKKE (Cutlass Black)</li><li>GRIM HEX (Prospector)</li></ul></div>
+    <div><div class="stat"><span class="k" style="margin:0">Total RP</span><b>13</b></div><div class="stat"><span class="k" style="margin:0">Missions completed</span><b>4</b></div><div class="stat"><span class="k" style="margin:0">Rank</span><b style="font-size:15px">Drifter</b><span style="font-size:11px">Next rank at 50 RP</span></div></div>
+  </div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var ME='Unger Poshet', PTT='v';
+var toastT;
+function toast(t){var e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){e.classList.remove('show')},2200)}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+function ini(n){return n.split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase()}
+var NAME_RE=/(Peter Tork|Obi Wagwan|Joe Tekkae|Grauto|Mira Voss)/g;
+function L(h){return h.replace(NAME_RE,function(m){return '<span class="nm" data-u="'+m+'" title="Direct message">'+m+'</span>'})}
+function nm(n){return n===ME?esc(n):L(esc(n))}
+
+/* activity feed */
+var data={
+  mission:[
+    ['lime','✓','<em style="color:var(--lime)">Post-mission log</em> · Obi Wagwan','OPERATION KOMB · +3 RP','07/03','Mission <b>Operation Komb</b><br>Reward <b>+3 Crew RP</b>'],
+    ['lime','✓','<em style="color:var(--lime)">Post-mission log</em> · Unger Poshet','OPERATION KOMB · +3 RP','07/03','Mission <b>Operation Komb</b><br>Reward <b>+3 Crew RP</b>'],
+    ['lime','✓','<em style="color:var(--lime)">Post-mission log</em> · Joe Tekkae','OPERATION VILLAGE · +3 RP','07/03','Mission <b>Operation Village</b><br>Reward <b>+3 Crew RP</b>']
+  ],
+  crew:[
+    ['blue','✓','<em style="color:var(--blue)">Crew slot filled</em> · Joe Tekkae','Joined HCS JOMLET as Turret','07/03','Mission <b>Operation Iron Veil</b>'],
+    ['blue','●','<em style="color:var(--blue)">Operator online</em> · Obi Wagwan','Rank: Recruit','07/03','Connected from <b>Nexus web</b>'],
+    ['lime','★','<em style="color:var(--lime)">Rank advancement</em> · Unger Poshet','Recruit to Drifter','07/02','Threshold reached at <b>10 RP</b>']
+  ],
+  ship:[
+    ['lime','+','<em style="color:var(--lime)">Ship RP awarded</em> · HCS JOMLET','+3 Ship RP · fill threshold reached','07/03','Fill rate <b>83%</b>'],
+    ['lime','+','<em style="color:var(--lime)">Ship RP awarded</em> · HCS TEKKE','+3 Ship RP · fill threshold reached','07/03','Owner <b>Unger Poshet</b>'],
+    ['amber','⇄','<em style="color:var(--amber)">Access granted</em> · OLE ASS','Loaned to Joe Tekkae','07/02','Owner <b>Grauto</b>']
+  ]
+};
+var cur='mission', unread={mission:0,crew:0,ship:0};
+function row(r,isNew){return '<div class="fi'+(isNew?' new':'')+'"><div class="fr"><div class="ico '+r[0]+'">'+r[1]+'</div><div><div class="ft">'+L(r[2])+'</div><div class="fs">'+L(r[3])+'</div></div><div class="ftime">'+r[4]+'</div></div><div class="collapse"><div><div class="fd">'+L(r[5])+'</div></div></div></div>'}
+function drawFeed(){$('#feed').innerHTML=data[cur].map(function(r){return row(r)}).join('')}
+function badges(){['mission','crew','ship'].forEach(function(k){var n=$('#n-'+k);n.textContent=unread[k];n.classList.toggle('show',unread[k]>0)})}
+function pushEvent(tab,r){data[tab].unshift(r);if(tab===cur&&!open){$('#feed').insertAdjacentHTML('afterbegin',row(r,true))}else{unread[tab]++;badges()}}
+$('#tabs').addEventListener('click',function(e){var t=e.target.closest('.tab');if(!t)return;cur=t.dataset.t;unread[cur]=0;$$('.tab').forEach(function(x){x.classList.toggle('on',x===t)});badges();drawFeed()});
+$('#feed').addEventListener('click',function(e){var r=e.target.closest('.fi');if(r)r.classList.toggle('open')});
+setTimeout(function(){unread.crew=1;unread.ship=2;badges()},900);
+
+/* radio */
+var tuned=null, tx=false;
+function drawRadio(){
+  var r=$('#radio');
+  if(tuned===null){
+    r.innerHTML='<div class="rstate">No frequency tuned</div><div class="rrow"><input class="inp" id="fIn" value="127.4" inputmode="decimal" style="flex:1;text-align:center;font-weight:600"><button class="btn go" id="tune">Tune</button></div><div class="range" id="rng">Tunable range 50.0 to 350.0 MHz</div>';
+    $('#tune').onclick=function(){var v=parseFloat($('#fIn').value);var g=$('#rng');if(isNaN(v)||v<50||v>350){g.textContent='Enter a value from 50.0 to 350.0 MHz';g.classList.add('err');return}tuned=Math.round(v*10)/10;drawRadio()};
+    $('#fIn').addEventListener('keydown',function(e){if(e.key==='Enter')$('#tune').click()});
+  }else{
+    r.innerHTML='<div class="rrow"><div class="lcd'+(tx?' tx':'')+'">'+tuned.toFixed(1)+'</div><button class="btn" id="dn">◂</button><button class="btn" id="up">▸</button></div><div class="rrow"><button class="btn tx'+(tx?' on':'')+'" id="txb" style="flex:1">● Transmit</button><button class="btn" id="leave">Leave</button></div>';
+    $('#dn').onclick=function(){tuned=Math.max(50,Math.round((tuned-.1)*10)/10);drawRadio()};
+    $('#up').onclick=function(){tuned=Math.min(350,Math.round((tuned+.1)*10)/10);drawRadio()};
+    $('#txb').onclick=function(){tx=!tx;drawRadio()};
+    $('#leave').onclick=function(){tuned=null;tx=false;drawRadio()};
+  }
+}
+function tuneTo(f){tuned=parseFloat(f);drawRadio();toast('Tuned to '+tuned.toFixed(1)+' MHz')}
+var held=false;
+document.addEventListener('keydown',function(e){if(e.key.toLowerCase()===PTT&&!held&&tuned!==null&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){held=true;tx=true;drawRadio()}});
+document.addEventListener('keyup',function(e){if(e.key.toLowerCase()===PTT&&held){held=false;tx=false;drawRadio()}});
+
+/* direct messages */
+var threads={
+  'Obi Wagwan':[{m:0,t:'Forming up at the hangar in 5.',ts:'8:21'},{m:1,t:'On my way.',ts:'8:22'}],
+  'Joe Tekkae':[{m:0,t:'Turret check done, ready when you are.',ts:'8:05'}],
+  'Peter Tork':[{m:1,t:'Can I get a Gunner slot on Iron Veil?',ts:'7:48'}]
+};
+var unreadDm={'Joe Tekkae':1}, open=false, active=null;
+function now(){var d=new Date();return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')}
+function cbadge(){var t=0;for(var k in unreadDm)t+=unreadDm[k];var b=$('#chatN');b.textContent=t;b.classList.toggle('show',t>0)}
+function showList(){
+  active=null;$('#chTitle').textContent='Direct Messages';$('#chBack').hidden=true;$('#chList').hidden=false;$('#msgs').hidden=true;$('#compose').hidden=true;
+  var names=Object.keys(threads);
+  $('#chList').innerHTML=names.length?names.map(function(n){var l=threads[n][threads[n].length-1]||{m:0,t:''};
+    return '<div class="raised th" data-th="'+n+'"><div class="av">'+ini(n)+'</div><div><div class="th-n">'+n+'</div><div class="th-p">'+(l.m?'You: ':'')+esc(l.t)+'</div></div>'+(unreadDm[n]?'<i class="th-u"></i>':'<span></span>')+'</div>'}).join(''):'<div class="empty">Click any name to start a message.</div>';
+}
+function drawMsgs(){var m=$('#msgs');m.innerHTML=(threads[active]||[]).map(function(x){return '<div class="bub '+(x.m?'me':'them')+'">'+esc(x.t)+'<small>'+x.ts+'</small></div>'}).join('');m.scrollTop=m.scrollHeight}
+function showThread(n){active=n;unreadDm[n]=0;cbadge();$('#chTitle').textContent=n;$('#chBack').hidden=false;$('#chList').hidden=true;$('#msgs').hidden=false;$('#compose').hidden=false;drawMsgs();$('#msgIn').focus()}
+function openChat(){open=true;$('#chat').hidden=false;$('#tabs').style.display='none';$('#feed').style.display='none';$('#chatBtn').classList.add('on')}
+function closeChat(){open=false;$('#chat').hidden=true;$('#tabs').style.display='';$('#feed').style.display='';$('#chatBtn').classList.remove('on')}
+function openThread(n){if(n===ME)return;if(!threads[n])threads[n]=[];openChat();showThread(n)}
+document.addEventListener('click',function(e){var n=e.target.closest('.nm');if(!n)return;e.stopPropagation();openThread(n.dataset.u)},true);
+$('#chatBtn').addEventListener('click',function(){if(open)closeChat();else{openChat();showList()}});
+$('#chClose').addEventListener('click',closeChat);
+$('#chBack').addEventListener('click',showList);
+$('#chList').addEventListener('click',function(e){var t=e.target.closest('[data-th]');if(t)showThread(t.dataset.th)});
+function send(){var i=$('#msgIn'),v=i.value.trim();if(!v||!active)return;threads[active].push({m:1,t:v,ts:now()});i.value='';drawMsgs()}
+$('#send').addEventListener('click',send);
+$('#msgIn').addEventListener('keydown',function(e){if(e.key==='Enter')send()});
+$('#pttK').textContent=PTT.toUpperCase();
+
+/* modal helpers */
+function showModal(id){$(id).classList.add('show')}
+$$('.scrim').forEach(function(s){s.addEventListener('click',function(e){if(e.target===s||e.target.closest('[data-close]'))s.classList.remove('show')})});
+
+/* ───────── mission data (field names follow models/Mission.js, Ship.js, MissionArchive.js) ───────── */
+var ROLE_COLOR={Pilot:'var(--role-pilot)',Turret:'var(--role-turret)',Engineer:'var(--role-engineer)',Medic:'var(--role-medic)',Cargo:'var(--role-cargo)'};
+var ROLE_CH={Pilot:'P',Turret:'T',Engineer:'E',Medic:'M',Cargo:'C'};
+function ship(name,model,nodes){ /* nodes: [role,x,y,user] -> node_positions + crew_roles_structured */
+  var slots=nodes.map(function(n){return {role:n[0],x:n[1],y:n[2],user:n[3]||null}});
+  return {ship_name:name,ship_model:model,node_positions:slots};
+}
+function fillPct(s){var f=s.node_positions.filter(function(n){return n.user}).length;return Math.round(100*f/s.node_positions.length)}
+function allShips(m){return [m.primary_ship].concat(m.supporting_ships)}
+function missionFill(m){var t=0,f=0;allShips(m).forEach(function(s){t+=s.node_positions.length;f+=s.node_positions.filter(function(n){return n.user}).length});return Math.round(100*f/t)}
+function jomlet(f){return ship('HCS JOMLET','Hammerhead',[['Pilot',50,16,f[0]],['Turret',24,36,f[1]],['Turret',76,36,f[2]],['Turret',28,62,f[3]],['Turret',72,62,f[4]],['Engineer',50,84,f[5]]])}
+function tekke(f){return ship('HCS TEKKE','Cutlass Black',[['Pilot',50,20,f[0]],['Turret',50,50,f[1]],['Engineer',50,78,f[2]]])}
+function irie(f){return ship('IRIE SPIRIT','Constellation Andromeda',[['Pilot',50,14,f[0]],['Turret',26,40,f[1]],['Turret',74,40,f[2]],['Medic',50,52,f[3]],['Cargo',28,72,f[4]],['Engineer',72,76,f[5]]])}
+function grim(f){return ship('GRIM HEX','Prospector',[['Pilot',50,25,f[0]],['Cargo',50,70,f[1]]])}
+function ole(f){return ship('OLE ASS','Caterpillar',[['Pilot',50,14,f[0]],['Turret',30,40,f[1]],['Turret',70,40,f[2]],['Cargo',50,60,f[3]],['Engineer',50,84,f[4]]])}
+var missions=[
+  {name:'Operation Iron Veil',mission_type:'Escort',status:'IN PROGRESS',created_by:'Peter Tork',is_public:true,
+   objectives:'Escort the Pyro convoy from Stanton to the Pyro Gateway and hold the corridor until all cargo haulers have jumped.',
+   primary_ship:jomlet(['Peter Tork','Obi Wagwan','Joe Tekkae','Mira Voss',null,'Grauto']),supporting_ships:[tekke(['Unger Poshet',null,null])],
+   mission_time:'07/03 20:00 UTC',queue_expires_at:'07/03 19:30 UTC',frequency:'131.3',elapsed_seconds:5027,
+   log:[['20:00','Peter Tork launched the mission'],['20:02','Grauto took Engineer on HCS JOMLET'],['19:48','Mira Voss took Turret on HCS JOMLET'],['19:40','Mission finalized by Peter Tork']]},
+  {name:'Salvage Run Theta',mission_type:'Salvage',status:'FINALIZED',created_by:'Unger Poshet',is_public:true,
+   objectives:'Recover hull plating and a black box from the wreck field at the Aberdeen belt. Keep the engineer on cutting duty.',
+   primary_ship:tekke(['Unger Poshet','Joe Tekkae',null]),supporting_ships:[grim(['Obi Wagwan',null])],
+   mission_time:'07/04 18:00 UTC',queue_expires_at:'07/04 17:30 UTC',frequency:null,elapsed_seconds:0,
+   log:[['09:14','Unger Poshet finalized the mission'],['09:02','Joe Tekkae took Turret on HCS TEKKE'],['08:51','Obi Wagwan took Pilot on GRIM HEX'],['08:40','Mission created by Unger Poshet']]},
+  {name:'Silk Road Convoy',mission_type:'Trade',status:'WAITING FOR CREW',created_by:'Unger Poshet',is_public:true,
+   objectives:'Haul agricultural cargo from Terra to Magnus. Medic requested for the long leg.',
+   primary_ship:ole([ 'Unger Poshet',null,null,null,null]),supporting_ships:[],
+   mission_time:'07/05 21:00 UTC',queue_expires_at:'07/05 20:00 UTC',frequency:null,elapsed_seconds:0,
+   log:[['07:30','Mission created by Unger Poshet']]},
+  {name:'Operation Komb',mission_type:'Combat',status:'WAITING FOR CREW',created_by:'Obi Wagwan',is_public:true,
+   objectives:'Clear the bunker complex near Yela. Expect heavy resistance. Two turrets minimum.',
+   primary_ship:irie(['Obi Wagwan','Peter Tork',null,null,null,null]),supporting_ships:[jomlet([null,null,null,null,null,null])],
+   mission_time:'07/04 22:30 UTC',queue_expires_at:'07/04 22:00 UTC',frequency:null,elapsed_seconds:0,
+   log:[['08:12','Peter Tork took Turret on IRIE SPIRIT'],['08:00','Mission created by Obi Wagwan']]},
+  {name:'Operation Village',mission_type:'Exploration',status:'COMPLETE',created_by:'Peter Tork',is_public:true,
+   objectives:'Survey the abandoned settlement and log every salvage site.',
+   primary_ship:jomlet(['Peter Tork','Joe Tekkae','Obi Wagwan',null,null,'Unger Poshet']),supporting_ships:[],
+   mission_time:'07/02 20:00 UTC',queue_expires_at:'07/02 19:30 UTC',frequency:'128.9',elapsed_seconds:6240,total_rp_awarded:13,completed_at:'07/02 21:44 UTC',
+   log:[['21:44','Mission completed. +3 RP to each logged crew member'],['20:00','Peter Tork launched the mission']]},
+  {name:'Delta Patrol',mission_type:'Combat',status:'ABORT',created_by:'Grauto',is_public:true,
+   objectives:'Sweep the Delta lane markers for pirate activity.',
+   primary_ship:tekke(['Grauto',null,null]),supporting_ships:[],
+   mission_time:'07/01 19:00 UTC',queue_expires_at:'07/01 18:30 UTC',frequency:null,elapsed_seconds:0,total_rp_awarded:0,completed_at:'07/01 18:40 UTC',
+   log:[['18:40','Grauto aborted the mission. Insufficient crew']]}
+];
+missions.forEach(function(m,i){m.id=i});
+var selM=null, selShip=0, selNode=null, confirmT=null;
+function sCls(s){return {'WAITING FOR CREW':'s-WAIT','FINALIZED':'s-FIN','IN PROGRESS':'s-PROG','COMPLETE':'s-DONE','ABORT':'s-ABORT'}[s]}
+function fmtEl(s){return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(function(n){return String(n).padStart(2,'0')}).join(':')}
+function fillCls(p){return p>=75?'':(p>=50?'mid':'low')}
+
+function card(m){
+  var f=missionFill(m), th='<div class="thumb p" title="'+m.primary_ship.ship_model+'">'+m.primary_ship.ship_name.split(' ')[1].slice(0,4)+'</div>'+
+    m.supporting_ships.map(function(s){return '<div class="thumb" title="'+s.ship_name+'">'+s.ship_name.split(' ')[1].slice(0,4)+'</div>'}).join('');
+  return '<div class="raised mc'+(selM===m.id?' sel':'')+'" data-m="'+m.id+'" data-s="'+m.status+'">'+
+    '<div class="mc-t"><span>'+m.name+'</span><span class="badge '+sCls(m.status)+'">'+m.status+'</span></div>'+
+    '<div class="mc-r"><span class="t-badge t-'+m.mission_type+'">'+m.mission_type+'</span><span>Cmdr <b>'+nm(m.created_by)+'</b></span></div>'+
+    '<div class="thumbs">'+th+'<span style="flex:1"></span><span style="font-size:11px;color:var(--fg3)">'+m.mission_time+'</span></div>'+
+    '<div class="fillbar"><span>Crew</span><div class="fb"><i class="'+fillCls(f)+'" style="width:'+f+'%"></i></div><span>'+f+'%</span></div></div>';
+}
+
+function detailHTML(m){
+  var cmd=m.created_by===ME, f=missionFill(m), live=m.status==='IN PROGRESS', done=(m.status==='COMPLETE'||m.status==='ABORT');
+  var h='<div class="dt-h"><div><h2>'+m.name+'</h2><div class="badges"><span class="t-badge t-'+m.mission_type+'">'+m.mission_type+'</span><span class="badge '+sCls(m.status)+'">'+m.status+'</span>'+(m.is_public?'':'<span class="badge s-WAIT">PRIVATE</span>')+'</div></div></div>';
+  h+='<div class="meta">'+
+    '<div class="raised"><div class="k">Commander</div><div class="v">'+nm(m.created_by)+'</div></div>'+
+    '<div class="raised"><div class="k">Scheduled</div><div class="v">'+m.mission_time+'</div></div>'+
+    '<div class="raised"><div class="k">'+(done?'Completed':'Queue expires')+'</div><div class="v">'+(done?m.completed_at:m.queue_expires_at)+'</div></div>'+
+    '<div class="raised"><div class="k">Frequency</div><div class="v">'+(m.frequency?m.frequency+' MHz':'Assigned at launch')+'</div></div>'+
+    '<div class="raised"><div class="k">Crew fill</div><div class="v">'+f+'%</div></div>'+
+    '<div class="raised"><div class="k">Elapsed</div><div class="v t" data-el="'+m.id+'">'+((live||done)?fmtEl(m.elapsed_seconds):'--:--:--')+'</div></div></div>';
+  h+='<div class="h3">Objectives</div><p class="obj">'+esc(m.objectives)+'</p>';
+  if(done){
+    var rows=[];allShips(m).forEach(function(s){s.node_positions.forEach(function(n){if(n.user)rows.push([s.ship_name,n.role,n.user,m.status==='COMPLETE'?3:0])})});
+    h+='<div class="stats3"><div class="raised"><b>'+(m.total_rp_awarded||0)+'</b><span>Total RP awarded</span></div><div class="raised"><b>'+rows.length+'</b><span>Crew on record</span></div><div class="raised"><b>'+f+'%</b><span>Crew fill at end</span></div></div>';
+    h+='<div class="h3">Crew snapshot</div><div class="tbl"><table><tr><th>Ship</th><th>Role</th><th>Citizen</th><th>RP</th></tr>'+(rows.length?rows.map(function(r){return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+nm(r[2])+'</td><td>+'+r[3]+'</td></tr>'}).join(''):'<tr><td colspan="4" style="color:var(--fg3)">No crew recorded.</td></tr>')+'</table></div>';
+  }else{
+    var ships=allShips(m); if(selShip>=ships.length)selShip=0; var sh=ships[selShip];
+    h+='<div class="h3">Ships and crew</div><div class="shiptabs">'+ships.map(function(s,i){return '<button class="btn'+(i===selShip?' nt on':'')+'" data-ship="'+i+'">'+s.ship_name+(i===0?' · primary':'')+' · '+fillPct(s)+'%</button>'}).join('')+'</div>';
+    h+='<div class="schem-wrap"><div class="schem"><div class="hull"></div>'+sh.node_positions.map(function(n,i){
+      var cls='node '+(n.user?'filled ':'empty ')+(n.user===ME?'me ':'')+(live?'lock ':'')+(selNode===i?'sel0':'');
+      return '<button class="'+cls+'" data-node="'+i+'" style="left:'+n.x+'%;top:'+n.y+'%;--c:'+ROLE_COLOR[n.role]+'" title="'+n.role+(n.user?' · '+n.user:' · open')+'">'+(n.user?ini(n.user):ROLE_CH[n.role])+'</button>'}).join('')+'</div>'+
+      '<div class="roster">'+sh.node_positions.map(function(n,i){return '<div class="raised rr" data-row="'+i+'" style="--c:'+ROLE_COLOR[n.role]+';cursor:pointer"><i></i><span style="color:var(--fg2);width:56px">'+n.role+'</span><span class="who'+(n.user?'':' o')+'">'+(n.user?nm(n.user):'Open')+'</span></div>'}).join('')+'</div></div>';
+    var rd='Click a node to reserve an open role. Click your own node to withdraw.';
+    if(live)rd='Crew is locked while the mission is in progress.';
+    if(selNode!==null){var n=sh.node_positions[selNode];rd=n.role+' on '+sh.ship_name+': '+(n.user?(n.user===ME?'you (click to withdraw)':'held by '+nm(n.user)):'open')}
+    h+='<div class="read">'+rd+'</div>';
+  }
+  if(!done){
+    var a='';
+    if(cmd){
+      if(m.status==='WAITING FOR CREW')a='<button class="btn amb" data-act="Finalize">Finalize</button>';
+      if(m.status==='FINALIZED')a='<button class="btn go" data-act="Launch">Launch</button>';
+      if(live)a='<button class="btn go" data-act="Complete">Complete</button>';
+      a+='<button class="btn warn" data-act="Abort">Abort</button><span class="why">Commander controls</span>';
+    }else if(live&&m.frequency){a='<button class="btn" data-tune="'+m.frequency+'">Tune to '+m.frequency+' MHz</button><span class="why">Only the commander can complete or abort</span>'}
+    else a='<span class="why">Only the commander can finalize, launch or abort.</span>';
+    h+='<div class="acts">'+a+'</div>';
+  }
+  h+='<div class="h3">Mission activity</div><div class="log">'+m.log.map(function(l){return '<div><time>'+l[0]+'</time><span>'+L(esc(l[1]))+'</span></div>'}).join('')+'</div>';
+  return h;
+}
+
+var onMissionChange=function(){};
+function renderDetail(){
+  var c=$('#center');
+  if(selM===null){c.innerHTML=window.EMPTY_DETAIL||'<div class="empty" style="text-align:left;padding:0;font-size:13px;color:var(--blue)">Select a mission to view details.</div>';return}
+  var top=c.scrollTop;c.innerHTML=detailHTML(missions[selM]);c.scrollTop=top;
+}
+function selectMission(id){selM=id;selShip=0;selNode=null;onMissionChange();renderDetail()}
+function addLog(m,t){var d=new Date();m.log.unshift([String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'),t])}
+
+document.addEventListener('click',function(e){
+  var c=$('#center'); if(!c||!c.contains(e.target)||selM===null)return;
+  var m=missions[selM];
+  var s=e.target.closest('[data-ship]'); if(s){selShip=+s.dataset.ship;selNode=null;renderDetail();return}
+  var t=e.target.closest('[data-tune]'); if(t){tuneTo(t.dataset.tune);return}
+  var r=e.target.closest('[data-row]'); if(r){selNode=+r.dataset.row;renderDetail();return}
+  var n=e.target.closest('[data-node]');
+  if(n){
+    var sh=allShips(m)[selShip],i=+n.dataset.node,nd=sh.node_positions[i];selNode=i;
+    if(m.status!=='WAITING FOR CREW'&&m.status!=='FINALIZED'){renderDetail();return}
+    if(nd.user===ME){nd.user=null;addLog(m,ME+' withdrew from '+nd.role+' on '+sh.ship_name);pushEvent('crew',['red','−','<em style="color:var(--red)">Slot withdrawn</em> · Unger Poshet','Left '+nd.role+' on '+sh.ship_name,'now','Mission <b>'+m.name+'</b>']);toast('Withdrew from '+nd.role)}
+    else if(!nd.user){
+      var has=false;allShips(m).forEach(function(x){x.node_positions.forEach(function(q){if(q.user===ME)has=true})});
+      if(has){toast('You already hold a slot. Withdraw first.');renderDetail();return}
+      nd.user=ME;addLog(m,ME+' took '+nd.role+' on '+sh.ship_name);pushEvent('crew',['blue','✓','<em style="color:var(--blue)">Crew slot filled</em> · Unger Poshet','Joined '+sh.ship_name+' as '+nd.role,'now','Mission <b>'+m.name+'</b>']);toast('Reserved '+nd.role);
+    }
+    onMissionChange();renderDetail();return;
+  }
+  var a=e.target.closest('[data-act]');
+  if(a){
+    var act=a.dataset.act;
+    if(!a.dataset.c){a.dataset.c='1';a.textContent='Confirm '+act.toLowerCase()+'?';clearTimeout(confirmT);confirmT=setTimeout(function(){a.dataset.c='';a.textContent=act},3000);return}
+    clearTimeout(confirmT);
+    if(act==='Finalize'){m.status='FINALIZED';addLog(m,ME+' finalized the mission');toast('Mission finalized')}
+    if(act==='Launch'){m.status='IN PROGRESS';m.frequency=m.frequency||'142.5';m.elapsed_seconds=0;addLog(m,ME+' launched the mission');pushEvent('mission',['lime','▲','<em style="color:var(--lime)">Mission launched</em> · '+m.name,'Unger Poshet commanding','now','Frequency <b>'+m.frequency+' MHz</b>']);toast('Launched on '+m.frequency+' MHz')}
+    if(act==='Complete'){m.status='COMPLETE';m.completed_at='now';m.total_rp_awarded=allShips(m).reduce(function(t,s){return t+s.node_positions.filter(function(q){return q.user}).length*3},0);addLog(m,'Mission completed');pushEvent('mission',['lime','✓','<em style="color:var(--lime)">Mission complete</em> · '+m.name,'+3 RP to logged crew','now','Total <b>'+m.total_rp_awarded+' RP</b>']);toast('Mission complete')}
+    if(act==='Abort'){m.status='ABORT';m.completed_at='now';m.total_rp_awarded=0;addLog(m,ME+' aborted the mission');pushEvent('mission',['red','■','<em style="color:var(--red)">Mission aborted</em> · '+m.name,'Aborted by Unger Poshet','now','No RP awarded']);toast('Mission aborted')}
+    onMissionChange();renderDetail();
+  }
+});
+setInterval(function(){
+  missions.forEach(function(m){if(m.status==='IN PROGRESS'){m.elapsed_seconds++;var el=document.querySelector('[data-el="'+m.id+'"]');if(el)el.textContent=fmtEl(m.elapsed_seconds)}});
+},1000);
+
+
+/* page */
+$('#nav').addEventListener('click',function(e){var b=e.target.closest('[data-p]');if(!b)return;
+  if(b.dataset.p==='Mission Board'){selectMission(null);return}
+  $('#nmT').textContent=b.dataset.p;$('#nmB').innerHTML='Opens the <b style="color:var(--fg0)">'+b.dataset.p+'</b> view in place of the mission area. See <code style="color:var(--cyan)">'+b.dataset.f+'</code> for the full concept.';showModal('#navModal')});
+$('#dc').onclick=function(){toast('Disconnect plays the logout sequence')};
+$('#idc').onclick=function(){showModal('#idModal')};
+function drawList(){
+  $('#bCount').textContent=missions.length+' missions';
+  $('#bList').innerHTML=missions.map(card).join('');
+}
+onMissionChange=drawList;
+$('#bList').addEventListener('click',function(e){var c=e.target.closest('[data-m]');if(c)selectMission(+c.dataset.m)});
+drawList();selectMission(1);drawFeed();badges();drawRadio();cbadge();
+})();
+</script>

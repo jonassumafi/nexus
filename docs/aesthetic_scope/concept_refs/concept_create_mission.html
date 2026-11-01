@@ -1,0 +1,361 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Create Mission Concept</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --void:#000710; --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A;
+  --rim0:#1A3A50; --rim1:#2A5A7A; --rim2:#3F82B3;
+  --fg0:#CCE8FF; --fg1:#99BBDD; --fg2:#86AFCF; --fg3:#5F87A8;
+  --lime:#44FF88; --blue:#66AADD; --red:#FF5544; --amber:#FFBB33; --cyan:#00EEFF;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
+h1,h2,h3{font-weight:700;color:var(--fg0)}
+
+/* raised, buttons, fields (companion recipes) */
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:5px;
+  box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4);transition:transform .15s,border-color .15s}
+.btn{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--fg1);padding:8px 16px;border-radius:4px;border:1px solid var(--rim1);
+  background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a,0 5px 8px rgba(0,0,0,.4)}
+.btn.go:active{box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 0 0 #0e5a2a}
+.btn.ghost{background:none;box-shadow:none;border-color:var(--rim0);color:var(--fg2)}
+.btn.ghost:active{transform:none}
+.btn.sm{padding:5px 10px;font-size:11px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.lbl{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--fg2)}
+.lbl small{font-weight:400;color:var(--fg3);font-size:11px}
+.inp{font-size:14px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:4px;padding:9px 11px;box-shadow:0 2px 6px #000 inset;outline:none;min-width:0;width:100%;transition:border-color .12s}
+.inp:focus{border-color:var(--rim2)}
+.inp.bad{border-color:var(--red)}
+.inp::placeholder{color:var(--fg3)}
+textarea.inp{resize:vertical;min-height:130px;line-height:1.6}
+input[type=datetime-local].inp{color-scheme:dark}
+.hint{font-size:12px;color:var(--fg3)}
+.hint.err{color:var(--red)} .hint.ok{color:var(--lime)}
+.count{font-size:11px;color:var(--fg3);text-align:right}
+.h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);margin-bottom:8px}
+
+/* stage: fixed 900px mockup with dimmed dashboard backdrop */
+.stage{position:relative;width:900px;height:800px;margin:0 auto;border:1px solid var(--rim0);border-radius:8px;overflow:hidden;background:var(--bg0);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.bk{position:absolute;inset:0;pointer-events:none;user-select:none}
+.bk-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid var(--rim0)}
+.bk-b{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;font-size:14px}
+.bk-logo{width:30px;height:30px;border-radius:5px;border:1px solid var(--rim1);background:#020a12}
+.bk-id{width:170px;height:36px;border-radius:4px;background:#14304a;border:1px solid var(--rim1)}
+.bk-n{display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--rim0);background:var(--bg1)}
+.bk-n i{height:26px;width:90px;border-radius:4px;background:#0F2338;border:1px solid var(--rim0)}
+.bk-g{display:grid;grid-template-columns:230px 1fr 250px;height:calc(100% - 100px)}
+.bk-g>div{border-right:1px solid var(--rim0);padding:12px;display:flex;flex-direction:column;gap:8px}
+.bk-g b{display:block;height:64px;border-radius:5px;background:#0C1D2E;border:1px solid var(--rim0)}
+.scrim{position:absolute;inset:0;background:rgba(0,5,12,.78)}
+.modal{position:absolute;left:50%;top:22px;transform:translateX(-50%);width:820px;max-height:calc(100% - 44px);display:flex;flex-direction:column;overflow:hidden;
+  border-radius:8px;border:1px solid var(--rim1);background:linear-gradient(180deg,#071522,var(--bg0) 40%);
+  box-shadow:0 1px 0 rgba(150,210,255,.22) inset,0 0 0 1px #000,0 3px 0 #0a2236,0 6px 0 #05121e,0 28px 50px rgba(0,0,0,.75)}
+.m-head{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:linear-gradient(180deg,#0E2236,#081624);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.m-head h2{font-size:17px}
+.m-head .sub{font-size:12px;color:var(--fg3)}
+.x{width:28px;height:28px;border-radius:4px;color:var(--fg3);font-size:14px}
+.x:hover{background:#6a1d12;color:#fff}
+.steps{display:flex;padding:14px 20px 10px;gap:0;background:var(--bg1);border-bottom:1px solid var(--rim0);list-style:none}
+.steps li{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;font-size:11px;font-weight:600;color:var(--fg3);text-align:center;cursor:default}
+.steps li::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--rim0);z-index:0}
+.steps li:first-child::before{display:none}
+.steps li.done::before,.steps li.cur::before{background:var(--blue)}
+.dotn{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+  background:radial-gradient(circle at 35% 30%,#12263A,#08141f);border:1px solid var(--rim0);color:var(--fg3);box-shadow:0 3px 0 #050e18}
+.steps li.done .dotn{background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);border-color:rgba(68,255,136,.5);color:var(--lime)}
+.steps li.done{color:var(--fg2);cursor:pointer}
+.steps li.cur{color:var(--fg0)}
+.steps li.cur .dotn{background:linear-gradient(180deg,#1f4a70,#0e2c47);border-color:var(--rim2);color:#fff;transform:translateY(2px);box-shadow:0 1px 0 #050e18}
+.prog{height:3px;background:#02080e}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2a79b0,var(--blue));transition:width .3s}
+.m-body{flex:1;min-height:0;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.m-foot{display:flex;align-items:center;gap:10px;padding:12px 20px;background:linear-gradient(180deg,#0A1B2B,#061018);border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0)}
+.m-foot .msg{flex:1;font-size:12px;color:var(--fg3);min-width:0}
+.m-foot .msg.err{color:var(--red)}
+.closed{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:5}
+.closed.show{display:flex}
+.empty{padding:26px 12px;text-align:center;font-size:12px;color:var(--fg3)}
+.sil{width:100%;height:auto;max-height:84px;display:block}
+.pick{cursor:pointer;text-align:left;padding:10px}
+.pick:hover{transform:translateY(-1px);border-color:var(--rim1)}
+.pick.sel{border-color:var(--rim2);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 3px 0 #050e18,0 0 0 1px var(--rim2)}
+.pick[disabled]{opacity:.5;pointer-events:none}
+.ok-ring{width:64px;height:64px;border-radius:50%;margin:10px auto 14px;display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--lime);
+  background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);border:1px solid rgba(68,255,136,.5);box-shadow:0 4px 0 #04140a}
+
+/* design-token panel */
+.tokens{width:900px;margin:28px auto 0;display:flex;flex-direction:column;gap:20px}
+.tokens h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);display:flex;align-items:center;gap:10px}
+.tokens h2::after{content:"";flex:1;height:1px;background:var(--rim0)}
+.tokens p{font-size:12px;line-height:1.7;max-width:76ch}
+.tk{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:10px}
+.tk div{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 8px;border:1px solid var(--rim0);border-radius:4px;background:var(--bg1)}
+.tk i{width:14px;height:14px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.2)}
+.tk code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);margin-left:auto}
+.tk span{color:var(--fg1)}
+
+@media (max-width:940px){
+  .stage{width:100%;height:auto;min-height:760px}
+  .modal{position:relative;left:auto;top:auto;transform:none;width:calc(100% - 24px);margin:12px auto;max-height:none}
+  .scrim{position:absolute}
+  .tokens{width:100%}
+  .bk-g{grid-template-columns:1fr}
+  .steps li{font-size:10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+:root{
+  --ty-combat:#E8664F; --ty-trade:#E6B84A; --ty-explore:#5BC0DE; --ty-salvage:#B58CE6;
+  --ty-escort:#44D6A0; --ty-mining:#D98C4A; --ty-medical:#FF7DA8; --ty-patrol:#7FA6FF;
+}
+.types{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ty{display:flex;gap:10px;align-items:center;border-left:3px solid var(--c)}
+.ty .em{font-size:22px;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#08141f;border:1px solid var(--rim0)}
+.ty b{display:block;color:var(--fg0);font-size:13px}
+.ty span{font-size:12px;color:var(--fg2);line-height:1.4;display:block}
+.tbadge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:3px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 40%,transparent);display:inline-flex;gap:5px;align-items:center}
+.two{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.pv{position:sticky;top:0;align-self:start;padding:12px;border-left:3px solid var(--c,var(--rim1))}
+.pv .t{font-size:14px;font-weight:600;color:var(--fg0);margin:6px 0 4px;min-height:21px}
+.pv .m{font-size:12px;color:var(--fg2)}
+.ships{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.sh .th{background:#030d16;border-radius:4px;padding:6px;margin-bottom:8px;border:1px solid var(--rim0)}
+.sh .n{display:flex;justify-content:space-between;align-items:center;gap:6px;color:var(--fg0);font-weight:600;font-size:13px}
+.sh .mm{font-size:12px;color:var(--fg2);margin-top:2px}
+.sh .rl{font-size:11px;color:var(--fg3);margin-top:6px}
+.chk{width:18px;height:18px;border-radius:50%;border:1px solid var(--rim1);background:#02080e;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:transparent;flex-shrink:0}
+.sel .chk{background:linear-gradient(180deg,#5dff9d,#2bc866);border-color:#2fbf66;color:#04140a;font-weight:700}
+.cap{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg2);margin-bottom:12px}
+.cap .slotrow{display:flex;gap:5px}
+.cap .slotrow i{width:26px;height:8px;border-radius:2px;background:#02080e;border:1px solid var(--rim0)}
+.cap .slotrow i.on{background:var(--blue);border-color:var(--blue)}
+.words{height:5px;border-radius:3px;background:#02080e;box-shadow:0 1px 3px #000 inset;overflow:hidden;margin-top:2px}
+.words i{display:block;height:100%;width:0;background:var(--amber);transition:width .15s,background .15s}
+.words.ok i{background:var(--lime)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:600;padding:5px 11px;border-radius:12px;color:var(--fg2);background:var(--bg1);border:1px solid var(--rim0)}
+.chip:hover{color:var(--fg0);border-color:var(--rim1)}
+.rv{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.rv .sec{padding:12px 14px}
+.rv .sec .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rv .k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.rv .v{font-size:13px;color:var(--fg0);line-height:1.55}
+.rv .full{grid-column:1/-1}
+.edit{font-size:11px;font-weight:600;color:var(--blue)}
+.edit:hover{color:var(--fg0)}
+.seg{display:inline-flex;border:1px solid var(--rim1);border-radius:4px;overflow:hidden;box-shadow:0 3px 0 #04101a}
+.seg button{padding:7px 14px;font-size:12px;font-weight:600;color:var(--fg2);background:linear-gradient(180deg,#0C1D2E,#08141f)}
+.seg button.on{color:#fff;background:linear-gradient(180deg,#1f4a70,#0e2c47)}
+.succ{text-align:center;padding:12px 0}
+.succ h2{font-size:22px;margin-bottom:6px}
+.succ .box{max-width:440px;margin:18px auto 0;padding:14px;text-align:left}
+@media (max-width:940px){.two{grid-template-columns:1fr}.pv{position:static}.ships,.types,.rv{grid-template-columns:1fr}}
+</style>
+
+<div class="stage" id="stage">
+<div class="bk" aria-hidden="true">
+  <div class="bk-h"><div class="bk-b"><span class="bk-logo"></span>Nexus Interstellar</div><div class="bk-id"></div></div>
+  <div class="bk-n"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="bk-g"><div><b></b><b></b><b></b></div><div><b style="height:90px"></b><b style="height:150px"></b></div><div><b></b><b></b><b></b><b></b></div></div>
+</div>
+<div class="scrim"></div>
+
+  <div class="modal" id="modal">
+    <div class="m-head"><div><h2>Create Mission</h2><div class="sub" id="sub">Step 1 of 6</div></div><button class="x" id="close" title="Close">✕</button></div>
+    <ol class="steps" id="steps"></ol>
+    <div class="prog"><i id="prog"></i></div>
+    <div class="m-body" id="body"></div>
+    <div class="m-foot"><button class="btn ghost" id="cancel">Cancel</button><div class="msg" id="msg"></div><button class="btn" id="back">Back</button><button class="btn go" id="next">Next</button></div>
+  </div>
+  <div class="closed" id="closed"><button class="btn go" id="reopen">Reopen Create Mission</button></div>
+</div>
+
+<section class="tokens">
+  <h2>Design tokens introduced on this page</h2>
+  <p>Mission type accents are new. Each type badge and picker card takes its color from one custom property, and the tinted background and border are derived from it with <b>color-mix</b>, so a new type from PlatformConfig.mission_types only needs one color. Stepper states reuse existing blue and lime. Everything else comes from the companion spec.</p>
+  <div class="tk">
+    <div><i style="background:#E8664F"></i><span>Combat</span><code>--ty-combat</code></div>
+    <div><i style="background:#E6B84A"></i><span>Trade</span><code>--ty-trade</code></div>
+    <div><i style="background:#5BC0DE"></i><span>Exploration</span><code>--ty-explore</code></div>
+    <div><i style="background:#B58CE6"></i><span>Salvage</span><code>--ty-salvage</code></div>
+    <div><i style="background:#44D6A0"></i><span>Escort</span><code>--ty-escort</code></div>
+    <div><i style="background:#D98C4A"></i><span>Mining</span><code>--ty-mining</code></div>
+    <div><i style="background:#FF7DA8"></i><span>Medical</span><code>--ty-medical</code></div>
+    <div><i style="background:#7FA6FF"></i><span>Patrol</span><code>--ty-patrol</code></div>
+  </div>
+  <p><b>Components.</b> Stepper: 28px raised discs, current step sits 2px lower in blue, finished steps turn lime and can be clicked to go back. Progress bar: 3px, blue gradient. Selectable cards: raised, selected adds a 1px blue outline and a lime check disc. Footer: Cancel (ghost), Back (standard), Next (lime, becomes Create Mission on step 6). Validation text appears in the footer in red and the offending field gets a red border.</p>
+  <p><b>Field mapping.</b> name, mission_type, primary_ship, supporting_ships, objectives, mission_time, queue_expires_at, is_public. Status on create is WAITING FOR CREW (schema default). Assumed rules: name must be unique (schema), objectives need at least 10 words, ships per mission is max_ships_per_mission (3) counting the primary ship, queue expiry must fall before the mission time.</p>
+</section>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  var CFG={max_ships_per_mission:3};
+  var TYPES=[
+    {name:'Combat',emoji:'⚔️',c:'--ty-combat',description:'Armed engagements and fleet actions'},
+    {name:'Trade',emoji:'📦',c:'--ty-trade',description:'Cargo hauling and commodity runs'},
+    {name:'Exploration',emoji:'🧭',c:'--ty-explore',description:'Survey, scouting and pathfinding'},
+    {name:'Salvage',emoji:'🔧',c:'--ty-salvage',description:'Wreck recovery and hull stripping'},
+    {name:'Escort',emoji:'🛡️',c:'--ty-escort',description:'Protect convoys and VIP transport'},
+    {name:'Mining',emoji:'⛏️',c:'--ty-mining',description:'Resource extraction and refining'},
+    {name:'Medical',emoji:'🩺',c:'--ty-medical',description:'Rescue, triage and field medicine'},
+    {name:'Patrol',emoji:'🛰️',c:'--ty-patrol',description:'Lane sweeps and area security'}
+  ];
+  var TAKEN=['OPERATION IRON VEIL','SALVAGE RUN THETA'];
+  var SHIPS=[
+    {id:'s1',ship_name:'HCS TEKKE',ship_model:'Hammerhead',kind:'multi',own:true,roles:'Pilot 1 · Turret 4 · Engineer 1',busy:false},
+    {id:'s2',ship_name:'HCS JOMLET',ship_model:'Constellation Andromeda',kind:'multi',own:false,loan:'Loan expires in 2h 10m',roles:'Pilot 1 · Turret 2 · Engineer 1',busy:false},
+    {id:'s3',ship_name:'OLE ASS',ship_model:'Cutlass Black',kind:'fighter',own:false,loan:'Loan expires in 5h 40m',roles:'Pilot 1 · Turret 1',busy:false},
+    {id:'s4',ship_name:'IRIE SPIRIT',ship_model:'Caterpillar',kind:'freight',own:false,loan:'Loan expires in 1d 3h',roles:'Pilot 1 · Engineer 1',busy:true}
+  ];
+  function sil(kind){
+    var p={fighter:'M50 4 L60 30 L88 44 L88 50 L58 46 L54 56 L46 56 L42 46 L12 50 L12 44 L40 30 Z',
+           multi:'M50 4 L62 20 L94 34 L94 42 L64 40 L60 56 L40 56 L36 40 L6 42 L6 34 L38 20 Z',
+           freight:'M30 6 H70 L78 18 V50 L70 56 H30 L22 50 V18 Z'}[kind];
+    return '<svg class="sil" viewBox="0 0 100 60" aria-hidden="true"><path d="'+p+'" fill="#12263A" stroke="#2A5A7A" stroke-width="1.5"/></svg>';
+  }
+  function pad(n){return String(n).padStart(2,'0')}
+  function toLocal(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())}
+  function fmt(v){if(!v)return 'Not set';var d=new Date(v);return d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+  function plusMin(m){var d=new Date();d.setSeconds(0,0);d.setMinutes(d.getMinutes()+m);return toLocal(d)}
+
+  var S0={name:'',type:null,primary:null,supp:[],obj:'',time:plusMin(120),expires:plusMin(90),pub:true};
+  var S=JSON.parse(JSON.stringify(S0)), step=0, done=false;
+  var NAMES=['Name and type','Primary ship','Support ships','Objectives','Schedule','Review'];
+
+  function tyOf(n){return TYPES.filter(function(t){return t.name===n})[0]}
+  function badge(n){var t=tyOf(n);return t?'<span class="tbadge" style="--c:var('+t.c+')">'+t.emoji+' '+t.name+'</span>':'<span class="badge b-blue">No type yet</span>'}
+  function shipById(id){return SHIPS.filter(function(s){return s.id===id})[0]}
+  function words(t){return (t.trim().match(/\S+/g)||[]).length}
+
+  function drawSteps(){
+    $('#steps').innerHTML=NAMES.map(function(n,i){var c=done||i<step?'done':(i===step?'cur':'');
+      return '<li class="'+c+'" data-s="'+i+'"><span class="dotn">'+(done||i<step?'✓':i+1)+'</span>'+n+'</li>'}).join('');
+    $('#prog').style.width=(done?100:(step/(NAMES.length-1))*100)+'%';
+    $('#sub').textContent=done?'Complete':'Step '+(step+1)+' of '+NAMES.length+' · '+NAMES[step];
+    $('#back').style.visibility=(step===0||done)?'hidden':'visible';
+    $('#next').textContent=step===NAMES.length-1?'Create Mission':'Next';
+    $('#next').style.display=done?'none':'';
+    $('#cancel').textContent=done?'Close':'Cancel';
+  }
+  function setMsg(t,err){var m=$('#msg');m.textContent=t||'';m.classList.toggle('err',!!err)}
+
+  function shipCard(s,sel,multi){
+    var tag=s.own?'<span class="badge b-lime">Owned</span>':'<span class="badge b-amber">Loan</span>';
+    return '<button class="raised pick sh'+(sel?' sel':'')+'" data-ship="'+s.id+'"'+(s.busy?' disabled':'')+'>'+
+      '<div class="th">'+sil(s.kind)+'</div><div class="n"><span>'+s.ship_name+'</span><span class="chk">✓</span></div>'+
+      '<div class="mm">'+s.ship_model+'</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">'+tag+(s.busy?'<span class="badge b-red">On mission</span>':(s.loan?'<span class="badge b-blue">'+s.loan+'</span>':''))+'</div>'+
+      '<div class="rl">'+s.roles+'</div></button>';
+  }
+
+  function render(){
+    drawSteps(); var b=$('#body'); setMsg('');
+    if(done){
+      var t=tyOf(S.type), p=shipById(S.primary);
+      b.innerHTML='<div class="succ"><div class="ok-ring">✓</div><h2>Mission created</h2><p class="hint">Crew slots are open. The mission is listed on the Mission Board.</p>'+
+        '<div class="raised box"><div class="h3">'+esc(S.name)+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+badge(S.type)+'<span class="badge b-amber">WAITING FOR CREW</span><span class="badge '+(S.pub?'b-blue':'b-amber')+'">'+(S.pub?'Public':'Org only')+'</span></div><div class="hint">'+p.ship_name+' · '+fmt(S.time)+'</div></div>'+
+        '<div style="margin-top:18px;display:flex;gap:10px;justify-content:center"><button class="btn" id="again">Create another</button><button class="btn go" id="view">View on Mission Board</button></div></div>';
+      return;
+    }
+    if(step===0){
+      b.innerHTML='<div class="two"><div class="col"><label class="lbl">Mission name<input class="inp" id="name" maxlength="60" placeholder="e.g. Operation Pale Harbor" value="'+esc(S.name)+'"><span class="hint" id="nh">Names must be unique across Nexus.</span></label>'+
+        '<div><div class="h3">Mission type</div><div class="types">'+TYPES.map(function(t){return '<button class="raised pick ty'+(S.type===t.name?' sel':'')+'" style="--c:var('+t.c+')" data-type="'+t.name+'"><span class="em">'+t.emoji+'</span><span><b>'+t.name+'</b><span>'+t.description+'</span></span></button>'}).join('')+'</div></div></div>'+
+        '<div><div class="h3">Preview</div><div class="raised pv" id="pv"></div></div></div>';
+      pv(); nameHint();
+    }else if(step===1){
+      b.innerHTML='<div class="h3">Primary ship</div><p class="hint" style="margin-bottom:12px">Your ships and ships you have an active loan on. A ship already on a mission cannot be chosen.</p><div class="ships">'+SHIPS.map(function(s){return shipCard(s,S.primary===s.id)}).join('')+'</div>';
+    }else if(step===2){
+      var used=1+S.supp.length, slots='';for(var i=0;i<CFG.max_ships_per_mission;i++)slots+='<i class="'+(i<used?'on':'')+'"></i>';
+      b.innerHTML='<div class="h3">Supporting ships <span style="text-transform:none;letter-spacing:0;color:var(--fg3);font-weight:400">· optional</span></div><div class="cap"><span>Ships on this mission '+used+' of '+CFG.max_ships_per_mission+'</span><span class="slotrow">'+slots+'</span></div><div class="ships">'+
+        SHIPS.filter(function(s){return s.id!==S.primary}).map(function(s){var full=S.supp.length>=CFG.max_ships_per_mission-1&&S.supp.indexOf(s.id)<0;var h=shipCard(s,S.supp.indexOf(s.id)>=0);return full&&!s.busy?h.replace('data-ship','disabled data-ship'):h}).join('')+'</div>';
+    }else if(step===3){
+      b.innerHTML='<div class="col" style="max-width:620px"><label class="lbl">Objectives<small>Describe what the crew should accomplish. At least 10 words.</small><textarea class="inp" id="obj" placeholder="Escort the convoy from Port Olisar to the Pyro gateway, hold position while cargo is transferred, and return under fire cover.">'+esc(S.obj)+'</textarea></label>'+
+        '<div><div class="words" id="wb"><i></i></div><div class="count" id="wc"></div></div></div>';
+      wc();
+    }else if(step===4){
+      b.innerHTML='<div class="col" style="max-width:520px"><label class="lbl">Scheduled time<small>mission_time · when the crew should be ready</small><input class="inp" type="datetime-local" id="mt" value="'+S.time+'"></label>'+
+        '<div class="chips" id="qt"><button class="chip" data-m="60">In 1 hour</button><button class="chip" data-m="120">In 2 hours</button><button class="chip" data-m="240">In 4 hours</button><button class="chip" data-m="1440">Tomorrow</button></div>'+
+        '<label class="lbl">Queue expiry<small>queue_expires_at · open slots close at this time</small><input class="inp" type="datetime-local" id="qe" value="'+S.expires+'"></label><div class="hint" id="th">Queue closes before the mission begins.</div></div>';
+    }else{
+      var p2=shipById(S.primary), sup=S.supp.map(function(i){return shipById(i).ship_name}).join(', ')||'None';
+      function sec(k,v,s,full){return '<div class="raised sec'+(full?' full':'')+'"><div class="hd"><span class="k">'+k+'</span><button class="edit" data-go="'+s+'">Edit</button></div><div class="v">'+v+'</div></div>'}
+      b.innerHTML='<div class="rv">'+sec('Name',esc(S.name),0)+sec('Type',badge(S.type),0)+sec('Primary ship',p2.ship_name+'<div class="hint">'+p2.ship_model+'</div>',1)+sec('Supporting ships',sup,2)+
+        sec('Objectives',esc(S.obj),3,true)+sec('Mission time',fmt(S.time),4)+sec('Queue expires',fmt(S.expires),4)+
+        '<div class="raised sec full"><div class="hd"><span class="k">Visibility · is_public</span></div><div class="seg" id="vis"><button data-v="1" class="'+(S.pub?'on':'')+'">Public</button><button data-v="0" class="'+(S.pub?'':'on')+'">Org only</button></div><div class="hint" style="margin-top:8px">Status on create: WAITING FOR CREW</div></div></div>';
+    }
+  }
+  function pv(){
+    var t=tyOf(S.type), p=$('#pv'); if(!p)return;
+    p.style.setProperty('--c',t?'var('+t.c+')':'var(--rim1)');
+    p.innerHTML=badge(S.type)+'<div class="t">'+(S.name?esc(S.name):'<span style="color:var(--fg3)">Untitled mission</span>')+'</div><div class="m">Commander Unger Poshet</div><div style="margin-top:8px"><span class="badge b-amber">WAITING FOR CREW</span></div>';
+  }
+  function nameHint(){
+    var h=$('#nh'),i=$('#name'); if(!h)return; var v=S.name.trim().toUpperCase();
+    i.classList.remove('bad'); h.className='hint';
+    if(!v){h.textContent='Names must be unique across Nexus.';return}
+    if(TAKEN.indexOf(v)>=0){h.textContent='That name is already taken.';h.classList.add('err');i.classList.add('bad')}
+    else if(v.length<4){h.textContent='Use at least 4 characters.'}
+    else{h.textContent='Name is available.';h.classList.add('ok')}
+  }
+  function wc(){var n=words(S.obj),w=$('#wb');if(!w)return;w.classList.toggle('ok',n>=10);w.firstChild.style.width=Math.min(100,n*10)+'%';$('#wc').textContent=n+' of 10 words minimum';}
+
+  function validate(){
+    if(step===0){var v=S.name.trim().toUpperCase();if(v.length<4)return 'Enter a mission name of at least 4 characters.';if(TAKEN.indexOf(v)>=0)return 'That mission name is already taken.';if(!S.type)return 'Choose a mission type.'}
+    if(step===1&&!S.primary)return 'Choose a primary ship.';
+    if(step===3&&words(S.obj)<10)return 'Objectives need at least 10 words ('+words(S.obj)+' so far).';
+    if(step===4){var t=new Date(S.time),q=new Date(S.expires);if(!S.time||isNaN(t))return 'Set a mission time.';if(t<new Date())return 'Mission time must be in the future.';if(!S.expires||isNaN(q))return 'Set a queue expiry.';if(q>=t)return 'Queue expiry must be before the mission time.'}
+    return '';
+  }
+  function go(n){step=n;render()}
+  $('#next').onclick=function(){
+    var e=validate(); if(e){setMsg(e,true);return}
+    if(step===NAMES.length-1){done=true;render();return} go(step+1);
+  };
+  $('#back').onclick=function(){if(step>0)go(step-1)};
+  $('#steps').onclick=function(e){var li=e.target.closest('li.done');if(li&&!done)go(+li.dataset.s)};
+  function shut(){$('#modal').style.display='none';$('#closed').classList.add('show')}
+  $('#cancel').onclick=shut; $('#close').onclick=shut;
+  $('#reopen').onclick=function(){$('#modal').style.display='';$('#closed').classList.remove('show')};
+
+  $('#body').addEventListener('input',function(e){
+    if(e.target.id==='name'){S.name=e.target.value;pv();nameHint();setMsg('')}
+    else if(e.target.id==='obj'){S.obj=e.target.value;wc();setMsg('')}
+    else if(e.target.id==='mt'){S.time=e.target.value;setMsg('')}
+    else if(e.target.id==='qe'){S.expires=e.target.value;setMsg('')}
+  });
+  $('#body').addEventListener('click',function(e){
+    var t=e.target.closest('[data-type]');if(t){S.type=t.dataset.type;render();return}
+    var s=e.target.closest('[data-ship]');
+    if(s){var id=s.dataset.ship;
+      if(step===1){S.primary=id;S.supp=S.supp.filter(function(x){return x!==id})}
+      else{var i=S.supp.indexOf(id);if(i>=0)S.supp.splice(i,1);else if(S.supp.length<CFG.max_ships_per_mission-1)S.supp.push(id)}
+      render();return}
+    var c=e.target.closest('#qt .chip');if(c){var m=+c.dataset.m;S.time=plusMin(m);S.expires=plusMin(Math.max(15,m-30));render();return}
+    var g=e.target.closest('[data-go]');if(g){go(+g.dataset.go);return}
+    var v=e.target.closest('#vis button');if(v){S.pub=v.dataset.v==='1';render();return}
+    if(e.target.id==='again'){S=JSON.parse(JSON.stringify(S0));S.time=plusMin(120);S.expires=plusMin(90);done=false;step=0;render()}
+    if(e.target.id==='view'){shut()}
+  });
+  render();
+})();
+</script>

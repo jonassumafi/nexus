@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus Radio Panel — Reference Design</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; padding: 30px; display: flex; gap: 24px; flex-wrap: wrap; }
+
+.section-lbl { font-size: 10px; color: #FFBB33; letter-spacing: 0.14em; margin-bottom: 10px; }
+
+/* PANEL — texture background */
+.panel {
+  width: 300px;
+  background: url('/images/radio_panel.png') center/cover no-repeat;
+  background-color: #7AAAC8;
+  position: relative;
+}
+.panel-content { position: relative; z-index: 1; }
+
+/* HEADER */
+.panel-header {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0,0,0,0.15);
+}
+.title-block { display: flex; flex-direction: column; align-items: flex-start; }
+.title-main {
+  font-size: 12px;
+  color: #061018;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+.title-sub {
+  font-size: 10px;
+  color: #1A3A50;
+  letter-spacing: 0.08em;
+  /* centered under NEXUS COMM */
+  align-self: center;
+}
+.header-right { display: flex; align-items: center; gap: 6px; }
+.live-pill {
+  background: rgba(6,16,24,0.70);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 10px;
+  color: #33DDAA;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.gear-pill {
+  background: rgba(6,16,24,0.70);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 20px;
+  color: #9DC4D8;
+  cursor: pointer;
+  /* Same pill size as action buttons */
+}
+
+/* FREQUENCY DISPLAY */
+.freq-block {
+  padding: 16px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,0,0,0.15);
+}
+.freq-val {
+  font-size: 36px;
+  color: #061018;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+.freq-sub {
+  font-size: 11px;
+  color: #1A3A50;
+  margin-top: 2px;
+}
+
+/* ACTION ROW — RETUNE / DISCONNECT */
+.action-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+.action-pill {
+  background: rgba(6,16,24,0.70);
+  border-radius: 4px;
+  padding: 6px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  min-width: 80px;
+}
+.action-icon {
+  font-size: 22px; /* 30% larger than previous 18px */
+  color: #9DC4D8;
+}
+.action-icon.red { color: #CC3322; }
+.action-lbl {
+  font-size: 9px;
+  color: #9DC4D8;
+  letter-spacing: 0.1em;
+  font-weight: bold;
+}
+.action-lbl.red { color: #CC3322; }
+
+/* CREW ON FREQUENCY */
+.crew-block {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+.crew-header {
+  font-size: 10px;
+  color: #061018;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.crew-none { font-size: 10px; color: #1A3A50; }
+.crew-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.crew-dot { width: 7px; height: 7px; border-radius: 50%; background: #1A3A50; }
+.crew-dot.live { background: #CC3322; }
+.crew-name { font-size: 11px; color: #061018; font-weight: bold; }
+
+/* MIC ROW */
+.mic-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+.mic-left { display: flex; align-items: center; gap: 6px; }
+.mic-dot { width: 8px; height: 8px; border-radius: 50%; background: #1A7A40; }
+.mic-lbl { font-size: 10px; color: #061018; font-weight: bold; }
+.mic-status-active { font-size: 10px; color: #1A7A40; font-weight: bold; }
+.mic-status-muted { font-size: 10px; color: #CC3322; font-weight: bold; }
+.mute-btn {
+  font-size: 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+/* MIC LEVEL METER */
+.meter-block {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+.meter-lbl {
+  font-size: 10px;
+  color: #061018;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.meter-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 2px;
+}
+.meter-fill {
+  height: 100%;
+  width: 40%;
+  background: #1A7A40;
+  border-radius: 2px;
+}
+
+/* MIC VOLUME SLIDER */
+.vol-block {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+.vol-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.vol-lbl { font-size: 10px; color: #061018; font-weight: bold; }
+.vol-val { font-size: 10px; color: #061018; font-weight: bold; }
+.vol-slider { width: 100%; accent-color: #061018; }
+
+/* PTT BUTTON */
+.ptt-block { padding: 12px 14px; }
+.ptt-btn {
+  width: 100%;
+  font-size: 14px;
+  padding: 12px 0;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-weight: bold;
+  cursor: pointer;
+  border: 2px solid #061018;
+  background: rgba(6,16,24,0.85);
+  color: #9DC4D8;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+.ptt-btn.active {
+  border-color: #CC3322;
+  color: #CC3322;
+  background: rgba(204,51,34,0.15);
+}
+
+/* PRESS AND HOLD hint */
+.hint {
+  font-size: 10px;
+  color: #061018; /* dark navy, readable against texture */
+  font-weight: bold;
+  text-align: center;
+  padding: 0 14px 12px;
+  letter-spacing: 0.08em;
+}
+
+/* STANDBY STATE */
+.standby-body {
+  padding: 20px 16px;
+  text-align: center;
+}
+.standby-text {
+  font-size: 12px;
+  color: #061018;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+.mission-prompt {
+  font-size: 11px;
+  color: #5A3A00;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.mission-tune-btn {
+  width: 100%;
+  font-size: 11px;
+  color: #5A3A00;
+  border: 2px solid #5A3A00;
+  background: rgba(90,58,0,0.12);
+  padding: 7px 0;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 14px;
+  letter-spacing: 0.08em;
+}
+.freq-input-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.freq-input {
+  width: 120px;
+  background: #EEF4F8; /* light, readable */
+  border: 1px solid #2A5A7A;
+  color: #061018;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  padding: 6px 8px;
+}
+.tune-btn {
+  font-size: 12px;
+  color: #EEF4F8;
+  border: none;
+  background: #061018;
+  padding: 6px 16px;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+}
+</style>
+</head>
+<body>
+
+<div>
+  <div class="section-lbl">STATE 1 — TUNED</div>
+  <div class="panel">
+    <div class="panel-content">
+      <div class="panel-header">
+        <div class="title-block">
+          <div class="title-main">NEXUS COMM</div>
+          <div class="title-sub">SYSTEM</div>
+        </div>
+        <div class="header-right">
+          <div class="live-pill">● LIVE</div>
+          <div class="gear-pill">⚙</div>
+        </div>
+      </div>
+
+      <div class="freq-block">
+        <div class="freq-val">133.5</div>
+        <div class="freq-sub">MHz — TUNED</div>
+      </div>
+
+      <div class="action-row">
+        <div class="action-pill">
+          <span class="action-icon">⇄</span>
+          <span class="action-lbl">RETUNE</span>
+        </div>
+        <div class="action-pill">
+          <span class="action-icon red">⏏</span>
+          <span class="action-lbl red">DISCONNECT</span>
+        </div>
+      </div>
+
+      <div class="crew-block">
+        <div class="crew-header">ON FREQUENCY</div>
+        <div class="crew-row">
+          <div class="crew-dot live"></div>
+          <span class="crew-name">VOSS MARLOWE</span>
+        </div>
+        <div class="crew-row">
+          <div class="crew-dot"></div>
+          <span class="crew-name" style="color:#2A5A7A;font-weight:normal;">RAEL THORNE</span>
+        </div>
+      </div>
+
+      <div class="mic-row">
+        <div class="mic-left">
+          <div class="mic-dot"></div>
+          <span class="mic-lbl">MIC</span>
+          <span class="mic-status-active">ACTIVE</span>
+        </div>
+        <button class="mute-btn">🔊</button>
+      </div>
+
+      <div class="meter-block">
+        <div class="meter-lbl">MIC LEVEL</div>
+        <div class="meter-track"><div class="meter-fill"></div></div>
+      </div>
+
+      <div class="vol-block">
+        <div class="vol-row">
+          <span class="vol-lbl">MIC VOLUME</span>
+          <span class="vol-val">100%</span>
+        </div>
+        <input type="range" class="vol-slider" value="100" />
+      </div>
+
+      <div class="ptt-block">
+        <button class="ptt-btn">● TRANSMIT (V)</button>
+      </div>
+      <div class="hint">PRESS AND HOLD</div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="section-lbl">STATE 2 — STANDBY</div>
+  <div class="panel">
+    <div class="panel-content">
+      <div class="panel-header">
+        <div class="title-block">
+          <div class="title-main">NEXUS COMM</div>
+          <div class="title-sub">SYSTEM</div>
+        </div>
+        <div class="header-right">
+          <div class="gear-pill">⚙</div>
+        </div>
+      </div>
+
+      <div class="standby-body">
+        <div class="standby-text">NO FREQUENCY TUNED</div>
+
+        <!-- Only shown when player has a mission with a frequency -->
+        <div class="mission-prompt">MISSION FREQUENCY: 127.4 MHz</div>
+        <button class="mission-tune-btn">TUNE TO MISSION</button>
+
+        <div class="freq-input-row">
+          <input class="freq-input" placeholder="127.4" maxlength="5" />
+          <button class="tune-btn">TUNE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--
+IMPLEMENTATION NOTES FOR CLAUDE CODE:
+
+1. BACKGROUND
+   The panel uses background: url('/images/radio_panel.png') center/cover no-repeat
+   with background-color: #7AAAC8 as fallback.
+   The outermost wrapper has position: relative, zIndex: 9001 to sit above
+   the global .scanlines overlay (z-index 9000).
+   All child containers must have background: transparent so the texture
+   shows through the entire panel.
+
+2. TITLE — two lines, stacked:
+   "NEXUS COMM" — fontSize 12, bold, color #061018
+   "SYSTEM" — fontSize 10, color #1A3A50, centered under NEXUS COMM
+   Both in the same left-aligned flex column.
+
+3. HEADER ROW — LIVE pill and gear pill must be on the SAME line,
+   both in the header-right flex container. Never allow them to wrap.
+
+4. ACTION PILLS (RETUNE / DISCONNECT):
+   Same pill size as gear — background rgba(6,16,24,0.70), borderRadius 4px
+   Icons: fontSize 22px (30% larger than previous 18px)
+   Labels: fontSize 9px, bold
+   RETUNE color: #9DC4D8
+   DISCONNECT color: #CC3322
+
+5. GEAR PILL — same background and borderRadius as action pills.
+   fontSize 20px. Must be visually the same size as the action pills.
+
+6. PRESS AND HOLD hint — color #061018 (dark navy, not dim gray).
+   Must be clearly readable against the texture.
+
+7. FREQUENCY INPUT (standby) — background #EEF4F8 (light),
+   color #061018. Readable against the steel blue texture.
+   TUNE button — background #061018, color #EEF4F8.
+
+8. MIC MUTED STATE:
+   mic-dot: background #CC3322
+   mic-status: color #CC3322, text "MUTED"
+   mute-btn icon: 🔇 (with red fill background rgba(204,51,34,0.8))
+
+9. PTT ACTIVE STATE:
+   border-color #CC3322, color #CC3322,
+   background rgba(204,51,34,0.15)
+
+10. ALL interactive elements must have position: relative, zIndex: 1
+    so they render above the background texture and remain clickable.
+
+11. Section dividers: border-bottom 1px solid rgba(0,0,0,0.15)
+    (dark semi-transparent, readable against the steel blue texture)
+-->
+
+</body>
+</html>

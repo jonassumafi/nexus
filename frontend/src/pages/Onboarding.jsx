@@ -23,31 +23,36 @@ const playTransmit = () => {
 
 // ─── Shared styles ───────────────────────────────────────────────────────────
 
+// Shared styles — token-aligned. Inputs/selects/textareas share the .inp recipe
+// (dark inset, rim0 border, rim2 on focus). Buttons share the .btn pressable
+// recipe (gradient fill, 3px hard under-edge, 3px travel on :active).
 const S = {
   input: {
     display: 'block',
     width: '100%',
-    background: '#000',
-    border: '1px solid #66AADD',
-    color: '#66AADD',
-    fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-    fontSize: 16,
-    padding: '9px 15px',
+    background: '#02080e',
+    border: '1px solid var(--rim0)',
+    color: 'var(--fg0)',
+    fontFamily: 'var(--font)',
+    fontSize: 14,
+    padding: '9px 11px',
     outline: 'none',
-    borderRadius: 0,
+    borderRadius: 5,
+    boxShadow: '0 2px 6px #000 inset',
     boxSizing: 'border-box',
   },
   select: {
     display: 'block',
     width: '100%',
-    background: '#000',
-    border: '1px solid #66AADD',
-    color: '#66AADD',
-    fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-    fontSize: 16,
-    padding: '11px 15px',
+    background: '#02080e',
+    border: '1px solid var(--rim0)',
+    color: 'var(--fg0)',
+    fontFamily: 'var(--font)',
+    fontSize: 14,
+    padding: '9px 11px',
     outline: 'none',
-    borderRadius: 0,
+    borderRadius: 5,
+    boxShadow: '0 2px 6px #000 inset',
     boxSizing: 'border-box',
     appearance: 'none',
     WebkitAppearance: 'none',
@@ -56,43 +61,46 @@ const S = {
   textarea: {
     display: 'block',
     width: '100%',
-    background: '#000',
-    border: '1px solid #66AADD',
-    color: '#66AADD',
-    fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-    fontSize: 16,
-    padding: '12px 15px',
+    background: '#02080e',
+    border: '1px solid var(--rim0)',
+    color: 'var(--fg0)',
+    fontFamily: 'var(--font)',
+    fontSize: 14,
+    padding: '10px 11px',
     outline: 'none',
     resize: 'vertical',
-    borderRadius: 0,
+    borderRadius: 5,
+    boxShadow: '0 2px 6px #000 inset',
     boxSizing: 'border-box',
+    lineHeight: 1.6,
   },
   label: {
     display: 'block',
-    color: '#2A6A9A',
-    fontSize: 17,
-    letterSpacing: '0.08em',
+    color: 'var(--fg2)',
+    fontSize: 12,
+    fontWeight: 600,
+    letterSpacing: '0.03em',
     marginBottom: 6,
-    marginTop: 21,
-  },
-  btn: (disabled = false, variant = 'default') => ({
-    background: disabled ? 'transparent' : (variant === 'secondary' ? 'transparent' : '#000'),
-    border: `1px solid ${disabled ? '#1A3D55' : '#66AADD'}`,
-    color: disabled ? '#1A3D55' : '#66AADD',
-    fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-    fontSize: 18,
-    padding: '12px 30px',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    letterSpacing: '0.1em',
+    marginTop: 18,
     textTransform: 'uppercase',
-    borderRadius: 0,
+  },
+  // btn is now a plain object getter; actual visuals come from the .btn
+  // class via className. Returning minimal inline overrides for size/variant.
+  btn: (disabled = false, variant = 'default') => ({
+    fontSize: 14,
+    padding: '10px 22px',
+    opacity: disabled ? 0.5 : 1,
+    pointerEvents: disabled ? 'none' : 'auto',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    width: '100%',
   }),
-  h1: { color: '#99CCFF', fontSize: 20, letterSpacing: '0.06em', marginBottom: 9 },
-  h2: { color: '#2A6A9A', fontSize: 18, letterSpacing: '0.04em', marginBottom: 30 },
-  body: { color: '#4488BB', fontSize: 20, lineHeight: 1.8 },
-  dimLine: { color: '#2A6A9A', fontSize: 20, lineHeight: 2 },
-  error: { color: '#FF5544', fontSize: 18, marginTop: 15 },
-  step: { color: '#1A3D55', fontSize: 16, marginBottom: 16 },
+  btnClass: (variant = 'default') => `btn ${variant === 'go' ? 'go' : variant === 'warn' ? 'warn' : ''}`.trim(),
+  h1: { color: 'var(--fg0)', fontSize: 20, fontWeight: 700, letterSpacing: '0.06em', marginBottom: 9, textTransform: 'uppercase' },
+  h2: { color: 'var(--blue)', fontSize: 13, fontWeight: 600, letterSpacing: '0.14em', marginBottom: 28, textTransform: 'uppercase' },
+  body: { color: 'var(--fg1)', fontSize: 14, lineHeight: 1.8 },
+  dimLine: { color: 'var(--fg3)', fontSize: 14, lineHeight: 2 },
+  error: { color: 'var(--red)', fontSize: 13, marginTop: 14 },
+  step: { color: 'var(--fg3)', fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', marginBottom: 14, textTransform: 'uppercase' },
 };
 
 // ─── Dot animation helper ─────────────────────────────────────────────────────
@@ -120,8 +128,14 @@ function countWords(text) {
 function CardField({ label, value }) {
   return (
     <div style={{ marginBottom: 8 }}>
-      <div style={{ color: '#1A3D55', fontSize: 16, letterSpacing: '0.1em' }}>{label}</div>
-      <div style={{ color: '#66AADD', fontSize: 16, borderBottom: '1px solid #0D2030', paddingBottom: 2 }}>
+      <div style={{
+        color: 'var(--fg3)', fontSize: 11, fontWeight: 600,
+        letterSpacing: '0.08em', textTransform: 'uppercase',
+      }}>{label}</div>
+      <div style={{
+        color: 'var(--fg0)', fontSize: 14,
+        borderBottom: '1px solid var(--rim0)', paddingBottom: 3,
+      }}>
         {value || '—'}
       </div>
     </div>
@@ -131,43 +145,26 @@ function CardField({ label, value }) {
 // ─── Button with hover ────────────────────────────────────────────────────────
 
 function Btn({ children, onClick, disabled, variant }) {
-  const [hovered, setHovered] = useState(false);
-  const base = S.btn(disabled, variant);
-  const hoverStyle = !disabled && hovered
-    ? { background: '#66AADD', color: '#000' }
-    : {};
   return (
     <button
+      className={S.btnClass(variant)}
+      disabled={disabled}
       onClick={disabled ? undefined : () => { playClick(); onClick?.(); }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{ ...base, ...hoverStyle }}
+      style={S.btn(disabled, variant)}
     >
       {children}
     </button>
   );
 }
 
-// ─── Back button ─────────────────────────────────────────────────────────────
-
 function BackBtn({ onClick }) {
   return (
     <button
+      className="btn"
       onClick={() => { playClick(); onClick(); }}
-      style={{
-        background: '#000',
-        border: '1px solid #2A6A9A',
-        color: '#4488BB',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        fontSize: 16,
-        letterSpacing: '0.14em',
-        padding: '10px 20px',
-        width: '100%',
-        marginTop: 10,
-        cursor: 'pointer',
-      }}
+      style={{ width: '100%', marginTop: 10, fontSize: 13, padding: '8px 16px' }}
     >
-      [ ← GO BACK ]
+      ← Go back
     </button>
   );
 }
@@ -177,8 +174,8 @@ function BackBtn({ onClick }) {
 function Step1({ onNext }) {
   return (
     <>
-      <div style={S.h1}>NEXUS INTERSTELLAR TRAFFIC SYSTEM v1.0</div>
-      <div style={S.h2}>CITIZEN REGISTRATION SYSTEM</div>
+      <div style={S.h1}>Nexus Interstellar Traffic System v1.0</div>
+      <div style={S.h2}>Citizen registration</div>
       <div style={{ ...S.body, whiteSpace: 'normal', maxWidth: 600, marginBottom: 28 }}>
         <div style={{ marginBottom: 16 }}>
           You are now interfacing with the Nexus Interstellar Traffic System. To access fleet mission data and personnel files, you must complete citizen registration.
@@ -188,7 +185,7 @@ function Step1({ onNext }) {
         </div>
         <div>Do you wish to proceed?</div>
       </div>
-      <Btn onClick={onNext}>[ INITIATE REGISTRATION ]</Btn>
+      <Btn variant="go" onClick={onNext}>Initiate registration</Btn>
     </>
   );
 }
@@ -196,30 +193,33 @@ function Step1({ onNext }) {
 // ─── Screen 2: System unlocks ─────────────────────────────────────────────────
 
 const UNLOCKS = [
-  ['CREW ASSIGNMENT',            'ENABLED'],
-  ['MISSION PARTICIPATION',      'ENABLED'],
-  ['RP RANK SYSTEM',             'ENABLED'],
-  ['SHIP REGISTRY ACCESS',       'ENABLED'],
-  ['POST-MISSION LOG SUBMISSION','ENABLED'],
-  ['NEXUS COMMS NETWORK',        'ENABLED'],
+  'Crew assignment',
+  'Mission participation',
+  'RP rank system',
+  'Ship registry access',
+  'Post-mission log submission',
+  'Nexus comms network',
 ];
 
 function Step2({ onNext, onBack }) {
   return (
     <>
-      <div style={S.h1}>ACCESS GRANTED — SYSTEM OVERVIEW</div>
-      <div style={{ fontSize: 16, color: '#2A6A9A', letterSpacing: '0.06em', marginBottom: 20 }}>
-        REGISTRATION UNLOCKS THE FOLLOWING SYSTEM PRIVILEGES.
-      </div>
-      <div style={{ marginBottom: 24 }}>
-        {UNLOCKS.map(([label, val]) => (
-          <div key={label} style={{ ...S.dimLine, display: 'flex', justifyContent: 'space-between' }}>
-            <span>&gt; {label}</span>
-            <span style={{ color: '#33DDAA' }}>{val}</span>
+      <div style={S.h1}>Access granted — system overview</div>
+      <div style={S.h2}>Registration unlocks the following privileges.</div>
+      <div className="raised" style={{ padding: 14, marginBottom: 20 }}>
+        {UNLOCKS.map(label => (
+          <div key={label} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '6px 0',
+            borderBottom: '1px solid rgba(26,58,80,.4)',
+            fontSize: 13,
+          }}>
+            <span style={{ color: 'var(--fg1)' }}>{label}</span>
+            <span className="badge b-lime">Enabled</span>
           </div>
         ))}
       </div>
-      <Btn onClick={onNext}>[ CONTINUE ]</Btn>
+      <Btn variant="go" onClick={onNext}>Continue</Btn>
       <BackBtn onClick={onBack} />
     </>
   );
@@ -231,40 +231,43 @@ function Step3({ formData, update, onNext, onBack }) {
   const valid = formData.citizen_name.trim() && formData.place_of_birth.trim() && formData.citizenship;
   return (
     <>
-      <div style={S.h1}>BORDER INTAKE — CITIZEN IDENTIFICATION</div>
+      <div style={S.h1}>Border intake — citizen identification</div>
       <div style={S.h2}>All fields required.</div>
 
-      <label style={S.label}>CITIZEN NAME</label>
+      <label style={S.label}>Citizen name</label>
       <input
+        className="inp"
         style={S.input}
         value={formData.citizen_name}
         placeholder="e.g. Kira Valdyn"
         onChange={e => update('citizen_name', e.target.value)}
       />
 
-      <label style={S.label}>PLACE OF BIRTH</label>
+      <label style={S.label}>Place of birth</label>
       <input
+        className="inp"
         style={S.input}
         value={formData.place_of_birth}
         placeholder="e.g. Crusader, Stanton System"
         onChange={e => update('place_of_birth', e.target.value)}
       />
 
-      <label style={S.label}>CITIZENSHIP</label>
+      <label style={S.label}>Citizenship</label>
       <div style={{ position: 'relative' }}>
         <select
+          className="inp"
           style={S.select}
           value={formData.citizenship}
           onChange={e => update('citizenship', e.target.value)}
         >
-          <option value="" disabled>-- SELECT CITIZENSHIP --</option>
-          <optgroup label="STANTON SYSTEM">
+          <option value="" disabled>— Select citizenship —</option>
+          <optgroup label="Stanton system">
             <option value="Hurston">Hurston</option>
             <option value="Crusader">Crusader</option>
             <option value="ArcCorp">ArcCorp</option>
             <option value="microTech">microTech</option>
           </optgroup>
-          <optgroup label="PYRO SYSTEM">
+          <optgroup label="Pyro system">
             <option value="Pyro I">Pyro I</option>
             <option value="Monox (Pyro II)">Monox (Pyro II)</option>
             <option value="Bloom (Pyro III)">Bloom (Pyro III)</option>
@@ -272,20 +275,20 @@ function Step3({ formData, update, onNext, onBack }) {
             <option value="Pyro V">Pyro V</option>
             <option value="Terminus (Pyro VI)">Terminus (Pyro VI)</option>
           </optgroup>
-          <optgroup label="OTHER">
-            <option value="Freeborn (No Planetary Citizenship)">Freeborn (No Planetary Citizenship)</option>
-            <option value="Outsider (Stateless)">Outsider (Stateless)</option>
-            <option value="Unknown / Unregistered">Unknown / Unregistered</option>
+          <optgroup label="Other">
+            <option value="Freeborn (No Planetary Citizenship)">Freeborn (no planetary citizenship)</option>
+            <option value="Outsider (Stateless)">Outsider (stateless)</option>
+            <option value="Unknown / Unregistered">Unknown / unregistered</option>
           </optgroup>
         </select>
         <div style={{
-          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-          color: '#2A6A9A', pointerEvents: 'none', fontSize: 16,
+          position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+          color: 'var(--fg3)', pointerEvents: 'none', fontSize: 10,
         }}>▼</div>
       </div>
 
       <div style={{ marginTop: 24 }}>
-        <Btn onClick={onNext} disabled={!valid}>[ SUBMIT INTAKE ]</Btn>
+        <Btn variant="go" onClick={onNext} disabled={!valid}>Submit intake</Btn>
         <BackBtn onClick={onBack} />
       </div>
     </>
@@ -307,22 +310,23 @@ function Step4({ formData, update, onNext, onBack }) {
 
   return (
     <>
-      <div style={S.h1}>CITIZEN BIOGRAPHY</div>
-      <div style={S.h2}>WRITE YOUR CHARACTER'S BIOGRAPHY. OUR AI WILL REFINE IT.</div>
+      <div style={S.h1}>Citizen biography</div>
+      <div style={S.h2}>Write your character's biography. Our AI will refine it.</div>
 
-      <label style={S.label}>CITIZEN BIOGRAPHY</label>
+      <label style={S.label}>Citizen biography</label>
       <textarea
+        className="inp"
         style={{ ...S.textarea, minHeight: 120 }}
         value={formData.biography}
         placeholder="Write your character's biography — their background, history, motivations, where they've been, what they do."
         onChange={handleChange}
       />
 
-      <div style={{ fontSize: 16, marginTop: 6, marginBottom: 20, color: atLimit ? '#FF5544' : '#1A3D55' }}>
+      <div className={`counter${atLimit ? ' bad' : ''}`} style={{ marginTop: 6, marginBottom: 20 }}>
         {wordCount} / 100 words
       </div>
 
-      <Btn onClick={onNext} disabled={!valid}>[ CONFIRM BIOGRAPHY ]</Btn>
+      <Btn variant="go" onClick={onNext} disabled={!valid}>Confirm biography</Btn>
       <BackBtn onClick={onBack} />
     </>
   );
@@ -357,12 +361,11 @@ function Step5({ formData, update, onNext, onBack, portraitDescription, setPortr
 
   return (
     <>
-      <div style={S.h1}>CITIZEN PORTRAIT — AI GENERATION</div>
-      <div style={{ ...S.h2, marginBottom: 16 }}>
-        DESCRIBE YOUR APPEARANCE
-      </div>
+      <div style={S.h1}>Citizen portrait — AI generation</div>
+      <div style={{ ...S.h2, marginBottom: 16 }}>Describe your appearance.</div>
 
       <textarea
+        className="inp"
         style={{ ...S.textarea, minHeight: 90 }}
         value={portraitDescription}
         placeholder="Describe your physical appearance — features, clothing, expression, distinguishing marks."
@@ -372,33 +375,42 @@ function Step5({ formData, update, onNext, onBack, portraitDescription, setPortr
 
       <div style={{ marginTop: 20 }}>
         {state === 'idle' && (
-          <Btn onClick={() => { playModem(); generate(); }} disabled={!portraitDescription.trim()}>[ GENERATE PORTRAIT ]</Btn>
+          <Btn variant="go" onClick={() => { playModem(); generate(); }} disabled={!portraitDescription.trim()}>
+            Generate portrait
+          </Btn>
         )}
 
         {state === 'generating' && (
-          <div style={{ color: '#66AADD', fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace", fontSize: 16 }}>
-            GENERATING PORTRAIT {dotStr}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            color: 'var(--fg2)', fontSize: 13,
+          }}>
+            <span className="spinner" />
+            Generating portrait {dotStr}
           </div>
         )}
 
         {state === 'preview' && previewUrl && (
           <>
-            <div style={{ margin: '16px auto', textAlign: 'center' }}>
+            <div className="raised" style={{ margin: '16px auto', padding: 10, maxWidth: 320 }}>
               <img
                 src={previewUrl}
                 alt="Generated portrait"
-                style={{ maxWidth: 300, border: '1px solid #66AADD', display: 'block', margin: '0 auto 16px' }}
+                style={{
+                  width: '100%', display: 'block', borderRadius: 4,
+                  border: '1px solid var(--rim0)',
+                }}
               />
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <Btn onClick={accept}>[ ACCEPT PORTRAIT ]</Btn>
-              <Btn onClick={() => { playModem(); generate(); }} variant="secondary">[ REGENERATE ]</Btn>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Btn variant="go" onClick={accept}>Accept portrait</Btn>
+              <Btn onClick={() => { playModem(); generate(); }} variant="secondary">Regenerate</Btn>
             </div>
           </>
         )}
       </div>
 
-      {error && <div style={S.error}>{error}</div>}
+      {error && <div className="err" style={{ marginTop: 12 }}>{error}</div>}
       <BackBtn onClick={onBack} />
     </>
   );
@@ -406,7 +418,7 @@ function Step5({ formData, update, onNext, onBack, portraitDescription, setPortr
 
 // ─── Screen 6: ID card preview ────────────────────────────────────────────────
 
-const CARD_FONT = "'JetBrains Mono', 'Courier New', Courier, monospace";
+const CARD_FONT = "'Inter', system-ui, sans-serif";
 
 function genDocNo(user) {
   const src = user?._id || user?.discord_id || '';
@@ -441,32 +453,60 @@ function Step6({ formData, update, user, onNext, onBack }) {
 
   return (
     <>
-      <div style={S.h1}>CITIZEN IDENTIFICATION CARD — PREVIEW</div>
+      <div style={S.h1}>Citizen identification card — preview</div>
 
       {refining && (
-        <div style={{ color: '#2A6A9A', fontSize: 16, marginBottom: 12, fontFamily: CARD_FONT }}>
-          REFINING BIOGRAPHY {dotStr}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          color: 'var(--fg2)', fontSize: 13, marginBottom: 12, fontFamily: CARD_FONT,
+        }}>
+          <span className="spinner" />Refining biography {dotStr}
         </div>
       )}
 
       {/* Card — pure CSS, no background image */}
       <div style={{ maxWidth: 700, margin: '0 auto 24px', width: '100%', fontFamily: CARD_FONT }}>
-        <div style={{ background: '#FFFFFF', border: '1px solid #2A6A9A' }}>
+        <div style={{
+          /* Textured government-document paper — matches IdCardModal in
+             Dashboard.jsx so the preview card and the final dossier look
+             identical. See notes there for the three-layer rationale. */
+          background: [
+            "repeating-linear-gradient(135deg, rgba(80, 60, 30, 0.025) 0px, rgba(80, 60, 30, 0.025) 1px, transparent 1px, transparent 7px)",
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4   0 0 0 0 0.33   0 0 0 0 0.22   0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+            "linear-gradient(180deg, #F4EDDC 0%, #EFE7D1 55%, #E6DCBE 100%)",
+          ].join(', '),
+          border: '1px solid #2A5A7A',
+          boxShadow: 'inset 0 0 1px rgba(90, 70, 40, 0.25), 0 20px 50px rgba(0, 0, 0, .4)',
+          position: 'relative',
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: 110, left: '50%',
+            transform: 'translateX(-50%)',
+            width: 220, height: 220,
+            opacity: 0.045,
+            pointerEvents: 'none',
+            backgroundImage:
+              "radial-gradient(circle, transparent 44%, #2A3A4A 44%, #2A3A4A 46%, transparent 46%), " +
+              "radial-gradient(circle, transparent 34%, #2A3A4A 34%, #2A3A4A 35%, transparent 35%)",
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+          }} />
 
           {/* Header */}
           <div style={{
             padding: '14px 20px',
-            borderBottom: '1px solid #2A6A9A',
-            background: '#F0F6FA',
+            borderBottom: '1px solid #2A5A7A',
+            background: '#0A1A28',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontSize: 16, color: '#0D1A24', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: 16, color: '#CCE8FF', fontWeight: 'bold', letterSpacing: '0.1em' }}>
                 CITIZEN IDENTIFICATION CARD
               </div>
-              <div style={{ fontSize: 10, color: '#2A3A4A', letterSpacing: '0.08em', marginTop: 3 }}>
+              <div style={{ fontSize: 10, color: '#66AADD', letterSpacing: '0.08em', marginTop: 3 }}>
                 FORM UEE-CIT-001 · OFFICIAL GOVERNMENT DOCUMENT
               </div>
             </div>
@@ -503,7 +543,7 @@ function Step6({ formData, update, user, onNext, onBack }) {
               <div style={{
                 width: '100%',
                 aspectRatio: '3/4',
-                border: '1px solid #2A6A9A',
+                border: '1px solid #2A5A7A',
                 background: '#1A3A50',
                 overflow: 'hidden',
               }}>
@@ -544,8 +584,8 @@ function Step6({ formData, update, user, onNext, onBack }) {
           {/* Footer */}
           <div style={{
             padding: '10px 20px',
-            borderTop: '1px solid #2A6A9A',
-            background: '#F0F6FA',
+            borderTop: '1px solid #2A5A7A',
+            background: '#0A1A28',
             fontSize: 10,
             color: '#FFBB33',
             letterSpacing: '0.05em',
@@ -555,7 +595,7 @@ function Step6({ formData, update, user, onNext, onBack }) {
         </div>
       </div>
 
-      <Btn onClick={() => { playModem(); onNext(); }} disabled={refining}>[ CARD CONFIRMED — PROCEED ]</Btn>
+      <Btn variant="go" onClick={() => { playModem(); onNext(); }} disabled={refining}>Card confirmed — proceed</Btn>
       <BackBtn onClick={onBack} />
     </>
   );
@@ -568,50 +608,70 @@ function Step7({ formData, update, onNext, onBack }) {
     || (formData.affiliation === 'org' && formData.org_invite_code.trim().length === 6);
 
   const optionStyle = (key) => ({
-    border: `1px solid ${formData.affiliation === key ? '#00EEFF' : '#1A3D55'}`,
     padding: 16,
     cursor: 'pointer',
-    color: formData.affiliation === key ? '#66AADD' : '#2A6A9A',
     userSelect: 'none',
     flex: 1,
+    transition: 'transform .12s, border-color .12s, box-shadow .12s',
+    ...(formData.affiliation === key ? {
+      borderColor: 'var(--rim2)',
+      boxShadow: '0 1px 0 rgba(180,225,255,.2) inset, 0 3px 0 #050e18, 0 8px 14px rgba(0,0,0,.45), 0 0 0 1px var(--rim2)',
+    } : {}),
   });
 
   return (
     <>
-      <div style={S.h1}>DECLARE ALLEGIANCE</div>
+      <div style={S.h1}>Declare allegiance</div>
       <div style={{ ...S.body, marginBottom: 20 }}>
         Are you affiliated with a registered organization, or do you operate independently?
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-        <div style={optionStyle('org')} onClick={() => { playClick(); update('affiliation', 'org'); }}>
-          <div style={{ color: '#99CCFF', marginBottom: 8, fontSize: 16 }}>[A] JOIN AN ORGANIZATION</div>
-          <div style={{ fontSize: 16, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <div
+          className="raised"
+          style={{
+            ...optionStyle('org'),
+            opacity: 0.55,
+            cursor: 'not-allowed',
+          }}
+          aria-disabled="true"
+        >
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
+            color: 'var(--blue)', textTransform: 'uppercase', marginBottom: 6,
+          }}>
+            Join an organization
+          </div>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+            color: 'var(--amber)', textTransform: 'uppercase',
+            marginBottom: 10,
+          }}>
+            Unavailable — in testing
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.6 }}>
             Enter your organization's invite code to be assigned to their crew.
           </div>
-          {formData.affiliation === 'org' && (
-            <div onClick={e => e.stopPropagation()}>
-              <label style={{ ...S.label, marginTop: 0 }}>INVITE CODE</label>
-              <input
-                style={{ ...S.input, textTransform: 'uppercase', letterSpacing: '0.2em' }}
-                value={formData.org_invite_code}
-                onChange={e => update('org_invite_code', e.target.value.toUpperCase().slice(0, 6))}
-                placeholder="XXXXXX"
-                maxLength={6}
-              />
-            </div>
-          )}
         </div>
 
-        <div style={optionStyle('freelancer')} onClick={() => { playClick(); update('affiliation', 'freelancer'); }}>
-          <div style={{ color: '#99CCFF', marginBottom: 8, fontSize: 16 }}>[B] FREELANCER</div>
-          <div style={{ fontSize: 16 }}>
+        <div
+          className="raised"
+          style={optionStyle('freelancer')}
+          onClick={() => { playClick(); update('affiliation', 'freelancer'); }}
+        >
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
+            color: 'var(--blue)', textTransform: 'uppercase', marginBottom: 6,
+          }}>
+            Freelancer
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.6 }}>
             Register as an independent operator. You may join an organization later.
           </div>
         </div>
       </div>
 
-      <Btn onClick={onNext} disabled={!valid}>[ DECLARE ALLEGIANCE ]</Btn>
+      <Btn variant="go" onClick={onNext} disabled={!valid}>Declare allegiance</Btn>
       <BackBtn onClick={onBack} />
     </>
   );
@@ -643,61 +703,71 @@ function Step8({ formData, user, onSubmit, loading, error, onBack }) {
 
   useEffect(() => {
     api.get('/rp/ranks')
-      .then(r => setRanks(r.data))
+      .then(r => setRanks(Array.isArray(r.data) && r.data.length ? r.data : FALLBACK_RANKS))
       .catch(() => setRanks(FALLBACK_RANKS))
       .finally(() => setRanksLoading(false));
   }, []);
 
   return (
     <>
-      <div style={S.h1}>REGISTRATION COMPLETE — FINAL BRIEFING</div>
+      <div style={S.h1}>Registration complete — final briefing</div>
 
-      {/* Paragraph 1 */}
       <div style={{ ...S.body, marginBottom: 12 }}>
-        Your rank begins at DRIFTER. Earn RP through missions, crew participation, and post-mission logs.
+        Your rank begins at <b style={{ color: 'var(--fg0)' }}>Drifter</b>. Earn RP through missions, crew participation, and post-mission logs.
       </div>
 
-      {/* Paragraph 2 */}
       <div style={{ ...S.body, marginBottom: 24 }}>
-        Your citizen record has been submitted to the Nexus network. Welcome to the galaxy, {formData.citizen_name || 'operator'}.
+        Your citizen record has been submitted to the Nexus network. Welcome to the galaxy, <b style={{ color: 'var(--fg0)' }}>{formData.citizen_name || 'operator'}</b>.
       </div>
 
-      {/* RP Ranks table */}
-      <div style={{ marginBottom: 24, maxHeight: 220, overflowY: 'auto' }} className="terminal-scroll">
-        <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          color: '#99CCFF', fontSize: 16, paddingBottom: 4,
-          borderBottom: '1px solid #1A3D55', marginBottom: 4,
+      {/* RP Ranks table — raised card */}
+      <div className="raised" style={{ marginBottom: 24, padding: '12px 14px' }}>
+        <div className="h3" style={{
+          display: 'flex', justifyContent: 'space-between', margin: '0 0 8px',
+          borderBottom: '1px solid var(--rim0)', paddingBottom: 6,
+          paddingRight: 14,
         }}>
-          <span>RANK</span>
-          <span>THRESHOLD</span>
+          <span>Rank</span>
+          <span>Threshold</span>
         </div>
-
-        {ranksLoading ? (
-          <div style={{ color: '#2A6A9A', fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace", fontSize: 16, paddingTop: 8 }}>
-            LOADING RANKS {rankDotStr}
-          </div>
-        ) : (
-          ranks.map((r, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', ...S.dimLine, lineHeight: 1.7 }}>
-              <span>{r.emoji} {r.title}</span>
-              <span style={{ color: '#66AADD' }}>
-                {r.min_rp}{r.max_rp === null ? '+' : `–${r.max_rp}`}
-              </span>
+        <div style={{ maxHeight: 220, overflowY: 'auto', paddingRight: 14 }} className="terminal-scroll">
+          {ranksLoading ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              color: 'var(--fg2)', fontSize: 13, paddingTop: 6,
+            }}>
+              <span className="spinner" />Loading ranks {rankDotStr}
             </div>
-          ))
-        )}
+          ) : (
+            ranks.map((r, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '5px 0',
+                fontSize: 13, color: 'var(--fg1)',
+                borderBottom: i < ranks.length - 1 ? '1px solid rgba(26,58,80,.4)' : 'none',
+              }}>
+                <span>{r.emoji} {r.title}</span>
+                <span style={{ color: 'var(--fg3)', fontVariantNumeric: 'tabular-nums' }}>
+                  {r.min_rp}{r.max_rp === null ? '+' : `–${r.max_rp}`}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {loading ? (
-        <div style={{ color: '#66AADD', fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace", fontSize: 16 }}>
-          SUBMITTING RECORD {dotStr}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          color: 'var(--fg2)', fontSize: 13,
+        }}>
+          <span className="spinner" />Submitting record {dotStr}
         </div>
       ) : (
-        <Btn onClick={() => { playTransmit(); onSubmit(); }}>[ ENTER NEXUS ]</Btn>
+        <Btn variant="go" onClick={() => { playTransmit(); onSubmit(); }}>Enter Nexus</Btn>
       )}
 
-      {error && <div style={S.error}>{error}</div>}
+      {error && <div className="err" style={{ marginTop: 12 }}>{error}</div>}
       {!loading && <BackBtn onClick={onBack} />}
     </>
   );
@@ -707,14 +777,14 @@ function Step8({ formData, user, onSubmit, loading, error, onBack }) {
 
 const STEP_TITLES = [
   '',
-  'WELCOME',
-  'SYSTEM OVERVIEW',
-  'BORDER INTAKE',
-  'BIOGRAPHY',
-  'PORTRAIT',
-  'ID CARD PREVIEW',
-  'ALLEGIANCE',
-  'FINAL BRIEFING',
+  'Welcome',
+  'System overview',
+  'Border intake',
+  'Biography',
+  'Portrait',
+  'ID card preview',
+  'Allegiance',
+  'Final briefing',
 ];
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -774,43 +844,49 @@ export default function Onboarding() {
     }
   };
 
-  const title = `STEP ${String(step).padStart(2, '0')} / 08 — ${STEP_TITLES[step]}`;
-
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: '#000',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--void)',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       padding: '32px 48px',
       overflowY: 'auto',
     }}>
-      <div className="scanlines" />
-      <div className="vignette" />
+      <div className="vig" />
 
-      <div style={{ width: '100%', maxWidth: 800, position: 'relative', zIndex: 1 }}>
-        <AsciiBox title={title}>
-          <div style={{ fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace", fontSize: 16 }}>
-
-            {step === 1 && <Step1 onNext={next} />}
-            {step === 2 && <Step2 onNext={next} onBack={back} />}
-            {step === 3 && <Step3 formData={formData} update={update} onNext={next} onBack={back} />}
-            {step === 4 && <Step4 formData={formData} update={update} onNext={next} onBack={back} />}
-            {step === 5 && <Step5 formData={formData} update={update} onNext={next} onBack={back} portraitDescription={portraitDescription} setPortraitDescription={setPortraitDescription} />}
-            {step === 6 && <Step6 formData={formData} update={update} user={user} onNext={next} onBack={backFrom6} />}
-            {step === 7 && <Step7 formData={formData} update={update} onNext={next} onBack={back} />}
-            {step === 8 && (
-              <Step8
-                formData={formData}
-                user={user}
-                onSubmit={handleSubmit}
-                loading={loading}
-                error={submitError}
-                onBack={back}
-              />
-            )}
-
+      <div style={{ width: '100%', maxWidth: 820, position: 'relative', zIndex: 1 }}>
+        {/* Progress strip: step dots + section header */}
+        <div className="raised" style={{ padding: '14px 18px', marginBottom: 16 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.14em',
+            color: 'var(--blue)', textTransform: 'uppercase',
+            marginBottom: 10,
+          }}>
+            Step {String(step).padStart(2, '0')} / 08 — {STEP_TITLES[step]}
           </div>
-        </AsciiBox>
+          <div className="progress"><i style={{ width: `${(step / 8) * 100}%` }} /></div>
+        </div>
+
+        {/* Step body in its own raised card */}
+        <div className="raised" style={{ padding: '24px 28px', fontFamily: 'var(--font)', fontSize: 14 }}>
+          {step === 1 && <Step1 onNext={next} />}
+          {step === 2 && <Step2 onNext={next} onBack={back} />}
+          {step === 3 && <Step3 formData={formData} update={update} onNext={next} onBack={back} />}
+          {step === 4 && <Step4 formData={formData} update={update} onNext={next} onBack={back} />}
+          {step === 5 && <Step5 formData={formData} update={update} onNext={next} onBack={back} portraitDescription={portraitDescription} setPortraitDescription={setPortraitDescription} />}
+          {step === 6 && <Step6 formData={formData} update={update} user={user} onNext={next} onBack={backFrom6} />}
+          {step === 7 && <Step7 formData={formData} update={update} onNext={next} onBack={back} />}
+          {step === 8 && (
+            <Step8
+              formData={formData}
+              user={user}
+              onSubmit={handleSubmit}
+              loading={loading}
+              error={submitError}
+              onBack={back}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

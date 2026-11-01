@@ -38,7 +38,13 @@ const FIELD_DISPLAY = {
   bit_crush:   (v) => Math.round(v) + ' bit',
 };
 
-const FONT = "'JetBrains Mono', 'Courier New', Courier, monospace";
+const FONT = "'Inter', system-ui, sans-serif";
+
+const TUNE_CLIPS = ['tune_1','tune_2','tune_3','tune_4','tune_5','tune_6'];
+const playTuneClick = () => {
+  const pick = TUNE_CLIPS[Math.floor(Math.random() * TUNE_CLIPS.length)];
+  new Audio(`/sounds/${pick}.mp3`).play().catch(() => {});
+};
 
 // Every child container is transparent so the texture behind shows through
 // the whole panel. Dividers are semi-transparent black — the design calls for
@@ -96,18 +102,30 @@ export default function RadioPanel({
   requestMicPermission,
 }) {
   const [manualFreq, setManualFreq] = useState('');
-
+  const [manualErr, setManualErr] = useState('');
 
   const onTuneManual = useCallback(() => {
     const f = manualFreq.trim();
     if (!f) return;
+    if (!/^\d{2,3}\.\d$/.test(f)) {
+      setManualErr('VALID RANGE: 50.0 — 350.0 MHz');
+      return;
+    }
+    const n = parseFloat(f);
+    if (n < 50.0 || n > 350.0) {
+      setManualErr('VALID RANGE: 50.0 — 350.0 MHz');
+      return;
+    }
+    setManualErr('');
     joinFrequency(f, missionId);
+    new Audio('/sounds/connect_mic_cut.mp3').play().catch(() => {});
     setManualFreq('');
   }, [manualFreq, joinFrequency, missionId]);
 
   const onTuneMission = useCallback(() => {
     if (!missionFrequency) return;
     joinFrequency(String(missionFrequency), missionId);
+    new Audio('/sounds/connect_mic_cut.mp3').play().catch(() => {});
   }, [missionFrequency, missionId, joinFrequency]);
 
   const onDisconnect = useCallback(() => leaveFrequency(), [leaveFrequency]);
@@ -121,6 +139,7 @@ export default function RadioPanel({
     // joining the new one — awaiting the join before switching UI state
     // avoids the tuned-with-old-freq flash.
     await joinFrequency(newFreq, missionId);
+    new Audio('/sounds/connect_mic_cut.mp3').play().catch(() => {});
     setRadioState('tuned');
   }, [joinFrequency, missionId, setRadioState]);
 
@@ -128,14 +147,13 @@ export default function RadioPanel({
     <div style={{
       position: 'relative',
       zIndex: 9001,
-      background: '#7AAAC8',
+      flexShrink: 0,
+      background: 'var(--bg0)',
+      borderTop: '1px solid var(--rim0)',
     }}>
     <div style={{
-      margin: '8px 8px 8px 0',
-      background: PANEL_BG,
-      border: `1px solid ${PANEL_BORDER}`,
-      fontFamily: FONT,
-      flexShrink: 0,
+      background: 'linear-gradient(180deg, var(--bg2), var(--bg1))',
+      fontFamily: 'var(--font)',
     }}>
       {radioState === 'settings' ? (
         <SettingsView
@@ -169,13 +187,12 @@ export default function RadioPanel({
               isPTTActive={isPTTActive}
               isMuted={isMuted}
               onToggleMute={() => {
-                // Sound plays only on the false → true transition (muting).
-                // Unmuting is silent. Reading `isMuted` from the closure is
-                // safe because a re-render always follows a state flip, so
-                // the next click sees the fresh value.
                 if (!isMuted) {
                   const muteClick = new Audio('/sounds/mute_mic.mp3');
                   muteClick.play().catch(() => {});
+                } else {
+                  const unmuteClick = new Audio('/sounds/unmute_mic.mp3');
+                  unmuteClick.play().catch(() => {});
                 }
                 setIsMuted(m => !m);
               }}
@@ -195,9 +212,10 @@ export default function RadioPanel({
             <StandbyView
               missionFrequency={missionFrequency}
               manualFreq={manualFreq}
-              setManualFreq={setManualFreq}
+              setManualFreq={(v) => { setManualFreq(v); setManualErr(''); }}
               onTuneManual={onTuneManual}
               onTuneMission={onTuneMission}
+              tuneErr={manualErr}
             />
           )}
         </>
@@ -211,72 +229,27 @@ export default function RadioPanel({
 
 function PanelHeader({ isTuned, onOpenSettings, closeIcon = false, onClose }) {
   return (
-    <div style={{
-      padding: '10px 14px',
-      borderBottom: `1px solid ${PANEL_BORDER}`,
-      background: HEADER_BG,
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    }}>
-      {/* Title block — "NEXUS COMM" over "SYSTEM", left-aligned column,
-          SYSTEM centered under COMM per the reference. */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-        <span style={{
-          fontSize: 12,
-          color: INK_PRIMARY,
-          fontWeight: 'bold',
-          letterSpacing: '0.1em',
-        }}>
-          NEXUS COMM
-        </span>
-        <span style={{
-          fontSize: 10,
-          color: INK_SECONDARY,
-          letterSpacing: '0.08em',
-          alignSelf: 'center',
-        }}>
-          SYSTEM
-        </span>
-      </div>
-      {/* Header-right — LIVE pill + gear pill on the SAME line. flexWrap:
-          nowrap and flexShrink: 0 on each pill guarantee they never break. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+    <div className="sh" style={{ padding: '8px 12px' }}>
+      <span style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 12,
+        fontWeight: 600,
+        letterSpacing: '0.1em',
+        color: 'var(--cyan)',
+        textTransform: 'uppercase',
+      }}>
+        {isTuned && <i className="live-dot" />}
+        Radio
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {isTuned && (
-          <span style={{
-            position: 'relative',
-            zIndex: 1,
-            background: PILL_BG,
-            borderRadius: 3,
-            padding: '3px 8px',
-            fontSize: 10,
-            color: '#33DDAA',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}>
-            ● LIVE
-          </span>
+          <span className="badge b-lime" style={{ fontSize: 10 }}>Live</span>
         )}
         <button
+          className="ibtn"
           onClick={closeIcon ? onClose : onOpenSettings}
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            background: PILL_BG,
-            borderRadius: 3,
-            padding: '4px 8px',
-            fontSize: 20,
-            color: ICON_BLUE,
-            cursor: 'pointer',
-            border: 'none',
-            lineHeight: 1,
-            fontFamily: FONT,
-            flexShrink: 0,
-          }}
           aria-label={closeIcon ? 'Close settings' : 'Voice profile settings'}
         >
           {closeIcon ? '✕' : '⚙'}
@@ -353,93 +326,94 @@ function MicPermissionBanner({ micPermission, requestMicPermission }) {
 
 // ─── Standby ────────────────────────────────────────────────────────────────
 
-function StandbyView({ missionFrequency, manualFreq, setManualFreq, onTuneManual, onTuneMission }) {
+function StandbyView({ missionFrequency, manualFreq, setManualFreq, onTuneManual, onTuneMission, tuneErr }) {
   return (
-    <div style={{ padding: '20px 16px', textAlign: 'center' }}>
+    <div style={{ padding: '14px 14px 12px' }}>
       <div style={{
-        fontSize: 12,
-        color: INK_PRIMARY,
+        fontSize: 11,
+        fontWeight: 600,
         letterSpacing: '0.1em',
-        marginBottom: 16,
-        fontWeight: 'bold',
+        color: 'var(--fg3)',
+        textTransform: 'uppercase',
+        marginBottom: 10,
+        textAlign: 'center',
       }}>
-        NO FREQUENCY TUNED
+        No frequency tuned
       </div>
 
       {missionFrequency && (
         <>
           <div style={{
-            fontSize: 11,
-            color: '#5A3A00',
-            marginBottom: 8,
-            fontWeight: 'bold',
+            fontSize: 11, color: 'var(--amber)', textAlign: 'center',
+            marginBottom: 6, fontWeight: 600, letterSpacing: '0.03em',
           }}>
-            MISSION FREQUENCY: {missionFrequency} MHz
+            Mission frequency: {missionFrequency} MHz
           </div>
           <button
+            className="btn amb"
             onClick={onTuneMission}
-            style={{
-              position: 'relative',
-              zIndex: 1,
-              width: '100%',
-              border: '2px solid #5A3A00',
-              color: '#5A3A00',
-              background: 'rgba(90,58,0,0.12)',
-              fontSize: 11,
-              padding: '7px 0',
-              letterSpacing: '0.08em',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              marginBottom: 14,
-              fontFamily: FONT,
-            }}
+            style={{ width: '100%', fontSize: 12, padding: '7px 0', marginBottom: 12 }}
           >
-            TUNE TO MISSION
+            Tune to mission
           </button>
         </>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+      {/* Manual freq input with an inset TUNE button on the right edge,
+          mirroring the Companion / Radio-only pattern so all three views
+          finalize tuning the same way. */}
+      <div style={{ position: 'relative', display: 'flex' }}>
         <input
+          className="inp"
           value={manualFreq}
-          onChange={e => setManualFreq(e.target.value)}
+          onChange={e => {
+            playTuneClick();
+            setManualFreq(e.target.value);
+          }}
           onKeyDown={e => { if (e.key === 'Enter') onTuneManual(); }}
           placeholder="127.4"
           style={{
-            position: 'relative',
-            zIndex: 1,
-            width: 120,
-            background: '#EEF4F8',
-            border: `1px solid ${INK_MUTED}`,
-            color: INK_PRIMARY,
-            fontFamily: FONT,
-            fontSize: 18,
-            fontWeight: 'bold',
-            padding: '6px 8px',
+            flex: 1,
+            fontSize: 15,
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
             textAlign: 'center',
-            outline: 'none',
-            boxSizing: 'border-box',
+            padding: '7px 72px 7px 10px', // reserve space for inset TUNE
           }}
         />
         <button
-          onClick={onTuneManual}
+          type="button"
+          onMouseDown={e => { e.preventDefault(); onTuneManual(); }}
+          title="Finalize tuning"
           style={{
-            position: 'relative',
-            zIndex: 1,
-            border: 'none',
-            color: '#EEF4F8',
-            background: INK_PRIMARY,
-            fontSize: 12,
-            padding: '6px 16px',
-            letterSpacing: '0.1em',
-            fontWeight: 'bold',
+            position: 'absolute',
+            right: 4, top: 4, bottom: 4,
+            padding: '0 12px',
+            borderRadius: 3,
+            border: '1px solid rgba(102,170,221,.35)',
+            background: 'linear-gradient(180deg, rgba(14,42,68,.9), rgba(10,26,43,.9))',
+            color: 'var(--cyan)',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.14em',
             cursor: 'pointer',
-            fontFamily: FONT,
+            textShadow: '0 0 6px color-mix(in srgb, var(--cyan) 55%, transparent)',
           }}
         >
           TUNE
         </button>
       </div>
+      <div style={{
+        fontSize: 10, color: 'var(--fg3)', textAlign: 'center',
+        marginTop: 8, letterSpacing: '0.06em',
+      }}>
+        Tunable range: 50.0 — 350.0 MHz
+      </div>
+      {tuneErr && (
+        <div className="err" style={{ textAlign: 'center', marginTop: 4 }}>
+          {tuneErr}
+        </div>
+      )}
     </div>
   );
 }
@@ -486,129 +460,98 @@ function TunedView({
         />
       ) : (
         <div style={{
-          padding: 16,
-          textAlign: 'center',
-          borderBottom: `1px solid ${PANEL_BORDER}`,
-          background: FREQ_BG,
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          borderBottom: '1px solid rgba(26,58,80,.4)',
         }}>
-          <div style={{
-            fontSize: 36,
-            color: INK_PRIMARY,
-            letterSpacing: '0.1em',
-            fontWeight: 'bold',
-          }}>
+          <div className={`lcd${isPTTActive ? ' tx' : ''}`} style={{ flex: 1, textAlign: 'center', fontSize: 22 }}>
             {frequency}
           </div>
-          <div style={{
-            fontSize: 11,
-            color: INK_SECONDARY,
-            marginTop: 2,
-          }}>
-            MHz — TUNED
-          </div>
+          <span className="ptt">
+            PTT <kbd>{(pttKey || 'V').toUpperCase()}</kbd>
+          </span>
         </div>
       )}
 
-      {/* RETUNE / DISCONNECT action pills. Same pill background + border-
-          radius as the header gear pill (per reference). 22px icons, 9px
-          labels, per-role blue/red coloring. */}
+      {/* RETUNE / DISCONNECT */}
       <div style={{
         display: 'flex',
-        justifyContent: 'center',
-        gap: 16,
-        padding: '12px 16px',
-        borderBottom: `1px solid ${SOFT_DIVIDER}`,
+        gap: 8,
+        padding: '10px 14px',
+        borderBottom: '1px solid rgba(26,58,80,.4)',
       }}>
-        <div
+        <button
+          className="btn"
           onClick={onRetune}
-          style={{
-            position: 'relative', zIndex: 1,
-            background: PILL_BG, borderRadius: 4,
-            padding: '6px 18px', minWidth: 80,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-            cursor: 'pointer',
-          }}
+          style={{ flex: 1, fontSize: 12, padding: '7px 10px' }}
         >
-          <span style={{ fontSize: 22, color: ICON_BLUE }}>⇄</span>
-          <span style={{ fontSize: 9, color: ICON_BLUE, letterSpacing: '0.1em', fontWeight: 'bold' }}>RETUNE</span>
-        </div>
-        <div
+          ⇄ Retune
+        </button>
+        <button
+          className="btn warn"
           onClick={onDisconnect}
-          style={{
-            position: 'relative', zIndex: 1,
-            background: PILL_BG, borderRadius: 4,
-            padding: '6px 18px', minWidth: 80,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-            cursor: 'pointer',
-          }}
+          style={{ flex: 1, fontSize: 12, padding: '7px 10px' }}
         >
-          <span style={{ fontSize: 22, color: ALARM_RED }}>⏏</span>
-          <span style={{ fontSize: 9, color: ALARM_RED, letterSpacing: '0.1em', fontWeight: 'bold' }}>DISCONNECT</span>
-        </div>
+          ⏏ Disconnect
+        </button>
       </div>
 
       {/* ON FREQUENCY peer list */}
       <div style={{
         padding: '10px 14px',
-        borderBottom: `1px solid ${SOFT_DIVIDER}`,
-        maxHeight: 140,
+        borderBottom: '1px solid rgba(26,58,80,.4)',
+        maxHeight: 160,
         overflowY: 'auto',
       }}>
-        <div style={{
-          fontSize: 10,
-          color: INK_PRIMARY,
-          letterSpacing: '0.1em',
-          marginBottom: 4,
-          fontWeight: 'bold',
-        }}>
-          ON FREQUENCY
+        <div className="h3" style={{ margin: '0 0 8px' }}>
+          On frequency
         </div>
         {peers.length === 0 ? (
-          <div style={{ fontSize: 10, color: INK_SECONDARY }}>
-            — NO OTHER OPERATORS —
+          <div className="empty" style={{ padding: '6px 0', fontSize: 11 }}>
+            No other operators
           </div>
         ) : (
-          peers.map(p => (
-            <PeerRow key={p.socketId} peer={p} transmitting={transmittingSet.has(p.socketId)} />
-          ))
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {peers.map(p => (
+              <PeerRow key={p.socketId} peer={p} transmitting={transmittingSet.has(p.socketId)} />
+            ))}
+          </div>
         )}
       </div>
 
-      {/* MIC status row — dot/label/status all in one strip */}
+      {/* MIC status row */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '8px 14px',
-        borderBottom: `1px solid ${SOFT_DIVIDER}`,
+        borderBottom: '1px solid rgba(26,58,80,.4)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: isMuted ? ALARM_RED : OK_GREEN,
+            background: isMuted ? 'var(--red)' : 'var(--lime)',
+            boxShadow: `0 0 6px ${isMuted ? 'var(--red)' : 'var(--lime)'}`,
           }} />
-          <span style={{ fontSize: 10, color: INK_PRIMARY, fontWeight: 'bold' }}>MIC</span>
           <span style={{
-            fontSize: 10,
-            color: isMuted ? ALARM_RED : OK_GREEN,
-            fontWeight: 'bold',
+            fontSize: 11, fontWeight: 600, color: 'var(--fg2)',
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>Mic</span>
+          <span style={{
+            fontSize: 11, fontWeight: 600,
+            color: isMuted ? 'var(--red)' : 'var(--lime)',
+            letterSpacing: '0.03em',
           }}>
-            {isMuted ? 'MUTED' : 'ACTIVE'}
+            {isMuted ? 'Muted' : 'Active'}
           </span>
         </div>
         <button
+          className="ibtn"
           onClick={onToggleMute}
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            fontSize: 18,
-            background: isMuted ? 'rgba(204,51,34,0.8)' : 'none',
-            border: 'none',
-            padding: isMuted ? '2px 6px' : '2px 4px',
-            cursor: 'pointer',
-            lineHeight: 1,
-            borderRadius: isMuted ? 3 : 0,
-          }}
+          aria-label={isMuted ? 'Unmute mic' : 'Mute mic'}
+          style={isMuted ? { background: 'linear-gradient(180deg, #a8321f, #5e150b)', borderColor: 'var(--red)' } : {}}
         >
           {isMuted ? '🔇' : '🔊'}
         </button>
@@ -617,12 +560,16 @@ function TunedView({
       <MicLevelMeter getLevel={getInputLevel} active />
 
       {/* MIC VOLUME slider */}
-      <div style={{ padding: '8px 14px', borderBottom: `1px solid ${SOFT_DIVIDER}` }}>
+      <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(26,58,80,.4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 10, color: INK_PRIMARY, fontWeight: 'bold' }}>
-            MIC VOLUME
-          </span>
-          <span style={{ fontSize: 10, color: INK_PRIMARY, fontWeight: 'bold' }}>
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--fg2)',
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>Mic volume</span>
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
             {micSensitivity}%
           </span>
         </div>
@@ -633,53 +580,47 @@ function TunedView({
           step={5}
           value={micSensitivity}
           onChange={e => onSensitivityChange(Number(e.target.value))}
-          style={{ position: 'relative', zIndex: 1, width: '100%', accentColor: INK_PRIMARY, height: 6, cursor: 'pointer' }}
+          style={{
+            width: '100%', accentColor: 'var(--rim2)',
+            height: 6, cursor: 'pointer',
+          }}
         />
       </div>
 
-      {/* PTT button — dark navy default, alarm-red when active */}
-      <div style={{ padding: '12px 14px' }}>
+      {/* PTT button */}
+      <div style={{ padding: '12px 14px 8px' }}>
         <button
+          className={`btn${isPTTActive ? ' tx on' : ''}`}
           onMouseDown={onTransmitDown}
           onMouseUp={onTransmitUp}
           onMouseLeave={onTransmitUp}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
+          disabled={isMuted}
           style={{
-            position: 'relative',
-            zIndex: 1,
             width: '100%',
-            fontSize: 14,
+            fontSize: 13,
             padding: '12px 0',
-            textAlign: 'center',
-            border: `2px solid ${isPTTActive ? ALARM_RED : INK_PRIMARY}`,
-            color: isPTTActive ? ALARM_RED : ICON_BLUE,
-            background: isPTTActive ? 'rgba(204,51,34,0.15)' : 'rgba(6,16,24,0.85)',
-            letterSpacing: '0.12em',
-            fontWeight: 'bold',
-            cursor: isMuted ? 'not-allowed' : 'pointer',
-            fontFamily: FONT,
+            letterSpacing: '0.08em',
             userSelect: 'none',
-            opacity: isMuted ? 0.4 : 1,
           }}
         >
           {isMuted
-            ? '[ MIC MUTED — UNMUTE TO TRANSMIT ]'
+            ? '● Mic muted'
             : isPTTActive
-              ? '● TRANSMITTING'
-              : `● TRANSMIT (${(pttKey || 'V').toUpperCase()})`
+              ? '● Transmitting'
+              : <>● Transmit <kbd style={{ marginLeft: 6 }}>{(pttKey || 'V').toUpperCase()}</kbd></>
           }
         </button>
       </div>
       <div style={{
-        fontSize: 10,
-        color: INK_PRIMARY,
-        fontWeight: 'bold',
+        fontSize: 10, fontWeight: 600, color: 'var(--fg3)',
         textAlign: 'center',
         padding: '0 14px 12px',
-        letterSpacing: '0.08em',
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
       }}>
-        PRESS AND HOLD
+        Press and hold
       </div>
     </>
   );
@@ -705,13 +646,13 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
 
   const submit = () => {
     const s = (val || '').trim();
-    if (!/^\d{3}\.\d$/.test(s)) {
-      setErr('INVALID FREQUENCY — USE FORMAT XXX.X');
+    if (!/^\d{2,3}\.\d$/.test(s)) {
+      setErr('VALID RANGE: 50.0 — 350.0 MHz');
       return;
     }
     const n = parseFloat(s);
-    if (n < 118.0 || n > 136.9) {
-      setErr('INVALID FREQUENCY — USE FORMAT XXX.X');
+    if (n < 50.0 || n > 350.0) {
+      setErr('VALID RANGE: 50.0 — 350.0 MHz');
       return;
     }
     setErr('');
@@ -746,8 +687,8 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
           type="text"
           value={val}
           maxLength={5}
-          placeholder="000.0"
-          onChange={e => { setVal(e.target.value); if (err) setErr(''); }}
+          placeholder="127.4"
+          onChange={e => { playTuneClick(); setVal(e.target.value); if (err) setErr(''); }}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); submit(); }
             else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
@@ -812,7 +753,7 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
       {err && (
         <div style={{
           fontSize: 10,
-          color: ALARM_RED,
+          color: '#FF5544',
           textAlign: 'center',
           marginTop: 8,
           fontWeight: 'bold',
@@ -825,41 +766,19 @@ function RetuningEditor({ currentFrequency, onConfirm, onCancel }) {
 }
 
 function PeerRow({ peer, transmitting }) {
+  const initials = (peer.citizenName || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-      <div style={{
-        width: 7, height: 7, borderRadius: '50%',
-        background: transmitting ? ALARM_RED : INK_SECONDARY,
-        flexShrink: 0,
-      }} />
-      <span style={{
-        fontSize: 11,
-        color: transmitting ? INK_PRIMARY : INK_MUTED,
-        fontWeight: transmitting ? 'bold' : 'normal',
-      }}>
-        {peer.citizenName || 'UNKNOWN'}
-      </span>
-      {transmitting && <SignalBars />}
+    <div className={`peer${transmitting ? ' speak' : ''}`}>
+      <div className="av">{initials}</div>
+      <span className="nm0">{peer.citizenName || 'Unknown'}</span>
+      <div className="eq"><i /><i /><i /></div>
     </div>
   );
 }
 
-function SignalBars() {
-  const [heights, setHeights] = useState([5, 10, 7]);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setHeights([3 + Math.random() * 9, 3 + Math.random() * 9, 3 + Math.random() * 9].map(Math.round));
-    }, 110);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <div style={{ display: 'flex', gap: 2, marginLeft: 'auto', alignItems: 'flex-end' }}>
-      {heights.map((h, i) => (
-        <div key={i} style={{ width: 3, height: h, background: '#FF4455' }} />
-      ))}
-    </div>
-  );
-}
+// Legacy SignalBars component — kept exported in case anything imports it,
+// though PeerRow now uses the shared .eq animation.
+function SignalBars() { return null; }
 
 // ─── Mic level meter ────────────────────────────────────────────────────────
 
@@ -1095,7 +1014,7 @@ function SettingsView({
         onClose={() => { stopPreview(); onClose(); }}
       />
 
-      <div style={{ padding: 16, maxHeight: 520, overflowY: 'auto' }}>
+      <div style={{ padding: 14, maxHeight: 520, overflowY: 'auto' }}>
         {PROFILE_FIELDS.map(field => (
           <SliderRow
             key={field}
@@ -1106,6 +1025,7 @@ function SettingsView({
         ))}
 
         <button
+          className="btn"
           onMouseDown={startPreview}
           onMouseUp={stopPreview}
           onMouseLeave={stopPreview}
@@ -1113,84 +1033,61 @@ function SettingsView({
           onTouchEnd={stopPreview}
           style={{
             width: '100%',
-            border: '2px solid #2A5A7A',
-            color: '#0D1A24',
-            background: previewing ? 'rgba(0,0,0,0.1)' : PANEL_BG,
             fontSize: 12,
-            padding: '8px 0',
-            letterSpacing: '0.1em',
-            fontWeight: 'bold',
-            cursor: 'pointer',
+            padding: '9px 0',
             margin: '12px 0',
-            fontFamily: FONT,
             userSelect: 'none',
+            ...(previewing ? {
+              color: 'var(--cyan)',
+              borderColor: 'var(--cyan)',
+              background: 'linear-gradient(180deg, rgba(0,238,255,.14), rgba(0,238,255,.04))',
+            } : {}),
           }}
         >
-          {previewing ? '◉ MONITORING' : '▶ PREVIEW VOICE'}
+          {previewing ? '◉ Monitoring' : '▶ Preview voice'}
         </button>
 
         <MicLevelMeterInline getLevel={getSettingsLevel} />
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           <button
+            className="btn"
             onClick={onRandomize}
-            style={{
-              flex: 1, fontSize: 11, padding: '8px 0', textAlign: 'center',
-              border: '2px solid #2A5A7A', color: '#2A5A7A', background: PANEL_BG,
-              letterSpacing: '0.08em', fontWeight: 'bold', cursor: 'pointer', fontFamily: FONT,
-            }}
+            style={{ flex: 1, fontSize: 12, padding: '8px 0' }}
           >
-            RANDOMIZE
+            Randomize
           </button>
           <button
+            className="btn go"
             onClick={onSave}
             disabled={saving}
-            style={{
-              flex: 1, fontSize: 11, padding: '8px 0', textAlign: 'center',
-              border: '2px solid #33DDAA', color: '#33DDAA', background: PANEL_BG,
-              letterSpacing: '0.08em', fontWeight: 'bold',
-              cursor: saving ? 'default' : 'pointer',
-              opacity: saving ? 0.6 : 1, fontFamily: FONT,
-            }}
+            style={{ flex: 1, fontSize: 12, padding: '8px 0' }}
           >
-            {saving ? 'SAVING...' : 'SAVE PROFILE'}
+            {saving ? <><span className="spinner" />Saving…</> : 'Save profile'}
           </button>
         </div>
 
         {showSaved && (
           <div style={{
-            textAlign: 'center', fontSize: 11, color: '#33DDAA',
-            letterSpacing: '0.12em', marginTop: 10, fontWeight: 'bold',
+            textAlign: 'center', fontSize: 11, color: 'var(--lime)',
+            letterSpacing: '0.1em', marginTop: 10, fontWeight: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}>
-            ✓ SAVED
+            <span className="live-dot" style={{ animation: 'none' }} />
+            Saved
           </div>
         )}
 
-        {/* DEVICE PICKERS — input mic and output speaker/headphones. Both
-            default to system default (null value); persisted at Dashboard
-            level via localStorage so the choice survives page reloads. */}
-        <div style={{ marginTop: 20, borderTop: `1px solid ${SOFT_DIVIDER}`, paddingTop: 16 }}>
-          <div style={{
-            fontSize: 10, color: '#0D1A24', fontWeight: 'bold',
-            marginBottom: 8, letterSpacing: '0.1em',
-          }}>
-            INPUT DEVICE
-          </div>
+        {/* DEVICE PICKERS */}
+        <div style={{ marginTop: 20, borderTop: '1px solid var(--rim0)', paddingTop: 16 }}>
+          <div className="h3" style={{ margin: '0 0 6px' }}>Input device</div>
           <select
+            className="inp"
             value={micDeviceId ?? '__default__'}
             onChange={e => setMicDeviceId?.(e.target.value === '__default__' ? null : e.target.value)}
-            style={{
-              position: 'relative', zIndex: 1,
-              width: '100%',
-              background: 'rgba(255,255,255,0.85)',
-              color: '#061018',
-              border: '1px solid #2A5A7A',
-              fontSize: 11, fontFamily: FONT,
-              padding: '5px 8px',
-              outline: 'none',
-            }}
+            style={{ fontSize: 12, padding: '7px 10px', cursor: 'pointer' }}
           >
-            <option value="__default__">System Default</option>
+            <option value="__default__">System default</option>
             {inputDevices.map((d, i) => (
               <option key={d.deviceId || `in-${i}`} value={d.deviceId}>
                 {d.label || `Input ${i + 1}`}
@@ -1198,29 +1095,15 @@ function SettingsView({
             ))}
           </select>
 
-          <div style={{
-            fontSize: 10, color: '#0D1A24', fontWeight: 'bold',
-            margin: '12px 0 8px', letterSpacing: '0.1em',
-          }}>
-            OUTPUT DEVICE
-          </div>
+          <div className="h3" style={{ margin: '14px 0 6px' }}>Output device</div>
           <select
+            className="inp"
             value={outputDeviceId ?? '__default__'}
             onChange={e => setOutputDeviceId?.(e.target.value === '__default__' ? null : e.target.value)}
             disabled={!outputSupported}
-            style={{
-              position: 'relative', zIndex: 1,
-              width: '100%',
-              background: outputSupported ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.4)',
-              color: '#061018',
-              border: '1px solid #2A5A7A',
-              fontSize: 11, fontFamily: FONT,
-              padding: '5px 8px',
-              outline: 'none',
-              cursor: outputSupported ? 'pointer' : 'not-allowed',
-            }}
+            style={{ fontSize: 12, padding: '7px 10px', cursor: outputSupported ? 'pointer' : 'not-allowed', opacity: outputSupported ? 1 : 0.6 }}
           >
-            <option value="__default__">System Default</option>
+            <option value="__default__">System default</option>
             {outputDevices.map((d, i) => (
               <option key={d.deviceId || `out-${i}`} value={d.deviceId}>
                 {d.label || `Output ${i + 1}`}
@@ -1228,42 +1111,31 @@ function SettingsView({
             ))}
           </select>
           {!outputSupported && (
-            <div style={{
-              fontSize: 9, color: '#CC3322', marginTop: 4, letterSpacing: '0.04em',
-            }}>
+            <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 6, lineHeight: 1.5 }}>
               This browser doesn't support output device selection — audio uses the OS default.
             </div>
           )}
         </div>
 
         {/* PTT KEY BINDING */}
-        <div style={{ marginTop: 20, borderTop: `1px solid ${SOFT_DIVIDER}`, paddingTop: 16 }}>
+        <div style={{ marginTop: 20, borderTop: '1px solid var(--rim0)', paddingTop: 16 }}>
+          <div className="h3" style={{ margin: '0 0 6px' }}>PTT key binding</div>
           <div style={{
-            fontSize: 12, color: '#0D1A24', fontWeight: 'bold',
-            marginBottom: 8, letterSpacing: '0.1em',
+            display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
           }}>
-            PTT KEY BINDING
-          </div>
-          <div style={{
-            fontSize: 12, color: '#061018', fontWeight: 'bold',
-            marginBottom: 6, letterSpacing: '0.08em',
-          }}>
-            CURRENT KEY: {(pttKey || 'v').toUpperCase()}
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: 'var(--fg2)',
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>Current key</span>
+            <kbd>{(pttKey || 'v').toUpperCase()}</kbd>
           </div>
           <button
+            className={`btn ${remapListening ? 'amb' : ''}`.trim()}
             onClick={remapListening ? undefined : startRemap}
-            style={{
-              border: `1px solid ${remapListening ? '#FFBB33' : '#2A5A7A'}`,
-              color: remapListening ? '#FFBB33' : '#2A5A7A',
-              fontSize: 11,
-              padding: '5px 14px',
-              cursor: remapListening ? 'default' : 'pointer',
-              background: 'none',
-              letterSpacing: '0.08em',
-              fontFamily: FONT,
-            }}
+            disabled={remapListening}
+            style={{ fontSize: 11, padding: '7px 14px' }}
           >
-            {remapListening ? 'PRESS ANY KEY...' : '[ REMAP KEY ]'}
+            {remapListening ? 'Press any key…' : 'Remap key'}
           </button>
         </div>
       </div>
@@ -1280,7 +1152,7 @@ function MicLevelMeterInline({ getLevel }) {
     }, 50);
     return () => clearInterval(id);
   }, [getLevel]);
-  const fillColor = level > 70 ? '#FF4455' : level > 30 ? '#33DDAA' : '#2A5A7A';
+  const fillColor = level > 70 ? '#FF4455' : level > 30 ? '#44FF88' : '#2A5A7A';
   return (
     <div>
       <div style={{
@@ -1317,20 +1189,35 @@ function SliderRow({ field, value, onChange }) {
   }
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, color: '#0D1A24', letterSpacing: '0.1em', fontWeight: 'bold' }}>
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--fg2)',
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>
           {FIELD_LABELS[field] || field.toUpperCase().replace(/_/g, ' ')}
         </span>
-        <span style={{ fontSize: 12, color: '#061018', fontWeight: 'bold' }}>
+        <span style={{
+          fontSize: 12, fontWeight: 600, color: 'var(--fg0)',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
           {formattedValue}
         </span>
       </div>
       <div style={{
         position: 'relative', width: '100%', height: 6,
-        background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`,
+        background: '#02080e',
+        border: '1px solid var(--rim0)',
+        borderRadius: 3,
+        boxShadow: '0 1px 3px #000 inset',
+        overflow: 'hidden',
       }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#2A5A7A' }} />
+        <div style={{
+          height: '100%',
+          width: `${pct}%`,
+          background: 'linear-gradient(90deg, var(--rim2), var(--blue))',
+          transition: 'width .1s',
+        }} />
         <input
           type="range"
           min={range.min}

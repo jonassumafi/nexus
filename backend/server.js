@@ -22,6 +22,8 @@ const rpRoutes = require('./routes/rp');
 const logRoutes = require('./routes/logs');
 const adminRoutes = require('./routes/admin');
 const radioRoutes = require('./routes/radio');
+const bugReportRoutes = require('./routes/bugReport');
+const chatRoutes = require('./routes/chat');
 
 const app = express();
 const server = http.createServer(app);
@@ -59,6 +61,8 @@ app.use('/api/rp', rpRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/radio', radioRoutes);
+app.use('/api/bug-report', bugReportRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 

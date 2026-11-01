@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nexus Radio Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --void:#000710; --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A;
+  --rim0:#1A3A50; --rim1:#2A5A7A; --rim2:#3F82B3;
+  --fg0:#CCE8FF; --fg1:#99BBDD; --fg2:#86AFCF; --fg3:#5F87A8;
+  --lime:#44FF88; --blue:#66AADD; --red:#FF5544; --amber:#FFBB33; --purple:#AA66DD; --cyan:#00EEFF;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;padding-block:16px 40px}
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:5px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4)}
+.btn{font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:6px 12px;border-radius:4px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.tx.on{color:#fff;border-color:var(--red);background:linear-gradient(180deg,#a8321f,#5e150b);box-shadow:0 1px 0 rgba(255,200,190,.4) inset,0 3px 0 #2a0803}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.b-purple{background:rgba(170,102,221,.12);color:var(--purple);border:1px solid rgba(170,102,221,.3)}
+kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:600;color:var(--fg1);padding:1px 7px;border-radius:3px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 2px 0 #04101a}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.collapse>div{overflow:hidden;min-height:0}
+.open>.collapse{grid-template-rows:1fr}
+.inp{font-size:13px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:4px;padding:8px 10px;box-shadow:0 2px 6px #000 inset;outline:none;min-width:0}
+.inp:focus{border-color:var(--rim2)}
+.h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;padding:9px 16px;border-radius:5px;font-size:13px;font-weight:500;color:var(--fg0);background:#14304a;border:1px solid var(--rim2);box-shadow:0 8px 20px rgba(0,0,0,.6);transition:all .25s;z-index:80}
+.toast.show{opacity:1;transform:translateX(-50%)}
+/* shell */
+.app{width:1280px;margin:0 auto;border:1px solid var(--rim0);border-radius:8px;overflow:hidden;background:var(--bg0);box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6)}
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:48px;height:48px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #04101a}
+.bt1{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.idc{display:flex;align-items:stretch;border-radius:5px;overflow:hidden;border:1px solid var(--rim1);box-shadow:0 3px 0 #04101a,0 8px 14px rgba(0,0,0,.45)}
+.idc .ph{width:56px;background:linear-gradient(160deg,#27455f,#0c1d2e);display:flex;align-items:flex-end;justify-content:center}
+.idc .info{padding:8px 12px;min-width:210px;background:linear-gradient(180deg,#14304a,#0b1f33)}
+.idc .k{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--fg3);text-transform:uppercase}
+.idc .nm0{font-size:15px;font-weight:700;color:var(--fg0)}
+.idc .rk{font-size:12px;color:var(--blue)}
+.rpbar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--fg2);margin-top:3px}
+.rpbar .bar{flex:1;height:6px;border-radius:3px;background:#02080e;box-shadow:0 1px 3px #000 inset;overflow:hidden}
+.rpbar .bar i{display:block;height:100%;width:26%;background:linear-gradient(90deg,#2a79b0,var(--blue))}
+.nav{display:flex;gap:8px;padding:10px 16px;background:var(--bg1);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.nav .sp{flex:1}
+.nt{font-size:12px;font-weight:600;letter-spacing:.04em;padding:7px 14px;border-radius:4px;color:var(--fg2);background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.1) inset,0 3px 0 #050e18}
+.nt.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.nt.dc{color:var(--red);border-color:rgba(255,85,68,.4)}
+.sh{flex-shrink:0;padding:10px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);display:flex;justify-content:space-between;align-items:center}
+/* feed */
+.tabs{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 12px 6px}
+.tab{position:relative;font-size:12px;font-weight:600;padding:7px 0;border-radius:4px;color:var(--fg2);background:linear-gradient(180deg,#0C1D2E,#08141f);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.08) inset,0 3px 0 #050e18}
+.tab:hover{color:var(--fg0)}
+.tab.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.tab .n{position:absolute;top:-6px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;color:#04140a;background:var(--lime)}
+.tab .n.show{display:flex}
+.feed{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.fi{border-bottom:1px solid rgba(26,58,80,.55);padding:8px 12px;cursor:pointer}
+.fi:hover{background:var(--bg1)}
+.fr{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center}
+.ico{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 3px 5px rgba(0,0,0,.6)}
+.ico.lime{background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);color:var(--lime);border:1px solid rgba(68,255,136,.4)}
+.ico.blue{background:radial-gradient(circle at 35% 30%,#24557a,#0c2437);color:var(--blue);border:1px solid rgba(102,170,221,.4)}
+.ico.red{background:radial-gradient(circle at 35% 30%,#7a2418,#2e0c07);color:var(--red);border:1px solid rgba(255,85,68,.4)}
+.ico.amber{background:radial-gradient(circle at 35% 30%,#7a5a14,#2e2106);color:var(--amber);border:1px solid rgba(255,187,51,.4)}
+.ft{font-size:13px;font-weight:600;color:var(--fg0)}
+.ft em{font-style:normal}
+.fs{font-size:12px;color:var(--fg2);margin-top:1px}
+.ftime{font-size:11px;color:var(--fg3);white-space:nowrap}
+.fd{padding:6px 0 2px 35px;font-size:12px;color:var(--fg2);line-height:1.7}
+.fd b{color:var(--fg1);font-weight:500}
+.fi.open .collapse{grid-template-rows:1fr}
+/* tables + side panel */
+.tblw{border:1px solid var(--rim0);border-radius:5px;overflow-x:auto;background:var(--bg1)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:8px 12px;border-bottom:1px solid var(--rim1)}
+td{padding:8px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top}
+td code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 5px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(255,255,255,.2)}
+.tokens{width:1280px;margin:28px auto 0}
+.tokens h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.demo{width:1280px;margin:0 auto 12px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--fg3)}
+.seg{display:inline-flex;border:1px solid var(--rim1);border-radius:4px;overflow:hidden}
+.seg button{padding:5px 12px;font-size:12px;font-weight:600;color:var(--fg2);background:#0A1828}
+.seg button.on{color:#fff;background:linear-gradient(180deg,#1f4a70,#0e2c47)}
+
+.rp{padding:10px 12px;background:linear-gradient(180deg,#0A1B2B,#061018);display:flex;flex-direction:column;gap:8px}
+.rp.framed{border:1px solid var(--rim0);border-radius:6px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18}
+.rhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rlabel{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--cyan)}
+.ptt{font-size:11px;color:var(--fg3);display:flex;align-items:center;gap:6px}
+.rrow{display:flex;align-items:center;gap:8px}
+.lcd{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--cyan);letter-spacing:.06em;background:linear-gradient(180deg,#00060c,#02101a);border-radius:4px;padding:3px 10px;box-shadow:0 2px 6px #000 inset,0 1px 0 rgba(120,200,255,.12);flex:1}
+.lcd.tx{color:var(--red)}
+.lcd small{font-size:11px;font-weight:600;color:var(--fg3);margin-left:6px;letter-spacing:.04em}
+.rstate{font-size:12px;font-weight:600;color:var(--fg2);text-align:center}
+.range{font-size:11px;color:var(--fg3);text-align:center}
+.range.err{color:var(--red)}
+.peers{display:flex;flex-direction:column;gap:5px}
+.pl{display:flex;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.peer{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;background:#07131f;border:1px solid var(--rim0);font-size:12px;color:var(--fg1)}
+.peer .av{width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--blue);background:radial-gradient(circle at 35% 30%,#1f4666,#0b1d2e);border:1px solid var(--rim1)}
+.peer .pn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peer.speak{border-color:rgba(68,255,136,.45)}
+.peer.speak .pn{color:var(--fg0)}
+.peer.me .av{border-color:var(--cyan);color:var(--cyan)}
+.eq{display:flex;align-items:flex-end;gap:2px;height:12px;width:14px;opacity:0}
+.peer.speak .eq{opacity:1}
+.eq i{flex:1;background:var(--lime);border-radius:1px;height:4px;animation:eq .7s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:.15s}.eq i:nth-child(3){animation-delay:.3s}
+@keyframes eq{50%{height:12px}}
+.txtag{font-size:10px;font-weight:700;letter-spacing:.08em;color:#fff;background:#a8321f;border-radius:3px;padding:1px 6px}
+.vol{display:flex;align-items:center;gap:8px}
+.vol input[type=range]{flex:1;accent-color:#3F82B3;height:4px}
+.vol span{font-size:11px;color:var(--fg3);width:32px;text-align:right;font-variant-numeric:tabular-nums}
+.rp.col{flex-direction:row;align-items:center;gap:10px;padding:8px 12px}
+.rp.col .lcd{font-size:16px;padding:2px 8px}
+.xbtn{width:26px;height:26px;border-radius:4px;font-size:12px;color:var(--fg2);border:1px solid var(--rim0);background:#0A1828}
+.xbtn:hover{color:var(--fg0)}
+
+
+.page{width:1280px;margin:0 auto}
+.page h1{font-size:22px;font-weight:700;color:var(--fg0)}
+.lead{font-size:13px;color:var(--fg2);max-width:80ch;margin:6px 0 20px;line-height:1.7}
+.top{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;margin-bottom:28px}
+.rail{border:1px solid var(--rim0);border-radius:8px;overflow:hidden;background:var(--bg0);box-shadow:0 20px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;height:560px}
+.rail .filler{flex:1;padding:14px;color:var(--fg3);font-size:12px;line-height:1.7}
+.rail .filler b{color:var(--fg1);font-weight:600}
+.how{padding:18px 20px}
+.how h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.how ul{padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--fg1);line-height:1.7}
+.how ul+h2{margin-top:18px}
+.how code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 5px}
+.setkey{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--rim0);font-size:12px;color:var(--fg2)}
+.setkey input{width:48px;text-align:center;font-weight:700;text-transform:lowercase}
+.states{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:8px}
+.st h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+.st h3 span{font-size:11px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--fg3)}
+.st .note{font-size:12px;color:var(--fg3);margin-top:8px;line-height:1.6}
+.sec{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin:26px 0 12px}
+
+</style></head><body>
+
+
+
+<div class="page">
+  <h1>Radio panel</h1>
+  <p class="lead">The always-mounted WebRTC radio. In the Dashboard it sits at the bottom of the right rail and keeps its state while views change. It is the same component on the in-progress screen, where it auto-tunes to <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--cyan)">Mission.frequency</code>. Everything on this page is interactive.</p>
+
+  <div class="top">
+    <div class="rail">
+      <div class="sh"><span>Live panel</span><span style="color:var(--lime);display:flex;align-items:center;gap:6px;font-size:11px"><i class="live-dot"></i>Live</span></div>
+      <div class="filler">Hold <b id="holdkey">V</b> to transmit. Peers speak at random so you can see the speaking indicator. Typing in a text field never triggers push to talk.</div>
+      <div id="live" style="border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0)"></div>
+    </div>
+    <div class="raised how">
+      <h2>Behavior</h2>
+      <ul>
+        <li>Frequency range is 50.0 to 350.0 MHz in 0.1 steps. Out of range input shows an inline error and does not tune.</li>
+        <li>The push-to-talk key is read from <code>User.voice_profile.ptt_key</code> (default <code>v</code>) and shown in the header. Holding it transmits, releasing stops.</li>
+        <li>The LCD turns red and the button reads "On air" while transmitting. The speaker row shows a TX tag.</li>
+        <li>Peers on the frequency show an animated level bar when speaking. Mute silences incoming audio and zeroes the volume slider.</li>
+        <li>Collapse shrinks the panel to one row (frequency, TX, expand) so it stays out of the way on dense screens.</li>
+        <li>Leave drops the connection and returns to the untuned state.</li>
+      </ul>
+      <h2>Data sources</h2>
+      <ul>
+        <li>Frequency on launch: <code>Mission.frequency</code></li>
+        <li>PTT key: <code>User.voice_profile.ptt_key</code></li>
+        <li>Voice shaping (not shown here): <code>voice_profile.highpass, lowpass, pitch_shift, bit_crush</code></li>
+      </ul>
+      <div class="setkey">Simulate saved key <input class="inp" id="kin" value="v" maxlength="1"> <span>Change it and the header and shortcut update.</span></div>
+    </div>
+  </div>
+
+  <div class="sec">All states</div>
+  <div class="states">
+    <div class="st"><h3>Untuned <span>no frequency</span></h3><div id="s1"></div><div class="note">Default after login. Input starts at 127.4.</div></div>
+    <div class="st"><h3>Tuned, idle <span>listening</span></h3><div id="s2"></div><div class="note">Peers listed with speaking indicators.</div></div>
+    <div class="st"><h3>Transmitting <span>on air</span></h3><div id="s3"></div><div class="note">Red LCD and TX tag on your row.</div></div>
+    <div class="st"><h3>Muted <span>incoming silenced</span></h3><div id="s4"></div><div class="note">Slider locked, level bars hidden.</div></div>
+    <div class="st"><h3>Input error <span>out of range</span></h3><div id="s5"></div><div class="note">Value 400 is outside 50.0 to 350.0.</div></div>
+    <div class="st"><h3>Collapsed <span>one row</span></h3><div id="s6" style="display:flex;flex-direction:column;gap:10px"></div><div class="note">Tuned (top) and untuned (bottom).</div></div>
+  </div>
+</div>
+
+<div class="tokens"><h2>New tokens for this page</h2><div class="tblw"><table>
+<tr><th>Token</th><th>Value</th><th>Use</th></tr>
+<tr><td><i class="sw" style="background:#00EEFF"></i>--cyan (LCD)</td><td><code>#00EEFF</code> on <code>#00060C to #02101C</code></td><td>Frequency readout only. 22px, 700, tabular-nums, 2px inset shadow. Collapsed variant 16px.</td></tr>
+<tr><td><i class="sw" style="background:#FF5544"></i>LCD transmit</td><td><code>#FF5544</code></td><td>Same LCD while transmitting</td></tr>
+<tr><td><i class="sw" style="background:#44FF88"></i>Speaking ring</td><td><code>rgba(68,255,136,.45)</code></td><td>Peer row border while speaking, plus 3-bar level meter, 0.7s loop</td></tr>
+<tr><td><i class="sw" style="background:#A8321F"></i>TX tag</td><td><code>#A8321F</code> text <code>#FFF</code></td><td>Small tag on your own row when on air</td></tr>
+<tr><td>Peer row</td><td><code>#07131F</code> + <code>--rim0</code></td><td>Recessed, not raised, so the roster reads as a list inside the panel</td></tr>
+<tr><td>Icon button</td><td><code>26 x 26, #0A1828</code></td><td>Collapse and expand toggle</td></tr>
+</table></div></div>
+
+<script>
+function createRadio(el,o){
+  o=o||{};
+  var S={freq:o.freq||null,tx:!!o.tx,muted:!!o.muted,vol:o.vol==null?80:o.vol,col:!!o.collapsed,err:!!o.err,ptt:o.ptt||'v',
+    peers:(o.peers||[]).map(function(n){return {n:n,s:false}}),me:o.me||'Unger Poshet',inVal:o.inVal||'127.4'};
+  var held=false;
+  function ini(n){return n.split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase()}
+  function f(v){return v.toFixed(1)}
+  function draw(){
+    var h='';
+    var pttHtml='<span class="ptt" title="Read from your saved voice profile">Push to talk <kbd>'+S.ptt.toUpperCase()+'</kbd></span>';
+    if(S.col){
+      h='<div class="rp col'+(o.framed?' framed':'')+'"><span class="rlabel"><i class="live-dot"></i>RADIO</span>'+
+        (S.freq===null?'<div class="lcd" style="color:var(--fg3)">Untuned</div>':'<div class="lcd'+(S.tx?' tx':'')+'">'+f(S.freq)+'</div><button class="btn tx'+(S.tx?' on':'')+'" data-a="tx">TX</button>')+
+        '<button class="xbtn" data-a="exp" title="Expand">▴</button></div>';
+      el.innerHTML=h;return;
+    }
+    h='<div class="rp'+(o.framed?' framed':'')+'"><div class="rhead"><span class="rlabel"><i class="live-dot"></i>RADIO</span><span style="display:flex;align-items:center;gap:10px">'+pttHtml+'<button class="xbtn" data-a="col" title="Collapse">▾</button></span></div>';
+    if(S.freq===null){
+      h+='<div class="rstate">No frequency tuned</div><div class="rrow"><input class="inp" data-r="in" value="'+S.inVal+'" inputmode="decimal" style="flex:1;text-align:center;font-weight:600"><button class="btn go" data-a="tune">Tune</button></div>'+
+        '<div class="range'+(S.err?' err':'')+'">'+(S.err?'Enter a value from 50.0 to 350.0 MHz':'Tunable range 50.0 to 350.0 MHz')+'</div>';
+    }else{
+      h+='<div class="rrow"><div class="lcd'+(S.tx?' tx':'')+'">'+f(S.freq)+'<small>MHz</small></div><button class="btn" data-a="dn">◂</button><button class="btn" data-a="up">▸</button></div>'+
+        '<div class="rrow"><button class="btn tx'+(S.tx?' on':'')+'" data-a="tx" style="flex:1">'+(S.tx?'On air':'Transmit')+'</button><button class="btn" data-a="leave">Leave</button></div>';
+      var all=[{n:S.me+' (you)',s:S.tx,me:1}].concat(S.peers);
+      h+='<div class="peers"><div class="pl"><span>On frequency</span><span>'+all.length+'</span></div>'+all.map(function(p){
+        var sp=p.s&&!S.muted||(p.me&&p.s);
+        return '<div class="peer'+(sp?' speak':'')+(p.me?' me':'')+'"><div class="av">'+ini(p.n)+'</div><span class="pn">'+p.n+'</span>'+(p.me&&p.s?'<span class="txtag">TX</span>':'<span class="eq"><i></i><i></i><i></i></span>')+'</div>'}).join('')+'</div>'+
+        '<div class="vol"><button class="btn" data-a="mute" style="padding:4px 10px'+(S.muted?';color:var(--amber)':'')+'">'+(S.muted?'Unmute':'Mute')+'</button><input type="range" min="0" max="100" value="'+(S.muted?0:S.vol)+'" data-r="vol" '+(S.muted?'disabled':'')+'><span>'+(S.muted?'Off':S.vol+'%')+'</span></div>';
+    }
+    el.innerHTML=h+'</div>';
+  }
+  el.addEventListener('click',function(e){
+    var b=e.target.closest('[data-a]');if(!b)return;var a=b.dataset.a;
+    if(a==='tune'){var v=parseFloat(el.querySelector('[data-r=in]').value);S.inVal=el.querySelector('[data-r=in]').value;if(isNaN(v)||v<50||v>350){S.err=true}else{S.err=false;S.freq=Math.round(v*10)/10}}
+    else if(a==='dn')S.freq=Math.max(50,Math.round((S.freq-.1)*10)/10);
+    else if(a==='up')S.freq=Math.min(350,Math.round((S.freq+.1)*10)/10);
+    else if(a==='tx')S.tx=!S.tx;
+    else if(a==='leave'){S.freq=null;S.tx=false}
+    else if(a==='mute')S.muted=!S.muted;
+    else if(a==='col')S.col=true;
+    else if(a==='exp')S.col=false;
+    draw();if(o.onChange)o.onChange(S);
+  });
+  el.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.dataset.r==='in'){var b=el.querySelector('[data-a=tune]');if(b)b.click()}});
+  el.addEventListener('input',function(e){if(e.target.dataset.r==='vol'){S.vol=+e.target.value;e.target.nextElementSibling.textContent=S.vol+'%'}});
+  function typing(e){var t=e.target&&e.target.tagName;return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'}
+  if(o.live){
+    document.addEventListener('keydown',function(e){if(typing(e)||held||S.freq===null)return;if(e.key.toLowerCase()===S.ptt.toLowerCase()){held=true;S.tx=true;draw()}});
+    document.addEventListener('keyup',function(e){if(held&&e.key.toLowerCase()===S.ptt.toLowerCase()){held=false;S.tx=false;draw()}});
+  }
+  if(o.sim!==false){
+    setInterval(function(){
+      if(S.freq===null||S.tx||!S.peers.length||S.col||el.contains(document.activeElement))return;
+      S.peers.forEach(function(p){p.s=false});
+      if(Math.random()<.75)S.peers[Math.floor(Math.random()*S.peers.length)].s=true;
+      draw();
+    },1700);
+  }
+  draw();
+  return {state:S,setPtt:function(k){S.ptt=k;draw()},redraw:draw};
+}
+
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var P=['Peter Tork','Obi Wagwan','Joe Tekkae','Grauto'];
+  var live=createRadio($('#live'),{live:true,freq:131.3,ptt:'v',peers:P});
+  createRadio($('#s1'),{framed:true,sim:false});
+  createRadio($('#s2'),{framed:true,freq:131.3,peers:P.slice(0,3)});
+  createRadio($('#s3'),{framed:true,freq:131.3,tx:true,peers:P.slice(0,3),sim:false});
+  createRadio($('#s4'),{framed:true,freq:131.3,muted:true,peers:P.slice(0,3),sim:false});
+  createRadio($('#s5'),{framed:true,err:true,inVal:'400',sim:false});
+  var c=$('#s6');c.innerHTML='<div id="c1"></div><div id="c2"></div>';
+  createRadio($('#c1'),{framed:true,freq:131.3,collapsed:true,peers:P,sim:false});
+  createRadio($('#c2'),{framed:true,collapsed:true,sim:false});
+  $('#kin').addEventListener('input',function(){var k=this.value.trim().slice(-1);if(!k)return;live.setPtt(k);$('#holdkey').textContent=k.toUpperCase()});
+})();
+</script>
+
+</body></html>

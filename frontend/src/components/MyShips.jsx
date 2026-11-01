@@ -10,14 +10,11 @@ const playClick = () => {
 };
 
 // Shared style for the four IDENTIFICATION-block right-side buttons.
-// HoverBtn and BackLink both spread the caller's style last so these win.
+// Pair these with className="btn" so they pick up the pressable bevel recipe.
 const UNIFORM_BTN_STYLE = {
-  display: 'block',
   width: 220,
-  textAlign: 'center',
-  fontSize: 15,
-  padding: '7px 0',
-  letterSpacing: '0.1em',
+  fontSize: 13,
+  padding: '8px 0',
   cursor: 'pointer',
   marginBottom: 6,
 };
@@ -57,39 +54,26 @@ function useDots(active) {
 function StatusChip({ isMission, size = 'sm' }) {
   const onMission = !!isMission;
   return (
-    <span style={{
-      display: 'inline-block',
-      border: `1px solid ${onMission ? '#FFAA33' : '#2A6A9A'}`,
-      color: onMission ? '#FFAA33' : '#66AADD',
-      fontSize: 13,
-      padding: '1px 6px',
-      letterSpacing: '0.1em',
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-    }}>
-      {onMission ? 'ON MISSION' : 'IDLE'}
+    <span className={onMission ? 'badge b-amber' : 'badge b-blue'}>
+      {onMission ? 'On mission' : 'Idle'}
     </span>
   );
 }
 
+// Legacy HoverBtn maps to the standard .btn utility — the color-prop API
+// was retained so existing call sites don't need to be rewritten. Pass
+// `color="#FF5544"` and we select the warn variant, etc.
 function HoverBtn({ onClick, color, disabled, children, style = {} }) {
-  const [hover, setHover] = useState(false);
-  const active = hover && !disabled;
+  const variant =
+    color === '#FF5544' ? 'warn' :
+    color === '#44FF88' ? 'go'   :
+    color === '#FFBB33' ? 'amb'  : '';
   return (
     <button
+      className={`btn ${variant}`.trim()}
+      disabled={disabled}
       onClick={disabled ? undefined : () => { playClick(); onClick?.(); }}
-      onMouseEnter={() => !disabled && setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        border: `1px solid ${disabled ? '#1A3D55' : color}`,
-        color: disabled ? '#1A3D55' : (active ? '#000' : color),
-        background: active ? color : '#000',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        fontSize: 18,
-        padding: '6px 14px',
-        letterSpacing: '0.1em',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        ...style,
-      }}
+      style={{ fontSize: 13, padding: '7px 14px', ...style }}
     >
       {children}
     </button>
@@ -107,7 +91,7 @@ function FleetList({ ships, loading, selectedId, onSelect, specs, onRegisterShip
     <div ref={colRef} style={{
       width: '100%',
       position: 'relative',
-      borderRight: '1px solid #1A3D55',
+      borderRight: '1px solid var(--rim0)',
       display: 'flex',
       flexDirection: 'column',
       minHeight: 0,
@@ -115,28 +99,24 @@ function FleetList({ ships, loading, selectedId, onSelect, specs, onRegisterShip
       {setLeftWidth && (
         <ColumnResizeHandle side="right" columnRef={colRef} setWidth={setLeftWidth} />
       )}
-      <div style={{
-        padding: '10px 14px',
-        borderBottom: '1px solid #1A3D55',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.14em' }}>YOUR FLEET</span>
-        <span style={{ fontSize: 16, color: '#66AADD' }}>({ships.length})</span>
+      <div className="sh">
+        <span>Your fleet</span>
+        <span className="badge b-blue">{ships.length}</span>
       </div>
 
-      <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+      <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {loading ? (
-          <div style={{ padding: '20px 14px', fontSize: 16, color: '#66AADD' }}>SCANNING{dots}</div>
+          <div className="empty">Scanning{dots}</div>
         ) : ships.length === 0 ? (
-          <div style={{ padding: '20px 14px' }}>
-            <div style={{ fontSize: 16, color: '#1A3D55', letterSpacing: '0.1em' }}>
-              NO VESSELS REGISTERED
+          <div className="raised" style={{ padding: 16, textAlign: 'center' }}>
+            <div style={{
+              fontSize: 11, fontWeight: 600, color: 'var(--fg3)',
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>
+              No vessels registered
             </div>
-            <div style={{ fontSize: 16, color: '#66AADD', marginTop: 6, lineHeight: 1.6 }}>
-              Click ⊕ REGISTER SHIP to add your first vessel.
+            <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 6, lineHeight: 1.6 }}>
+              Click <b>Register ship</b> to add your first vessel.
             </div>
           </div>
         ) : (
@@ -159,11 +139,13 @@ function FleetList({ ships, loading, selectedId, onSelect, specs, onRegisterShip
 
         {borrowedShips && borrowedShips.length > 0 && (
           <>
-            <div style={{
-              padding: '8px 14px', borderTop: '1px solid #1A3D55', borderBottom: '1px solid #0D2030',
-              fontSize: 13, color: '#33DDAA', letterSpacing: '0.12em',
+            <div className="h3" style={{
+              display: 'flex', justifyContent: 'space-between',
+              paddingTop: 10, borderTop: '1px solid var(--rim0)',
+              marginTop: 4,
             }}>
-              BORROWED VESSELS ({borrowedShips.length})
+              <span>Borrowed vessels</span>
+              <span className="badge b-lime">{borrowedShips.length}</span>
             </div>
             {borrowedShips.map(ship => {
               const selected = selectedId === `borrowed-${ship._id}`;
@@ -183,27 +165,18 @@ function FleetList({ ships, loading, selectedId, onSelect, specs, onRegisterShip
       </div>
 
       <div style={{
-        padding: '10px 14px',
-        borderTop: '1px solid #1A3D55',
+        padding: '10px 12px',
+        borderTop: '1px solid var(--rim0)',
+        background: 'linear-gradient(180deg, #0A1B2B, #061018)',
+        boxShadow: '0 -1px 0 var(--rim0)',
         flexShrink: 0,
       }}>
         <button
+          className="btn go"
           onClick={() => { playClick(); onRegisterShip(); }}
-          onMouseEnter={() => setRegisterHover(true)}
-          onMouseLeave={() => setRegisterHover(false)}
-          style={{
-            width: '100%',
-            border: '1px solid #00EEFF',
-            color: registerHover ? '#000' : '#00EEFF',
-            background: registerHover ? '#00EEFF' : '#000',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-            fontSize: 16,
-            padding: 6,
-            letterSpacing: '0.12em',
-            cursor: 'pointer',
-          }}
+          style={{ width: '100%', fontSize: 12, padding: '8px 0' }}
         >
-          ⊕ REGISTER SHIP
+          ⊕ Register ship
         </button>
       </div>
     </div>
@@ -211,50 +184,44 @@ function FleetList({ ships, loading, selectedId, onSelect, specs, onRegisterShip
 }
 
 function ShipRow({ ship, selected, displayName, onClick, onLoan, isBorrowed }) {
-  const [hover, setHover] = useState(false);
-  const bg = selected ? '#040D15' : (hover ? '#040D15' : '#000');
   return (
     <div
+      className="raised"
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
-        padding: '10px 14px',
-        borderBottom: '1px solid #0D2030',
+        padding: '10px 12px',
         cursor: 'pointer',
-        background: bg,
-        borderLeft: selected ? '2px solid #66AADD' : '2px solid transparent',
+        borderLeft: `3px solid ${selected ? 'var(--rim2)' : (isBorrowed ? 'var(--lime)' : 'var(--rim1)')}`,
+        ...(selected ? {
+          boxShadow: '0 1px 0 rgba(180,225,255,.2) inset, 0 3px 0 #050e18, 0 8px 14px rgba(0,0,0,.45), 0 0 0 1px var(--rim2)',
+        } : {}),
       }}
     >
-      <div style={{ fontSize: 17, color: '#99CCFF', letterSpacing: '0.08em' }}>
+      <div style={{ fontSize: 13, color: 'var(--fg0)', fontWeight: 600 }}>
         {ship.ship_name}
       </div>
       {displayName && (
-        <div style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.04em', marginTop: 2 }}>
+        <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 2 }}>
           {displayName}
         </div>
       )}
-      <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ marginTop: 7, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {isBorrowed ? (
-          <span style={{
-            display: 'inline-block', border: '1px solid #33DDAA', color: '#33DDAA',
-            fontSize: 13, padding: '1px 6px', letterSpacing: '0.1em',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-          }}>BORROWED</span>
+          <span className="badge b-lime">Borrowed</span>
         ) : (
           <StatusChip isMission={ship.is_mission} />
         )}
         {onLoan && (
-          <span style={{
-            display: 'inline-block', border: '1px solid #00EEFF', color: '#00EEFF',
-            fontSize: 13, padding: '1px 6px', letterSpacing: '0.1em',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-          }}>ON LOAN</span>
+          <span className="badge" style={{
+            color: 'var(--cyan)',
+            background: 'rgba(0,238,255,.08)',
+            border: '1px solid rgba(0,238,255,.3)',
+          }}>On loan</span>
         )}
       </div>
       {!isBorrowed && (
-        <div style={{ fontSize: 16, color: '#1A3D55', marginTop: 3 }}>
-          {ship.missions_completed || 0} MISSIONS COMPLETED
+        <div style={{ fontSize: 11, color: 'var(--fg3)', marginTop: 6, letterSpacing: '0.04em' }}>
+          {ship.missions_completed || 0} missions completed
         </div>
       )}
     </div>
@@ -278,6 +245,14 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
   const [editorError, setEditorError] = useState('');
   const editorNextNodeId = useRef(1);
 
+  // Inline description/history edit state. Owner-only (MyShips only ever
+  // shows ships this user owns, so no additional ownership check needed
+  // on the client — backend PUT /ships/:id enforces the real check).
+  const [descEditing, setDescEditing] = useState(false);
+  const [descDraft, setDescDraft] = useState('');
+  const [descSaving, setDescSaving] = useState(false);
+  const [descError, setDescError] = useState('');
+
   useEffect(() => {
     setEditing(false);
     setDeleteOpen(false);
@@ -287,9 +262,12 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
     setEditorNodes([]);
     setEditorSaving(false);
     setEditorError('');
+    setDescEditing(false);
+    setDescDraft(ship?.description || '');
+    setDescError('');
     if (!ship?._id) return;
     api.get(`/ships/${ship._id}/stats`).then(({ data }) => setStats(data)).catch(() => setStats(null));
-  }, [ship?._id]);
+  }, [ship?._id, ship?.description]);
 
   function enterEdit() {
     const init = (ship.node_positions || []).map((n, i) => ({
@@ -333,21 +311,14 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
   if (expungeMsg) {
     return (
       <div style={{
-        flex: 1,
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#FF5544',
-        fontSize: 17,
-        letterSpacing: '0.1em',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        textAlign: 'center',
-        padding: 20,
-        opacity: 1,
-        transition: 'opacity 2s ease',
+        flex: 1, height: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'var(--red)',
+        fontSize: 13, fontWeight: 600,
+        letterSpacing: '0.08em', textTransform: 'uppercase',
+        fontFamily: 'var(--font)', textAlign: 'center', padding: 20,
       }}>
-        VESSEL RECORD EXPUNGED FROM NEXUS FLEET INVENTORY
+        Vessel record expunged from Nexus fleet inventory
       </div>
     );
   }
@@ -356,19 +327,15 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
     return (
       <div style={{
         flex: 1,
-        borderRight: '1px solid #1A3D55',
+        borderRight: '1px solid var(--rim0)',
         height: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'column',
         gap: 16,
-        color: '#1A3D55',
-        fontSize: 16,
-        letterSpacing: '0.1em',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
       }}>
-        SELECT A VESSEL FROM YOUR FLEET
+        <div className="empty" style={{ padding: 0, fontSize: 13 }}>Select a vessel from your fleet</div>
         <BackLink onClick={onBack} style={{ ...UNIFORM_BTN_STYLE }} />
       </div>
     );
@@ -396,36 +363,37 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
   return (
     <div style={{
       flex: 1,
-      borderRight: '1px solid #1A3D55',
+      borderRight: '1px solid var(--rim0)',
       overflowY: 'auto',
       height: '100%',
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      fontFamily: 'var(--font)',
     }}>
       {/* IDENTIFICATION */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        padding: '16px 20px',
-        borderBottom: '1px solid #0D2030',
+        padding: '18px 20px',
+        borderBottom: '1px solid var(--rim0)',
         gap: 16,
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 25, color: '#CCE8FF', letterSpacing: '0.12em' }}>
+          <div style={{ fontSize: 22, color: 'var(--fg0)', fontWeight: 700, letterSpacing: '0.02em' }}>
             {ship.ship_name}
           </div>
-          <div style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.06em', marginTop: 4 }}>
+          <div style={{ fontSize: 13, color: 'var(--fg2)', marginTop: 2 }}>
             {displayName}
           </div>
           <div style={{
-            display: 'flex', gap: 20, marginTop: 10,
-            fontSize: 16, color: '#66AADD', flexWrap: 'wrap',
+            display: 'flex', gap: 16, marginTop: 10,
+            fontSize: 12, color: 'var(--fg3)', flexWrap: 'wrap',
+            letterSpacing: '0.04em',
           }}>
-            <span>TYPE {ship.type ? `· ${ship.type}` : '—'}</span>
-            <span>REGISTERED {formatDate(ship.created_at)}</span>
-            <span>OWNER {ownerName}</span>
+            <span>Type · <b style={{ color: 'var(--fg1)', fontWeight: 500 }}>{ship.type || '—'}</b></span>
+            <span>Registered <b style={{ color: 'var(--fg1)', fontWeight: 500 }}>{formatDate(ship.created_at)}</b></span>
+            <span>Owner <b style={{ color: 'var(--fg1)', fontWeight: 500 }}>{ownerName}</b></span>
           </div>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 10 }}>
             <StatusChip isMission={ship.is_mission} />
           </div>
         </div>
@@ -460,7 +428,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
                 </HoverBtn>
               ) : (
                 <HoverBtn
-                  color="#1A3D55"
+                  color="#1A3A50"
                   disabled
                   style={UNIFORM_BTN_STYLE}
                 >
@@ -469,7 +437,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
               )}
               {isBorrowed && loanInfo?.request_id ? (
                 <HoverBtn
-                  color="#33DDAA"
+                  color="#44FF88"
                   onClick={() => onLoanAction?.('return', loanInfo)}
                   style={UNIFORM_BTN_STYLE}
                 >
@@ -496,7 +464,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
           ) : (
             <>
               <HoverBtn
-                color="#33DDAA"
+                color="#44FF88"
                 onClick={saveNodes}
                 disabled={editorSaving}
                 style={UNIFORM_BTN_STYLE}
@@ -504,7 +472,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
                 {editorSaving ? 'SAVING...' : 'SAVE NODES'}
               </HoverBtn>
               <HoverBtn
-                color="#2A6A9A"
+                color="#2A5A7A"
                 onClick={cancelEdit}
                 disabled={editorSaving}
                 style={UNIFORM_BTN_STYLE}
@@ -523,7 +491,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
         <div style={{
           padding: '12px 20px',
           fontSize: 16, color: '#FF5544', lineHeight: 1.6,
-          borderBottom: '1px solid #0D2030',
+          borderBottom: '1px solid #061018',
         }}>
           THIS VESSEL IS CURRENTLY ON AN ACTIVE MISSION AND CANNOT BE DELETED
           UNTIL RELEASED FROM DUTY.
@@ -532,7 +500,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
       {deleteOpen && !ship.is_mission && (
         <div style={{
           margin: '12px 20px',
-          background: '#0D2030',
+          background: '#061018',
           border: '1px solid #FF5544',
           padding: 14,
         }}>
@@ -551,7 +519,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
               background: '#000',
               border: '1px solid #FF5544',
               color: '#FF5544',
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+              fontFamily: "'Inter', system-ui, sans-serif",
               fontSize: 17,
               padding: 8,
               marginTop: 10,
@@ -593,7 +561,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
             color: '#FF5544',
             fontSize: 16,
             letterSpacing: '0.08em',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+            fontFamily: "'Inter', system-ui, sans-serif",
           }}>
             SAVE FAILED — {editorError}
           </span>
@@ -601,7 +569,7 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
       )}
 
       {/* SCHEMATIC */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #0D2030' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #061018' }}>
         {editing ? (
           <NodeEditor
             ship={ship}
@@ -615,39 +583,117 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
         )}
       </div>
 
-      {/* HISTORY / LORE */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #0D2030' }}>
-        <div style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.14em', marginBottom: 8 }}>
-          SHIP HISTORY
+      {/* HISTORY / LORE — raised card for proper relief. Owner can edit the
+          description in-place via the ✎ button in the top-right of the card. */}
+      <div style={{ padding: '16px 20px' }}>
+        <div className="raised" style={{ padding: '14px 16px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', margin: '0 0 8px' }}>
+            <div className="h3" style={{ margin: 0, flex: 1 }}>Ship history</div>
+            {!descEditing && (
+              <button
+                className="btn"
+                onClick={() => { setDescDraft(ship.description || ''); setDescError(''); setDescEditing(true); }}
+                title="Edit history"
+                style={{ fontSize: 11, padding: '4px 10px' }}
+              >
+                ✎ Edit
+              </button>
+            )}
+          </div>
+
+          {descEditing ? (
+            <>
+              <textarea
+                value={descDraft}
+                onChange={e => setDescDraft(e.target.value.slice(0, 1000))}
+                placeholder="Write the ship's history — origin, notable missions, quirks, lore."
+                rows={8}
+                style={{
+                  width: '100%',
+                  background: 'var(--bg0)',
+                  color: 'var(--fg0)',
+                  border: '1px solid var(--rim0)',
+                  borderRadius: 4,
+                  padding: 10,
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  fontFamily: 'var(--font)',
+                  resize: 'vertical',
+                  minHeight: 140,
+                }}
+              />
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                marginTop: 8,
+              }}>
+                <span style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.08em' }}>
+                  {descDraft.length}/1000
+                </span>
+                {descError && (
+                  <span style={{ fontSize: 11, color: 'var(--red)' }}>{descError}</span>
+                )}
+                <div style={{ flex: 1 }} />
+                <button
+                  className="btn"
+                  onClick={() => { setDescEditing(false); setDescError(''); setDescDraft(ship.description || ''); }}
+                  disabled={descSaving}
+                  style={{ fontSize: 11, padding: '5px 12px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn go"
+                  disabled={descSaving || descDraft === (ship.description || '')}
+                  onClick={async () => {
+                    setDescSaving(true); setDescError('');
+                    try {
+                      await api.put(`/ships/${ship._id}`, { description: descDraft });
+                      setDescEditing(false);
+                      onChanged?.();
+                    } catch (err) {
+                      setDescError(err?.response?.data?.error || 'save failed');
+                    } finally {
+                      setDescSaving(false);
+                    }
+                  }}
+                  style={{ fontSize: 11, padding: '5px 14px' }}
+                >
+                  {descSaving ? 'Saving…' : 'Save history'}
+                </button>
+              </div>
+            </>
+          ) : ship.description ? (
+            <div style={{ fontSize: 13, color: 'var(--fg1)', lineHeight: 1.7 }}>
+              {ship.description}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--fg3)', fontStyle: 'italic' }}>
+              No history recorded.
+            </div>
+          )}
         </div>
-        {ship.description ? (
-          <div style={{ fontSize: 16, color: '#99CCFF', lineHeight: 1.9, letterSpacing: '0.04em' }}>
-            {ship.description}
-          </div>
-        ) : (
-          <div style={{ fontSize: 16, color: '#1A3D55', letterSpacing: '0.04em' }}>
-            NO HISTORY RECORDED
-          </div>
-        )}
       </div>
 
-      {/* STATS */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #0D2030' }}>
-        <div style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.14em', marginBottom: 10 }}>
-          VESSEL PERFORMANCE
-        </div>
-        <div style={{ display: 'flex', gap: 20 }}>
-          <Stat label="MISSIONS COMPLETED" value={ship.missions_completed ?? 0} color="#99CCFF" />
-          <Stat
-            label="AVG FILL RATE"
-            value={stats?.missions_analyzed > 0 ? `${stats.avg_fill_rate}%` : '--'}
-            color="#99CCFF"
-          />
-          <Stat
-            label="LIFETIME RP"
-            value={stats ? stats.lifetime_rp : 0}
-            color="#33DDAA"
-          />
+      {/* STATS — raised card with 3-column stat tiles */}
+      <div style={{ padding: '0 20px 16px' }}>
+        <div className="raised" style={{ padding: '14px 16px' }}>
+          <div className="h3" style={{ margin: '0 0 12px' }}>Vessel performance</div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 10,
+          }}>
+            <StatTile label="Missions completed" value={ship.missions_completed ?? 0} />
+            <StatTile
+              label="Avg fill rate"
+              value={stats?.missions_analyzed > 0 ? `${stats.avg_fill_rate}%` : '—'}
+            />
+            <StatTile
+              label="Lifetime RP"
+              value={stats ? stats.lifetime_rp : 0}
+              color="var(--lime)"
+            />
+          </div>
         </div>
       </div>
 
@@ -655,32 +701,57 @@ function ShipDetail({ ship, specs, shipImages, onChanged, onDeleted, onViewLiveM
   );
 }
 
-function BackLink({ onClick, style = {} }) {
-  const [hover, setHover] = useState(false);
+function StatTile({ label, value, color }) {
   return (
-    <div
-      onClick={() => { playClick(); onClick?.(); }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        border: '1px solid #FFBB33',
-        color: hover ? '#000' : '#FFBB33',
-        background: hover ? '#FFBB33' : '#000',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        whiteSpace: 'nowrap',
-        ...style,
-      }}
-    >
-      ◀ BACK TO DASHBOARD
+    <div style={{
+      background: '#02080e',
+      border: '1px solid var(--rim0)',
+      borderRadius: 4,
+      padding: '10px 12px',
+      textAlign: 'center',
+      boxShadow: '0 2px 6px #000 inset',
+    }}>
+      <div style={{
+        fontSize: 22, fontWeight: 700,
+        color: color || 'var(--fg0)',
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1.1,
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: 10, fontWeight: 600, color: 'var(--fg3)',
+        letterSpacing: '0.08em', textTransform: 'uppercase',
+        marginTop: 4,
+      }}>
+        {label}
+      </div>
     </div>
+  );
+}
+
+function BackLink({ onClick, style = {} }) {
+  return (
+    <button
+      className="btn amb"
+      onClick={() => { playClick(); onClick?.(); }}
+      style={{ whiteSpace: 'nowrap', fontSize: 13, padding: '8px 0', ...style }}
+    >
+      ◀ Back to dashboard
+    </button>
   );
 }
 
 function Stat({ label, value, color }) {
   return (
     <div>
-      <div style={{ fontSize: 16, color: '#66AADD', letterSpacing: '0.1em' }}>{label}</div>
-      <div style={{ fontSize: 25, color, marginTop: 4 }}>{value}</div>
+      <div className="h3" style={{ margin: 0, fontSize: 11 }}>{label}</div>
+      <div style={{
+        fontSize: 22, fontWeight: 700,
+        color: color || 'var(--fg0)',
+        marginTop: 4,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{value}</div>
     </div>
   );
 }
@@ -696,9 +767,9 @@ function ReadOnlySchematic({ ship, schemImg }) {
       <div style={{
         padding: 40,
         textAlign: 'center',
-        color: '#1A3D55',
+        color: '#1A3A50',
         fontSize: 16,
-        border: '1px solid #1A3D55',
+        border: '1px solid #1A3A50',
         letterSpacing: '0.1em',
       }}>
         [ NO SCHEMATIC IMAGE ]
@@ -744,7 +815,7 @@ function ReadOnlySchematic({ ship, schemImg }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#00FF66',
                 fontSize: 20,
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                fontFamily: "'Inter', system-ui, sans-serif",
                 pointerEvents: 'auto',
                 userSelect: 'none',
               }}
@@ -754,9 +825,9 @@ function ReadOnlySchematic({ ship, schemImg }) {
                   position: 'absolute',
                   transform: 'translate(-50%, -140%)',
                   left: '50%',
-                  background: '#0D2030',
-                  border: '1px solid #1A3D55',
-                  color: '#99CCFF',
+                  background: '#061018',
+                  border: '1px solid #1A3A50',
+                  color: '#99BBDD',
                   fontSize: 16,
                   padding: '3px 7px',
                   whiteSpace: 'nowrap',
@@ -772,7 +843,7 @@ function ReadOnlySchematic({ ship, schemImg }) {
         </div>
       </div>
       {nodes.length === 0 && (
-        <div style={{ marginTop: 8, fontSize: 16, color: '#1A3D55', letterSpacing: '0.06em' }}>
+        <div style={{ marginTop: 8, fontSize: 16, color: '#1A3A50', letterSpacing: '0.06em' }}>
           NO CREW CONFIGURATION — EDIT TO ADD NODES
         </div>
       )}
@@ -884,8 +955,8 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
   function roleBtnStyle(state, hover) {
     if (state.active) return { border: '1px solid #00EEFF', color: '#00EEFF', background: 'rgba(0,238,255,0.05)' };
     if (state.placed) return { border: '1px solid #00FF66', color: '#00FF66', background: '#000' };
-    if (hover)        return { border: '1px solid #2A6A9A', color: '#99CCFF', background: '#000' };
-    return                   { border: '1px solid #1A3D55', color: '#66AADD', background: '#000' };
+    if (hover)        return { border: '1px solid #2A5A7A', color: '#99BBDD', background: '#000' };
+    return                   { border: '1px solid #1A3A50', color: '#66AADD', background: '#000' };
   }
 
   return (
@@ -893,13 +964,13 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
       {/* Instructions panel — matches ShipRegistration exactly so operators
           who registered a ship recognize the same UX when editing later. */}
       <div style={{
-        background: '#0D2030', border: '1px solid #1A3D55',
+        background: 'rgba(255,187,51,0.08)', border: '1px solid rgba(255,187,51,0.3)',
         padding: '10px 14px', fontSize: 16, color: '#66AADD',
         lineHeight: 1.8, letterSpacing: '0.06em',
         marginBottom: 12,
       }}>
-        <div style={{ color: '#99CCFF', marginBottom: 4 }}>HOW TO CONFIGURE YOUR CREW</div>
-        <div style={{ color: '#1A3D55' }}>──────────────────────────────────────────</div>
+        <div style={{ color: '#99BBDD', marginBottom: 4 }}>HOW TO CONFIGURE YOUR CREW</div>
+        <div style={{ color: '#1A3A50' }}>──────────────────────────────────────────</div>
         <div>1. Select a role from the palette</div>
         <div>2. Right-click schematic to place</div>
         <div>3. Left-click a node to select it</div>
@@ -928,7 +999,7 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
             }}
           />
         ) : (
-          <div style={{ padding: 60, textAlign: 'center', color: '#1A3D55', fontSize: 16 }}>
+          <div style={{ padding: 60, textAlign: 'center', color: '#1A3A50', fontSize: 16 }}>
             [ NO SCHEMATIC IMAGE ]
           </div>
         )}
@@ -963,7 +1034,7 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: isSelected ? '#00EEFF' : '#00FF66',
                   fontSize: 20,
-                  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                  fontFamily: "'Inter', system-ui, sans-serif",
                   pointerEvents: 'auto',
                   userSelect: 'none',
                   zIndex: 5,
@@ -975,9 +1046,9 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
                     position: 'absolute',
                     transform: 'translate(-50%, -140%)',
                     left: '50%',
-                    background: '#0D2030',
-                    border: '1px solid #1A3D55',
-                    color: '#99CCFF',
+                    background: '#061018',
+                    border: '1px solid #1A3A50',
+                    color: '#99BBDD',
                     fontSize: 16,
                     padding: '3px 7px',
                     whiteSpace: 'nowrap',
@@ -1004,7 +1075,7 @@ function NodeEditor({ ship, schemImg, nodes, setNodes, nextNodeIdRef }) {
           <div key={cat.name}>
             <div style={{
               fontSize: 16, color: '#66AADD', letterSpacing: '0.14em',
-              borderBottom: '1px solid #0D2030', paddingBottom: 3,
+              borderBottom: '1px solid #061018', paddingBottom: 3,
               margin: '8px 0 4px',
             }}>
               {cat.name}
@@ -1040,7 +1111,7 @@ function PaletteBtn({ role, state, styleFn, onClick }) {
         background: s.background,
         border: s.border,
         color: s.color,
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontFamily: "'Inter', system-ui, sans-serif",
         fontSize: 16, textAlign: 'left',
         cursor: 'pointer',
         letterSpacing: '0.08em',
@@ -1074,72 +1145,64 @@ function MissionHistory({ ship, setRightWidth }) {
       position: 'relative',
       overflowY: 'auto',
       height: '100%',
-      fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      fontFamily: 'var(--font)',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
       {setRightWidth && (
         <ColumnResizeHandle side="left" columnRef={colRef} setWidth={setRightWidth} />
       )}
-      <div style={{
-        padding: '10px 14px',
-        borderBottom: '1px solid #1A3D55',
-        fontSize: 16, color: '#66AADD',
-        letterSpacing: '0.14em',
-      }}>
-        MISSION HISTORY
+      <div className="sh">
+        <span>Mission history</span>
+        {rows && rows.length > 0 && <span className="badge b-blue">{rows.length}</span>}
       </div>
 
-      {!ship ? (
-        <div style={{ padding: 14, fontSize: 16, color: '#1A3D55' }}>
-          SELECT A VESSEL TO VIEW HISTORY
-        </div>
-      ) : loading ? (
-        <div style={{ padding: 14, fontSize: 16, color: '#66AADD' }}>SCANNING{dots}</div>
-      ) : !rows || rows.length === 0 ? (
-        <div style={{ padding: 14, fontSize: 16, color: '#1A3D55' }}>
-          NO MISSION RECORDS
-        </div>
-      ) : (
-        rows.map(r => <HistoryRow key={r._id} row={r} />)
-      )}
+      <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto' }}>
+        {!ship ? (
+          <div className="empty">Select a vessel to view history</div>
+        ) : loading ? (
+          <div className="empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span className="spinner" />Scanning{dots}
+          </div>
+        ) : !rows || rows.length === 0 ? (
+          <div className="empty">No mission records</div>
+        ) : (
+          rows.map(r => <HistoryRow key={r._id} row={r} />)
+        )}
+      </div>
     </div>
   );
 }
 
 function HistoryRow({ row }) {
-  const [hover, setHover] = useState(false);
   const isAbort = row.status === 'ABORT';
   return (
     <div
+      className="raised"
       onClick={() => { playClick(); console.log('open mission detail', row._id); }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
-        padding: '10px 14px',
-        borderBottom: '1px solid #0D2030',
+        padding: '10px 12px',
         cursor: 'pointer',
-        background: hover ? '#040D15' : '#000',
       }}
     >
-      <span style={{
-        display: 'inline-block',
-        border: `1px solid ${isAbort ? '#FF5544' : '#33DDAA'}`,
-        color: isAbort ? '#FF5544' : '#33DDAA',
-        fontSize: 16,
-        padding: '1px 5px',
-        letterSpacing: '0.1em',
-      }}>
-        {row.status}
-      </span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span className={isAbort ? 'badge b-red' : 'badge b-lime'}>
+          {row.status}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--fg3)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {row.role}
+        </span>
+      </div>
       <div style={{
-        fontSize: 16, color: '#99CCFF',
-        marginTop: 4, letterSpacing: '0.06em',
+        fontSize: 13, color: 'var(--fg0)', fontWeight: 600,
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {row.name}
       </div>
-      <div style={{ fontSize: 16, color: '#66AADD', marginTop: 2 }}>{row.mission_type}</div>
-      <div style={{ fontSize: 16, color: '#66AADD', marginTop: 2 }}>{formatDate(row.completed_at)}</div>
-      <div style={{ fontSize: 16, color: '#1A3D55', marginTop: 2 }}>[{row.role}]</div>
+      <div style={{ fontSize: 11, color: 'var(--fg2)', marginTop: 2 }}>{row.mission_type}</div>
+      <div style={{ fontSize: 11, color: 'var(--fg3)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+        {formatDate(row.completed_at)}
+      </div>
     </div>
   );
 }

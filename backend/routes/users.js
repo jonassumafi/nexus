@@ -255,6 +255,13 @@ router.post('/generate-portrait', isAuthenticated, async (req, res) => {
     const { data: base64Data, mimeType } = imagePart.inlineData;
     const portrait_url = await uploadPortraitFromBase64(req.user.discord_id, base64Data, mimeType);
 
+    // Persist immediately. Previously only the onboarding submit wrote to
+    // user.avatar, so post-onboarding regenerations were lost. Saving here
+    // means the ID card widget/modal shows the new portrait as soon as the
+    // caller refetches `me`, and the value survives future Discord logins
+    // (the auth callback preserves URL-form avatars).
+    await User.findByIdAndUpdate(req.user._id, { avatar: portrait_url });
+
     res.json({ portrait_url });
   } catch (err) {
     console.error('[Portrait] Gemini error:', err.message);

@@ -2,6 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocketContext } from '../context/SocketContext';
 import api from '../services/api';
 import { buildSpacesuitChain } from '../utils/spacesuitFilter';
+import { getRadioChrome, getOutboundDelay, channelColor } from '../utils/radioChrome';
+
+// Apply a per-frequency color on top of the operator's base profile.
+// Idempotent — safe to call every time the freq changes or chain rebuilds.
+function applyChannelColor(chain, baseProfile, freqString) {
+  if (!chain || !baseProfile) return;
+  const c = channelColor(freqString);
+  chain.setParam('highpass',       (baseProfile.highpass       ?? 300)  + c.highpass_delta);
+  chain.setParam('lowpass',        (baseProfile.lowpass        ?? 3200) + c.lowpass_delta);
+  chain.setParam('resonance_freq', (baseProfile.resonance_freq ?? 1500) + c.resonance_freq_delta);
+  chain.setParam('resonance_q',    (baseProfile.resonance_q    ?? 3)    + c.resonance_q_delta);
+  chain.setParam('bit_crush',      (baseProfile.bit_crush      ?? 16)   + c.bit_crush_delta);
+}
 
 // Single hook that wires Socket.IO radio signaling, WebRTC mesh, and a
 // spacesuit-filtered local mic stream. Returns the state RadioPanel needs
@@ -19,6 +32,9 @@ export function useRadioConnection({
   const [tunedFrequency, setTunedFrequency] = useState(null);
   const [peers, setPeers] = useState([]);
   const [transmittingPeerIds, setTransmittingPeerIds] = useState([]);
+  // Mirror of the state above, read synchronously from stopPTT/peer handlers
+  // to decide whether to drop the squelch bed.
+  const transmittingPeerIdsRef = useRef([]);
   const [isPTTActive, setIsPTTActive] = useState(false);
   const [micGranted, setMicGranted] = useState(false);
   // Coarse-grained browser-level mic permission state so the panel can nudge
@@ -120,7 +136,17 @@ export function useRadioConnection({
     micGainRef.current = micGain;
 
     const dest = ctx.createMediaStreamDestination();
-    chain.output.connect(dest);
+    // Insert the 80 ms outbound delay (DCS pre-click feel) between the
+    // filter chain output and the peer destination. The local key-up cue
+    // fires immediately on PTT press via the chrome's localBus, so the
+    // operator hears their mic open ~80 ms before peers receive voice.
+    const outDelay = getOutboundDelay(ctx);
+    if (outDelay) {
+      chain.output.connect(outDelay);
+      outDelay.connect(dest);
+    } else {
+      chain.output.connect(dest);
+    }
     filteredStreamRef.current = dest.stream;
 
     // Mute until PTT pressed
@@ -350,6 +376,15 @@ export function useRadioConnection({
     currentFreqRef.current = f;
     currentMissionRef.current = missionId || null;
     setTunedFrequency(f);
+    // Per-channel radio coloration — apply a deterministic offset to the
+    // outbound filter chain so each frequency sounds like a slightly
+    // different radio. Peers on freq 128.4 all hear me with that color;
+    // peers on 212.0 hear me with a different one. Base profile is still
+    // the operator's own voice profile — this just stacks a small, stable
+    // channel delta on top.
+    applyChannelColor(filterChainRef.current, profileRef.current, f);
+    // Per-channel squelch bed profile (brick-wall cutoff + optional AM fade).
+    try { getRadioChrome(audioCtxRef.current)?.setChannel?.(f); } catch {}
     socket.emit('radio:join', { frequency: f, missionId });
   }, [socket, ensureMicAndChain, cleanupAllPeers]);
 
@@ -383,6 +418,7 @@ export function useRadioConnection({
   const leaveFrequency = useCallback(() => {
     if (currentFreqRef.current && socket) {
       socket.emit('radio:leave', { frequency: currentFreqRef.current });
+      new Audio('/sounds/radio_disconnect.mp3').play().catch(() => {});
     }
     cleanupAllPeers();
     teardownAudioChain();
@@ -396,11 +432,31 @@ export function useRadioConnection({
     if (!currentFreqRef.current) return;
     if (!filteredStreamRef.current) return;
     if (isMutedRef.current) return;
+    // Defensive AudioContext resume. If the Electron window has been
+    // backgrounded (user alt-tabbed to Star Citizen), Chromium can
+    // suspend the AudioContext. Even with `backgroundThrottling: false`
+    // set on the webContents, some codepaths still land in suspended
+    // state. Calling resume() here is cheap when already running and
+    // crucial when it's not — without it, the mic track gets enabled
+    // but no audio flows through the filter chain to the peer.
+    try {
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    } catch {}
     setIsPTTActive(true);
     for (const t of filteredStreamRef.current.getAudioTracks()) t.enabled = true;
     if (filterChainRef.current) {
       try { filterChainRef.current.playClick('open'); } catch {}
     }
+    // Local radio-chrome cue — synthesized "key up" click + squelch bed
+    // fade in. Replaces the old transmitting.mp3 which the user noted
+    // was the wrong source. Peers still hear my mic open via the filter
+    // chain's playClick (mixed into the outbound stream above).
+    try {
+      const rc = getRadioChrome(audioCtxRef.current);
+      rc.playKeyUp();
+      rc.setBedActive(true);
+    } catch {}
     socket?.emit('radio:ptt-start', { frequency: currentFreqRef.current });
   }, [socket]);
 
@@ -440,6 +496,15 @@ export function useRadioConnection({
     if (filterChainRef.current) {
       try { filterChainRef.current.playClick('close'); } catch {}
     }
+    // Local key-down cue — synthesized tail click + hiss. Bed stays on
+    // if any peer is still transmitting; otherwise it fades out.
+    try {
+      const rc = getRadioChrome(audioCtxRef.current);
+      rc?.playKeyDown();
+      if ((transmittingPeerIdsRef.current?.length ?? 0) === 0) {
+        rc?.setBedActive(false);
+      }
+    } catch {}
     // Tiny delay before muting so the close click is included in the stream.
     setTimeout(() => {
       if (filteredStreamRef.current) {
@@ -554,11 +619,33 @@ export function useRadioConnection({
     };
 
     const onPttStart = ({ socketId }) => {
-      setTransmittingPeerIds(prev => prev.includes(socketId) ? prev : [...prev, socketId]);
+      setTransmittingPeerIds(prev => {
+        if (prev.includes(socketId)) return prev;
+        const next = [...prev, socketId];
+        transmittingPeerIdsRef.current = next;
+        // Peer keyed up — local squelch bed + key-up click so the user hears
+        // the channel open before voice arrives, DCS-style.
+        try {
+          const rc = getRadioChrome(audioCtxRef.current);
+          rc?.playKeyUp();
+          rc?.setBedActive(true);
+        } catch {}
+        return next;
+      });
     };
 
     const onPttStop = ({ socketId }) => {
-      setTransmittingPeerIds(prev => prev.filter(id => id !== socketId));
+      setTransmittingPeerIds(prev => {
+        const next = prev.filter(id => id !== socketId);
+        transmittingPeerIdsRef.current = next;
+        try {
+          const rc = getRadioChrome(audioCtxRef.current);
+          rc?.playKeyDown();
+          // Only drop the bed if nobody — not even me — is transmitting.
+          if (next.length === 0 && !isPTTActive) rc?.setBedActive(false);
+        } catch {}
+        return next;
+      });
     };
 
     // When the underlying socket reconnects (network hiccup, server restart),
@@ -629,9 +716,37 @@ export function useRadioConnection({
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+
+    // Electron companion bridge — when running inside the Nexus Companion
+    // app, the native OS-level key hook delivers PTT events via IPC.
+    // This path fires even when Star Citizen (or any other app) has
+    // keyboard focus; the in-browser keydown/keyup above only fires when
+    // THIS window has focus. The two paths are complementary — the
+    // reservation gates below (mute, no frequency) still apply.
+    let unsubscribeIPC = null;
+    try {
+      if (typeof window !== 'undefined' && window.electronAPI?.onPTT) {
+        window.electronAPI.setPttKey?.(pttKey || 'v');
+        unsubscribeIPC = window.electronAPI.onPTT(({ down }) => {
+          if (!currentFreqRef.current) return;
+          if (isMutedRef.current) return;
+          if (down && !pttDownRef.current) {
+            pttDownRef.current = true;
+            startPTT();
+          } else if (!down && pttDownRef.current) {
+            pttDownRef.current = false;
+            stopPTT();
+          }
+        });
+      }
+    } catch (err) {
+      console.error('[Radio] Electron PTT bridge failed:', err?.message);
+    }
+
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      try { unsubscribeIPC?.(); } catch {}
     };
   }, [startPTT, stopPTT, pttKey]);
 

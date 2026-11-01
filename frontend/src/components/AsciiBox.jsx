@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 
-const BORDER = '#1A3D55';
+const BORDER = '#1A3A50';
 
 export default function AsciiBox({ children, title, fontSize = 18, charW = 11 }) {
   const containerRef = useRef(null);
@@ -25,13 +25,13 @@ export default function AsciiBox({ children, title, fontSize = 18, charW = 11 })
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace", fontSize }}
+      style={{ width: '100%', fontFamily: "'Inter', system-ui, sans-serif", fontSize }}
     >
       <div style={lineRow}>{hLine('╔', '═', '╗')}</div>
 
       {title && (
         <>
-          <div style={{ padding: '3px 14px', color: '#99CCFF', letterSpacing: '0.06em', lineHeight: 1.6 }}>
+          <div style={{ padding: '3px 14px', color: '#99BBDD', letterSpacing: '0.06em', lineHeight: 1.6 }}>
             {title}
           </div>
           <div style={lineRow}>{hLine('╠', '═', '╣')}</div>

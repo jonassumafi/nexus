@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import api from '../services/api';
 
 const modemSnd = new Audio('/sounds/modem.mp3');
@@ -43,7 +43,7 @@ const HEADER_BTN_STYLE = {
   textAlign: 'center',
   fontSize: 15,
   padding: '7px 0',
-  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+  fontFamily: "'Inter', system-ui, sans-serif",
   letterSpacing: '0.12em',
   cursor: 'pointer',
 };
@@ -76,14 +76,19 @@ const REG_LINE_DEFS = [
   { label: 'VERIFYING CLEARANCE      ', status: 'OK',     color: '#66AADD', range: [400, 1400] },
   { label: 'LOADING CONFIG SUITE     ', status: 'OK',     color: '#66AADD', range: [500, 1500] },
   { label: 'INITIALIZING CREW EDITOR ', status: 'OK',     color: '#66AADD', range: [400, 1200] },
-  { label: 'ESTABLISHING CONNECTION  ', status: 'READY',  color: '#33DDAA', range: [300, 1000] },
-  { label: 'REGISTRY TERMINAL        ', status: 'ONLINE', color: '#33DDAA', range: [200, 800]  },
+  { label: 'ESTABLISHING CONNECTION  ', status: 'READY',  color: '#44FF88', range: [300, 1000] },
+  { label: 'REGISTRY TERMINAL        ', status: 'ONLINE', color: '#44FF88', range: [200, 800]  },
 ];
 
 function BootSequence({ operatorName, onDone }) {
   const [duration] = useState(() => 5000 + Math.random() * 2000);
   const seqRef = useRef(null);
   const sndRef = useRef(null);
+  // Ref-latched callback so parent re-renders that hand us a new onDone
+  // identity (e.g. a sibling fetch resolving mid-boot) cannot re-trigger
+  // the animation effect below.
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
 
   const [header1, setHeader1]     = useState(false);
   const [header2, setHeader2]     = useState(false);
@@ -165,7 +170,7 @@ function BootSequence({ operatorName, onDone }) {
     schedule(() => setShowReady(true),  cursor + 250);
     schedule(() => setShowPrompt(true), cursor + 400);
 
-    const doneTimer = setTimeout(() => { onDone?.(); }, duration + 3000);
+    const doneTimer = setTimeout(() => { onDoneRef.current?.(); }, duration + 3000);
 
     return () => {
       clearTimeout(unmute);
@@ -175,7 +180,7 @@ function BootSequence({ operatorName, onDone }) {
       iids.forEach(clearInterval);
       try { snd.pause(); snd.currentTime = 0; snd.src = ''; snd.load(); } catch (e) {}
     };
-  }, [duration, onDone]);
+  }, [duration]);
 
   const lineColor = (ls, idx) =>
     ls.phase === RESOLVED_P ? REG_LINE_DEFS[idx].color : '#66AADD';
@@ -197,18 +202,18 @@ function BootSequence({ operatorName, onDone }) {
         width: 'fit-content',
         maxWidth: 700,
         padding: '0 40px',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontFamily: "var(--font-mono)",
         fontSize: 16,
         lineHeight: 1.9,
         letterSpacing: '0.06em',
       }}>
         {header1 && (
-          <div style={{ color: '#99CCFF' }}>
+          <div style={{ color: '#99BBDD' }}>
             NEXUS FLEET REGISTRY — TERMINAL ACCESS v2.1
           </div>
         )}
         {showDivOpen && (
-          <div style={{ color: '#1A3D55' }}>{DIVIDER_LINE}</div>
+          <div style={{ color: '#1A3A50' }}>{DIVIDER_LINE}</div>
         )}
         {header2 && (
           <div style={{ color: '#66AADD', whiteSpace: 'pre', marginBottom: 12 }}>
@@ -227,10 +232,10 @@ function BootSequence({ operatorName, onDone }) {
         })}
 
         {showDivClose && (
-          <div style={{ color: '#1A3D55', marginTop: 8 }}>{DIVIDER_LINE}</div>
+          <div style={{ color: '#1A3A50', marginTop: 8 }}>{DIVIDER_LINE}</div>
         )}
         {showReady && (
-          <div style={{ color: '#33DDAA', whiteSpace: 'pre' }}>
+          <div style={{ color: '#44FF88', whiteSpace: 'pre' }}>
             &gt; REGISTRY TERMINAL READY
           </div>
         )}
@@ -420,10 +425,26 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
   }
 
   function roleBtnStyle(state, hover) {
-    if (state.active) return { border: '1px solid #00EEFF', color: '#00EEFF', background: 'rgba(0,238,255,0.05)' };
-    if (state.placed) return { border: '1px solid #00FF66', color: '#00FF66', background: '#000' };
-    if (hover) return { border: '1px solid #2A6A9A', color: '#99CCFF', background: '#000' };
-    return { border: '1px solid #1A3D55', color: '#66AADD', background: '#000' };
+    if (state.active) return {
+      border: '1px solid var(--cyan)',
+      color: 'var(--cyan)',
+      background: 'rgba(0,238,255,0.08)',
+    };
+    if (state.placed) return {
+      border: '1px solid var(--lime)',
+      color: 'var(--lime)',
+      background: 'rgba(68,255,136,0.08)',
+    };
+    if (hover) return {
+      border: '1px solid var(--rim1)',
+      color: 'var(--fg0)',
+      background: 'rgba(102,170,221,0.06)',
+    };
+    return {
+      border: '1px solid var(--rim0)',
+      color: 'var(--fg1)',
+      background: 'transparent',
+    };
   }
 
   async function handleRefine() {
@@ -484,10 +505,10 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
       <div style={{
         background: '#000', height: '100%',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontFamily: "'Inter', system-ui, sans-serif",
         padding: 20, textAlign: 'center',
       }}>
-        <div style={{ fontSize: 19.5, color: '#33DDAA', letterSpacing: '0.1em', marginBottom: 14 }}>
+        <div style={{ fontSize: 19.5, color: '#44FF88', letterSpacing: '0.1em', marginBottom: 14 }}>
           ✓ {success.callsign} REGISTERED TO NEXUS FLEET INVENTORY
         </div>
         <div style={{ fontSize: 16.5, color: '#66AADD', letterSpacing: '0.08em' }}>
@@ -500,75 +521,60 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
   const hasPilot = nodes.some(n => n.role.toLowerCase() === 'pilot');
   const formInvalid = !callsign.trim() || !selectedModel || !hasPilot;
   const schemImg = selectedModel ? shipImages[selectedModel.slug] : null;
-  const labelStyle = { fontSize: 16, color: '#66AADD', letterSpacing: '0.14em', marginBottom: 6, display: 'block', textTransform: 'uppercase' };
+  const labelStyle = {
+    fontSize: 12, fontWeight: 600, color: 'var(--fg2)',
+    letterSpacing: '0.03em', marginBottom: 6,
+    display: 'block', textTransform: 'uppercase',
+  };
   const inputStyle = {
-    width: '100%', background: '#000', border: '1px solid #4488BB',
-    color: '#99CCFF', fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-    fontSize: 18, padding: '8px 10px', outline: 'none', boxSizing: 'border-box',
+    width: '100%', background: '#02080e',
+    border: '1px solid var(--rim0)', borderRadius: 5,
+    color: 'var(--fg0)', fontFamily: 'var(--font)',
+    fontSize: 14, padding: '9px 11px', outline: 'none',
+    boxShadow: '0 2px 6px #000 inset',
+    boxSizing: 'border-box',
   };
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: '#000', fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+      background: 'var(--bg0)', fontFamily: 'var(--font)',
     }}>
 
       {/* Header — title left, CANCEL + REGISTER VESSEL stacked right */}
-      <div style={{
-        padding: '14px 20px', borderBottom: '1px solid #1A3D55',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0,
-      }}>
-        <div style={{ fontSize: 16, color: '#99CCFF', letterSpacing: '0.18em' }}>
-          ⊕ VESSEL REGISTRATION
-        </div>
+      <div className="sh" style={{ alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 13, color: 'var(--fg0)', letterSpacing: '0.08em' }}>
+          ⊕ Vessel registration
+        </span>
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'flex-end',
+          alignItems: 'stretch',
           gap: 6,
-          paddingRight: 16,
-          paddingLeft: 8,
           flexShrink: 0,
+          minWidth: 220,
         }}>
           <button
+            className="btn amb"
             onClick={() => {
               playClick();
               try { modemSnd.pause(); modemSnd.currentTime = 0; } catch(e) {}
               onClose?.();
             }}
-            onMouseEnter={() => setCancelHover(true)}
-            onMouseLeave={() => setCancelHover(false)}
-            style={{
-              ...HEADER_BTN_STYLE,
-              border: '1px solid #FFBB33',
-              color: cancelHover ? '#000' : '#FFBB33',
-              background: cancelHover ? '#FFBB33' : '#000',
-            }}>
-            [ CANCEL ]
+            style={HEADER_BTN_STYLE}
+          >
+            Cancel
           </button>
           <button
+            className="btn go"
             onClick={handleSubmit}
             disabled={formInvalid || submitting}
-            onMouseEnter={() => setSubmitHover(true)}
-            onMouseLeave={() => setSubmitHover(false)}
-            style={{
-              ...HEADER_BTN_STYLE,
-              border: `1px solid ${formInvalid ? '#1A3D55' : '#33DDAA'}`,
-              color: formInvalid ? '#1A3D55' : (submitHover ? '#000' : '#33DDAA'),
-              background: !formInvalid && submitHover ? '#33DDAA' : '#000',
-              cursor: formInvalid || submitting ? 'default' : 'pointer',
-            }}>
-            {submitting ? '[ REGISTERING... ]' : '[ REGISTER VESSEL ]'}
+            style={HEADER_BTN_STYLE}
+          >
+            {submitting ? <><span className="spinner" />Registering…</> : 'Register vessel'}
           </button>
           {error && (
-            <div style={{
-              fontSize: 16,
-              color: '#FF5544',
-              letterSpacing: '0.08em',
-              marginTop: 4,
-              textAlign: 'right',
-              maxWidth: 220,
-            }}>
+            <div className="err" style={{ textAlign: 'right', maxWidth: 220 }}>
               {error}
             </div>
           )}
@@ -582,7 +588,7 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
         <div style={{
           width: '40%',
           padding: 20, overflowY: 'auto',
-          borderRight: '1px solid #1A3D55',
+          borderRight: '1px solid var(--rim0)',
           display: 'flex', flexDirection: 'column', gap: 16,
         }}>
 
@@ -628,10 +634,9 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
                 style={inputStyle}
               />
               {showDropdown && results.length > 0 && (
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0,
-                  background: '#000', border: '1px solid #1A3D55',
-                  maxHeight: 200, overflowY: 'auto', zIndex: 10,
+                <div className="raised" style={{
+                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                  maxHeight: 220, overflowY: 'auto', zIndex: 10, padding: 0,
                 }}>
                   {results.map(r => (
                     <ResultRow
@@ -655,28 +660,20 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
               rows={6}
               maxLength={1000}
               placeholder="Describe your vessel in roleplay terms — its history, exploits, and character. What has this ship seen?"
-              style={{ ...inputStyle, resize: 'vertical', fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace" }}
+              style={{ ...inputStyle, resize: 'vertical', fontFamily: "'Inter', system-ui, sans-serif" }}
             />
-            <div style={{ textAlign: 'right', color: '#66AADD', fontSize: 16, marginTop: 2 }}>
+            <div style={{ textAlign: 'right', color: 'var(--fg3)', fontSize: 11, marginTop: 2 }}>
               {shipHistory.length} / 1000
             </div>
             <button
+              className="btn"
               onClick={handleRefine}
               disabled={refining || !shipHistory.trim()}
-              onMouseEnter={() => setRefineHover(true)}
-              onMouseLeave={() => setRefineHover(false)}
-              style={{
-                width: '100%',
-                border: '1px solid #66AADD',
-                color: refineHover && !refining ? '#000' : '#66AADD',
-                background: refineHover && !refining ? '#66AADD' : '#000',
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                fontSize: 16, letterSpacing: '0.12em', padding: 6,
-                marginTop: 8, cursor: refining || !shipHistory.trim() ? 'default' : 'pointer',
-                opacity: !shipHistory.trim() && !refining ? 0.5 : 1,
-              }}
+              style={{ width: '100%', fontSize: 12, padding: '7px 10px', marginTop: 8 }}
             >
-              {refining ? `REFINING${'.'.repeat(refineDots)}` : '✦ AI REFINE HISTORY'}
+              {refining
+                ? <><span className="spinner" />Refining{'.'.repeat(refineDots)}</>
+                : <>✦ AI refine history</>}
             </button>
           </div>
         </div>
@@ -689,20 +686,24 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
         }}>
 
           {/* Instructions panel */}
-          <div style={{
-            background: '#0D2030', border: '1px solid #1A3D55',
-            padding: '10px 14px', fontSize: 16, color: '#66AADD',
-            lineHeight: 1.8, letterSpacing: '0.06em',
+          <div className="raised" style={{
+            padding: '12px 14px',
+            borderColor: 'rgba(255,187,51,0.3)',
+            fontSize: 12, color: 'var(--fg2)', lineHeight: 1.75,
           }}>
-            <div style={{ color: '#99CCFF', marginBottom: 4 }}>HOW TO CONFIGURE YOUR CREW</div>
-            <div style={{ color: '#1A3D55' }}>──────────────────────────────────────────</div>
-            <div>1. Select a role from the palette</div>
-            <div>2. Right-click schematic to place</div>
-            <div>3. Left-click a node to select it</div>
-            <div>4. Drag a selected node to move it</div>
-            <div>5. Right-click a node to deselect</div>
-            <div>6. Press DELETE to remove selected</div>
-            <div>7. Same role can be placed multiple times</div>
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+              color: 'var(--amber)', textTransform: 'uppercase', marginBottom: 6,
+            }}>
+              How to configure your crew
+            </div>
+            <div>1. Select a role from the palette.</div>
+            <div>2. Right-click the schematic to place.</div>
+            <div>3. Left-click a node to select it.</div>
+            <div>4. Drag a selected node to move it.</div>
+            <div>5. Right-click a node to deselect.</div>
+            <div>6. Press <kbd>Delete</kbd> to remove selected.</div>
+            <div>7. Same role can be placed multiple times.</div>
           </div>
 
           {/* Schematic — right-click places, left-click on empty space
@@ -718,12 +719,19 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
               ...(selectedModel ? {} : {
                 height: 128,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#1A3D55', fontSize: 16.5, letterSpacing: '0.1em',
+                color: '#1A3A50', fontSize: 16.5, letterSpacing: '0.1em',
               }),
               cursor: activeRole ? 'crosshair' : 'default',
             }}
           >
-            {!selectedModel && 'SELECT A SHIP MODEL TO VIEW SCHEMATIC'}
+            {!selectedModel && (
+              <span style={{
+                color: 'var(--fg3)', fontSize: 13, letterSpacing: '0.08em',
+                textTransform: 'uppercase', fontWeight: 600,
+              }}>
+                Select a ship model to view schematic
+              </span>
+            )}
             {selectedModel && schemImg && (
               <img
                 src={schemImg}
@@ -736,8 +744,8 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
               />
             )}
             {selectedModel && !schemImg && (
-              <div style={{ padding: 60, color: '#1A3D55', textAlign: 'center', fontSize: 16.5 }}>
-                [ NO SCHEMATIC IMAGE ]
+              <div className="empty" style={{ padding: 60 }}>
+                No schematic image available
               </div>
             )}
 
@@ -774,7 +782,7 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: isSelected ? '#00EEFF' : '#00FF66',
                         fontSize: 21,
-                        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                        fontFamily: "'Inter', system-ui, sans-serif",
                         pointerEvents: 'auto',
                         userSelect: 'none',
                         zIndex: 5,
@@ -786,14 +794,14 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
                           position: 'absolute',
                           transform: 'translate(-50%, -140%)',
                           left: '50%',
-                          background: '#0D2030',
-                          border: '1px solid #1A3D55',
-                          color: '#99CCFF',
+                          background: '#061018',
+                          border: '1px solid #1A3A50',
+                          color: '#99BBDD',
                           fontSize: 16,
                           padding: '3px 7px',
                           whiteSpace: 'nowrap',
                           pointerEvents: 'none',
-                          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                          fontFamily: "'Inter', system-ui, sans-serif",
                           letterSpacing: '0.08em',
                           zIndex: 10,
                         }}>
@@ -807,57 +815,59 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
             )}
           </div>
 
-          {/* Palette */}
+          {/* Palette — 2-column grid of raised category cards. Each card
+              carries the same bevel/relief as other cards in the system
+              (see ShipRegistryCard). Prevents the long scroll list the
+              old layout required. */}
           <div>
-            <div style={{
-              fontSize: 16, color: '#66AADD', letterSpacing: '0.14em',
-              marginBottom: 8, textTransform: 'uppercase',
-            }}>
-              CREW ROLE PALETTE
+            <div className="h3" style={{ marginBottom: 10 }}>
+              Crew role palette
             </div>
 
-            {ROLE_CATEGORIES.map(cat => (
-              <div key={cat.name}>
-                <div style={{
-                  fontSize: 16, color: '#66AADD', letterSpacing: '0.14em',
-                  borderBottom: '1px solid #0D2030', paddingBottom: 3,
-                  margin: '8px 0 4px',
-                }}>
-                  {cat.name}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 10,
+            }}>
+              {ROLE_CATEGORIES.map(cat => (
+                <div key={cat.name} className="raised" style={{ padding: 12 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+                    color: 'var(--blue)', textTransform: 'uppercase',
+                    paddingBottom: 6,
+                    marginBottom: 8,
+                    borderBottom: '1px solid var(--rim0)',
+                  }}>
+                    {cat.name}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {cat.roles.map(role => (
+                      <RoleButton
+                        key={role}
+                        role={role}
+                        state={roleState(role)}
+                        onClick={() => {
+                          playClick();
+                          setActiveRole(prev => prev === role ? null : role);
+                        }}
+                        styleFn={roleBtnStyle}
+                      />
+                    ))}
+                  </div>
                 </div>
-                {cat.roles.map(role => (
-                  <RoleButton
-                    key={role}
-                    role={role}
-                    state={roleState(role)}
-                    onClick={() => {
-                      playClick();
-                      setActiveRole(prev => prev === role ? null : role);
-                    }}
-                    styleFn={roleBtnStyle}
-                  />
-                ))}
-              </div>
-            ))}
+              ))}
+            </div>
 
             <button
+              className="btn warn"
               onClick={() => { playClick(); clearAllNodes(); }}
-              onMouseEnter={() => setClearHover(true)}
-              onMouseLeave={() => setClearHover(false)}
-              style={{
-                width: '100%', marginTop: 10,
-                border: '1px solid #FF5544',
-                color: clearHover ? '#000' : '#FF5544',
-                background: clearHover ? '#FF5544' : '#000',
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-                fontSize: 16, padding: 5, cursor: 'pointer',
-                letterSpacing: '0.1em',
-              }}>
-              ✕ CLEAR ALL NODES
+              style={{ width: '100%', marginTop: 12, fontSize: 12, padding: '7px 10px' }}
+            >
+              ✕ Clear all nodes
             </button>
             {selectedModel && !nodes.some(n => n.role.toLowerCase() === 'pilot') && (
-              <div style={{ fontSize: 13, color: '#FFBB33', letterSpacing: '0.08em', marginTop: 8, textAlign: 'center' }}>
-                ⚠ PILOT NODE REQUIRED TO REGISTER
+              <div className="badge b-amber" style={{ marginTop: 10, display: 'block', textAlign: 'center' }}>
+                ⚠ Pilot node required to register
               </div>
             )}
           </div>
@@ -879,15 +889,17 @@ function ResultRow({ slug, spec, onClick }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        padding: '8px 10px',
-        borderBottom: '1px solid #0D2030',
+        padding: '8px 11px',
+        borderBottom: '1px solid rgba(26,58,80,.5)',
         cursor: 'pointer',
         display: 'flex',
         justifyContent: 'space-between',
-        background: hover ? '#0D2030' : '#000',
+        gap: 10,
+        background: hover ? 'rgba(63,130,179,.08)' : 'transparent',
+        transition: 'background .12s',
       }}>
-      <span style={{ color: '#66AADD', fontSize: 16.5 }}>{spec.display_name || slug}</span>
-      <span style={{ color: '#66AADD', fontSize: 16 }}>{crewRange}</span>
+      <span style={{ color: 'var(--fg0)', fontSize: 13 }}>{spec.display_name || slug}</span>
+      <span style={{ color: 'var(--fg3)', fontSize: 12, whiteSpace: 'nowrap' }}>{crewRange}</span>
     </div>
   );
 }
@@ -895,6 +907,9 @@ function ResultRow({ slug, spec, onClick }) {
 function RoleButton({ role, state, onClick, styleFn }) {
   const [hover, setHover] = useState(false);
   const s = styleFn(state, hover);
+  // Lower-case display + wrap-friendly type so long names ("Remote turret
+  // operator") don't blow out the narrow 2-col card width.
+  const display = role.toLowerCase().replace(/^./, c => c.toUpperCase());
   return (
     <button
       onClick={onClick}
@@ -902,16 +917,21 @@ function RoleButton({ role, state, onClick, styleFn }) {
       onMouseLeave={() => setHover(false)}
       style={{
         display: 'block', width: '100%',
-        marginBottom: 4, padding: '5px 10px',
+        padding: '6px 10px',
         background: s.background,
         border: s.border,
+        borderRadius: 4,
         color: s.color,
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        fontSize: 16, textAlign: 'left',
+        fontFamily: 'var(--font)',
+        fontSize: 12, textAlign: 'left',
+        fontWeight: 500,
         cursor: 'pointer',
-        letterSpacing: '0.08em',
+        letterSpacing: '0.01em',
+        lineHeight: 1.35,
+        wordBreak: 'break-word',
+        transition: 'background .12s, border-color .12s, color .12s',
       }}>
-      {state.placed ? `✓ ${role}` : `[ ${role} ]`}
+      {state.placed ? `✓ ${display}` : display}
     </button>
   );
 }
@@ -930,10 +950,13 @@ export default function ShipRegistration({ me, onClose, onSuccess }) {
       .catch(() => {});
   }, []);
 
-  function handleBootDone() {
+  // Stable identity — passed to BootSequence, whose animation effect must
+  // never restart mid-boot when this wrapper re-renders (e.g. the
+  // ship_specs.json fetch resolving and calling setSpecs).
+  const handleBootDone = useCallback(() => {
     setFading(true);
     setTimeout(() => { setPhase('form'); setFading(false); }, 200);
-  }
+  }, []);
 
   return (
     <div style={{

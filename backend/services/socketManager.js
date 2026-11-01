@@ -93,6 +93,29 @@ function init(socketIo) {
     }
     socket.join(`user_${socket.user._id}`);
 
+    // Live online-player count. Broadcast after this socket joins so the
+    // joiner also sees the up-to-date number. Deduped per userId so that
+    // a single operator with two browser tabs doesn't double-count.
+    (async () => {
+      try {
+        const all = await io.in('global').fetchSockets();
+        const unique = new Set(all.map(s => String(s.userId)));
+        io.to('global').emit('presence:online_count', { count: unique.size });
+      } catch {}
+    })();
+
+    socket.emit('presence:hello');
+
+    // Request-current — the client can nudge us whenever it mounts in
+    // case it missed the broadcast between page load and socket attach.
+    socket.on('presence:ping', async () => {
+      try {
+        const all = await io.in('global').fetchSockets();
+        const unique = new Set(all.map(s => String(s.userId)));
+        socket.emit('presence:online_count', { count: unique.size });
+      } catch {}
+    });
+
     (async () => {
       try {
         const cutoff = new Date(Date.now() - 60000);
@@ -251,7 +274,25 @@ function init(socketIo) {
     });
 
     // ── DISCONNECT CLEANUP ──────────────────────────────────────────────────
-    socket.on('disconnect', () => {
+    // We listen on `disconnecting` — not `disconnect` — because Socket.IO
+    // clears `socket.rooms` *before* firing `disconnect`, which meant the
+    // freq-room filter below found nothing and no `radio:peer-left` was
+    // ever broadcast. Symptom: on browser refresh the leaving user's name
+    // lingered in every remaining client's UI, and their fresh
+    // connection appeared as a *second* entry alongside the ghost.
+    // At `disconnecting` time the socket is still in its rooms so the
+    // broadcast reaches all remaining peers cleanly.
+    socket.on('disconnecting', () => {
+      // Broadcast the new online count AFTER this socket leaves. Using
+      // setImmediate so the socket.io room exit has flushed before we count.
+      setImmediate(async () => {
+        try {
+          const all = await io.in('global').fetchSockets();
+          const unique = new Set(all.map(s => String(s.userId)));
+          io.to('global').emit('presence:online_count', { count: unique.size });
+        } catch {}
+      });
+
       const freqRooms = [...socket.rooms].filter(r => r.startsWith('freq_'));
       for (const room of freqRooms) {
         socket.to(room).emit('radio:peer-left', {

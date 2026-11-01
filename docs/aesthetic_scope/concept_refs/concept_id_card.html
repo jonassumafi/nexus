@@ -1,0 +1,162 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus ID Card Concept</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:dark;--void:#000710;--bg0:#020C14;--bg1:#061018;--bg2:#0A1828;--bg3:#12263A;--rim0:#1A3A50;--rim1:#2A5A7A;--rim2:#3F82B3;--fg0:#CCE8FF;--fg1:#99BBDD;--fg2:#86AFCF;--fg3:#5F87A8;--lime:#44FF88;--blue:#66AADD;--red:#FF5544;--amber:#FFBB33;--cyan:#00EEFF;font-family:'Inter',system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
+.stage{overflow-x:auto;padding-bottom:6px}
+.frame{margin:0 auto;border:1px solid var(--rim0);border-radius:8px;background:var(--bg0);box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.w1280{width:1280px}.w900{width:900px}
+.vig{position:absolute;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.72) 100%)}
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:6px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4)}
+.btn{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:8px 16px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a,0 5px 8px rgba(0,0,0,.4)}
+.btn.go:active{box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 0 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.lg{font-size:15px;padding:12px 26px}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.inp{width:100%;font-size:14px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:5px;padding:9px 11px;box-shadow:0 2px 6px #000 inset;outline:none}
+.inp:focus{border-color:var(--rim2)}
+.inp.bad{border-color:var(--red)}
+textarea.inp{resize:vertical;min-height:120px;line-height:1.6}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--fg2)}
+.hint{font-size:12px;font-weight:400;color:var(--fg3)}
+.err{font-size:12px;font-weight:500;color:var(--red);min-height:16px}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(150,200,240,.25);border-top-color:var(--blue);animation:spin .8s linear infinite;display:inline-block}
+.logo{width:48px;height:48px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 0 #04101a}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:14px}
+.bt1{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.tokpanel{width:100%;max-width:1280px;margin:28px auto 0}
+.tokpanel h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.tokpanel h3::after{content:"";flex:1;height:1px;background:var(--rim0)}
+.tblw{border:1px solid var(--rim0);border-radius:6px;overflow-x:auto;background:var(--bg1)}
+.tokpanel table{width:100%;border-collapse:collapse;font-size:12px}
+.tokpanel th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:7px 12px;border-bottom:1px solid var(--rim1)}
+.tokpanel td{padding:7px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top}
+.tokpanel code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 4px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:7px;vertical-align:-1px;border:1px solid rgba(255,255,255,.25)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+:root{--paper:#F1EBDA;--paper2:#E6DDC6;--ink:#1B2430;--ink2:#4A5566;--ink3:#7A8190;--rule:#BDB298;--stamp-red:#B3261E;--stamp-blue:#1F4E8C;--paper-lime:#2E7D4F}
+.nav{display:flex;gap:8px;padding:10px 16px;background:var(--bg1);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);align-items:center}
+.nt{font-size:12px;font-weight:600;padding:7px 14px;border-radius:4px;color:var(--fg2);background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.1) inset,0 3px 0 #050e18}
+.nt.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.sp{flex:1}
+.mini{display:flex;align-items:stretch;border-radius:5px;overflow:hidden;border:1px solid var(--rim1);box-shadow:0 3px 0 #04101a,0 8px 14px rgba(0,0,0,.45);cursor:pointer;text-align:left;transition:transform .08s}
+.mini:active{transform:translateY(3px);box-shadow:0 0 0 #04101a}
+.mini .ph{width:56px;background:linear-gradient(160deg,#27455f,#0c1d2e);display:flex;align-items:flex-end;justify-content:center}
+.mini .info{padding:8px 12px;min-width:220px;background:var(--paper);color:var(--ink)}
+.mini .k{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--ink3);text-transform:uppercase}
+.mini .nm0{font-size:15px;font-weight:700}.mini .rk{font-size:12px;color:var(--ink2)}
+.rpb{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink2);margin-top:3px}
+.rpb .bar{flex:1;height:6px;border-radius:3px;background:#cfc5ac;overflow:hidden}.rpb .bar i{display:block;height:100%;background:var(--stamp-blue)}
+.app{height:640px;padding:24px;background:var(--bg0)}
+.ghost{height:100%;border:1px dashed var(--rim0);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:13px;text-align:center;line-height:1.8}
+.scrim{position:absolute;inset:0;background:rgba(0,5,10,.78);display:none;align-items:center;justify-content:center;z-index:20}
+.scrim.on{display:flex}
+.card{width:1060px;max-height:730px;background:var(--paper);color:var(--ink);border-radius:6px;position:relative;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 3px 0 #b9ae93,0 6px 0 #a89d82,0 30px 60px rgba(0,0,0,.7);
+  background-image:repeating-linear-gradient(0deg,transparent 0 27px,rgba(150,135,100,.12) 27px 28px)}
+.chd{display:flex;justify-content:space-between;align-items:center;padding:12px 22px;border-bottom:2px solid var(--ink);background:var(--paper2)}
+.chd .t{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.chd .s{font-size:11px;color:var(--ink2);letter-spacing:.08em;text-transform:uppercase}
+.x{font-size:12px;font-weight:700;color:var(--ink);padding:5px 12px;border-radius:4px;border:1px solid #8c8468;background:linear-gradient(180deg,#faf5e6,#e2d9bf);box-shadow:0 3px 0 #a89d82;transition:transform .08s,box-shadow .08s}
+.x:active{transform:translateY(3px);box-shadow:0 0 0 #a89d82}
+.cb{display:grid;grid-template-columns:230px 1fr 250px;gap:26px;padding:20px 22px 14px}
+.port{width:230px;height:290px;border:1px solid var(--ink);padding:6px;background:#fff;box-shadow:0 3px 0 #b9ae93;position:relative}
+.port .in{width:100%;height:100%;background:linear-gradient(160deg,#9db3c4,#6c8499);display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.bc{margin-top:14px;height:34px;display:flex;align-items:stretch;gap:1px;padding:0 2px}.bc i{display:block;background:var(--ink)}
+.bcn{font-size:10px;letter-spacing:.2em;color:var(--ink2);margin-top:3px}
+.dos h1{font-size:28px;font-weight:700;line-height:1.1;color:var(--ink)}
+.dos .rk{font-size:14px;font-weight:600;color:var(--stamp-blue);margin:2px 0 14px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:13px;margin-bottom:14px}
+.kv span{color:var(--ink3);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding-top:2px}
+.kv b{font-weight:500}
+.bio{font-size:13px;line-height:1.7;color:var(--ink2);border-top:1px solid var(--rule);padding-top:10px}
+.stats{display:flex;flex-direction:column;gap:12px;position:relative}
+.stt{border:1px solid var(--rule);padding:8px 12px;background:rgba(255,255,255,.4)}
+.stt span{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.stt b{display:block;font-size:26px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.pbar{height:10px;background:#cfc5ac;border:1px solid #9a906f;margin-top:6px;position:relative}
+.pbar i{display:block;height:100%;background:var(--stamp-blue)}
+.pl{display:flex;justify-content:space-between;font-size:11px;color:var(--ink2);margin-top:3px}
+.stamp{position:absolute;right:-6px;top:-8px;transform:rotate(-12deg);border:3px solid var(--stamp-red);color:var(--stamp-red);font-size:15px;font-weight:700;letter-spacing:.14em;padding:3px 10px;border-radius:3px;opacity:.78;pointer-events:none}
+.stamp.b{border-color:var(--stamp-blue);color:var(--stamp-blue)}
+.tabs{display:flex;gap:6px;padding:0 22px;border-bottom:1px solid var(--rule)}
+.tb{font-size:12px;font-weight:700;padding:7px 16px;color:var(--ink3);border:1px solid transparent;border-bottom:0;border-radius:4px 4px 0 0;margin-bottom:-1px}
+.tb.on{color:var(--ink);background:var(--paper);border-color:var(--rule)}
+.tc{padding:12px 22px 18px;overflow-y:auto;min-height:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding:4px 8px;border-bottom:2px solid var(--ink)}
+td{padding:7px 8px;border-bottom:1px solid var(--rule);color:var(--ink)}
+.tg{font-size:11px;font-weight:700;padding:1px 7px;border-radius:2px;border:1px solid}
+.t-own{color:var(--stamp-blue);border-color:var(--stamp-blue)}.t-bor{color:#8a5a00;border-color:#8a5a00}.t-ok{color:var(--paper-lime);border-color:var(--paper-lime)}.t-ab{color:var(--stamp-red);border-color:var(--stamp-red)}
+.ranks{display:flex;gap:0;margin-top:10px}.rkc{flex:1;text-align:center;font-size:11px;font-weight:600;color:var(--ink3);padding:5px 0;border:1px solid var(--rule);margin-left:-1px;background:rgba(255,255,255,.3)}
+.rkc.cur{background:var(--stamp-blue);color:#fff;border-color:var(--stamp-blue)}.rkc.past{color:var(--ink);background:rgba(31,78,140,.14)}
+</style>
+
+<div class="stage"><div class="frame w1280">
+  <div class="topbar"><div class="brand"><div class="logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#66AADD" stroke-width="1.2"><circle cx="15" cy="15" r="11"/><circle cx="15" cy="15" r="5"/><path d="M15 1v6M15 23v6M1 15h6M23 15h6"/></svg></div><div><div class="bt1">Nexus Interstellar</div><div class="bt2">Traffic System</div></div></div>
+    <button class="mini" id="open" aria-label="Open ID card"><div class="ph"><svg width="40" height="46" viewBox="0 0 40 46" fill="#3a6a8e"><circle cx="20" cy="15" r="9"/><path d="M2 46c0-13 8-19 18-19s18 6 18 19z"/></svg></div><div class="info"><div class="k">UEE Identification · Nexus</div><div class="nm0">Unger Poshet</div><div class="rk">Drifter</div><div class="rpb"><span>RP</span><div class="bar"><i style="width:26%"></i></div><span>13 / 50</span></div></div></button></div>
+  <div class="nav"><button class="nt on">Missions</button><button class="nt">My Ships</button><button class="nt">Register Ship</button><button class="nt">Ship Registry</button><span class="sp"></span></div>
+  <div class="app"><div class="ghost">The Dashboard sits here.<br>Click the ID card in the top right to open the dossier.</div></div>
+
+  <div class="scrim" id="scrim"><div class="card" role="dialog" aria-label="Citizen dossier">
+    <div class="chd"><div><div class="t">UEE Identification · Nexus</div><div class="s">Citizen dossier</div></div><button class="x" id="close">Close</button></div>
+    <div class="cb">
+      <div><div class="port"><div class="in"><svg width="170" height="215" viewBox="0 0 40 46" fill="#4d667c"><circle cx="20" cy="15" r="9"/><path d="M2 46c0-13 8-19 18-19s18 6 18 19z"/></svg></div></div><div class="bc" id="bc"></div><div class="bcn">NX-0042-7719-UP</div></div>
+      <div class="dos"><h1>Unger Poshet</h1><div class="rk">Drifter</div>
+        <div class="kv"><span>Citizenship</span><b>United Empire of Earth</b><span>Place of birth</span><b>Terra, Prime</b><span>Organization</span><b>Hopewell Continuum</b><span>Status</span><b>Onboarding complete</b></div>
+        <div class="bio">Former freight pilot who moved into crew coordination after a long run of convoy escorts. Prefers quiet radio discipline and clean handoffs. Keeps a notebook of every crew he has flown with.</div></div>
+      <div class="stats"><div class="stamp" id="st">Cleared</div>
+        <div class="stt"><span>Total RP</span><b>13</b></div><div class="stt"><span>Missions completed</span><b>4</b></div>
+        <div class="stt"><span>Next rank at 50 RP</span><div class="pbar"><i style="width:26%"></i></div><div class="pl"><span>Drifter</span><span>37 RP to go</span></div></div></div>
+    </div>
+    <div class="tabs" id="tabs"><button class="tb on" data-t="ships">Ships</button><button class="tb" data-t="hist">Mission history</button><button class="tb" data-t="rank">Rank progress</button></div>
+    <div class="tc" id="tc"></div>
+  </div></div>
+</div></div>
+
+<div class="tokpanel"><h3>Paper tokens (the one non-dark surface)</h3><div class="tblw"><table style="color:inherit">
+<tr><th style="color:var(--fg3);border-color:var(--rim1)">Token</th><th style="color:var(--fg3);border-color:var(--rim1)">Value</th><th style="color:var(--fg3);border-color:var(--rim1)">Use</th></tr>
+<tr><td style="color:var(--fg1)"><i class="sw" style="background:#F1EBDA"></i>paper</td><td style="color:var(--fg1)"><code>#F1EBDA</code></td><td style="color:var(--fg1)">Card body with faint 28px ruled lines</td></tr>
+<tr><td style="color:var(--fg1)"><i class="sw" style="background:#E6DDC6"></i>paper2</td><td style="color:var(--fg1)"><code>#E6DDC6</code></td><td style="color:var(--fg1)">Header band, pressed areas</td></tr>
+<tr><td style="color:var(--fg1)"><i class="sw" style="background:#1B2430"></i>ink / ink2 / ink3</td><td style="color:var(--fg1)"><code>#1B2430 #4A5566 #7A8190</code></td><td style="color:var(--fg1)">Text, strongest to faintest. Contrast against paper above 7:1 for ink and 4.5:1 for ink2</td></tr>
+<tr><td style="color:var(--fg1)"><i class="sw" style="background:#BDB298"></i>rule</td><td style="color:var(--fg1)"><code>#BDB298</code></td><td style="color:var(--fg1)">Table and field dividers</td></tr>
+<tr><td style="color:var(--fg1)"><i class="sw" style="background:#B3261E"></i>stamp-red</td><td style="color:var(--fg1)"><code>#B3261E</code></td><td style="color:var(--fg1)">CLEARED stamp, aborted missions. Stamps rotate -12 degrees statically</td></tr>
+<tr><td style="color:var(--fg1)"><i class="sw" style="background:#1F4E8C"></i>stamp-blue</td><td style="color:var(--fg1)"><code>#1F4E8C</code></td><td style="color:var(--fg1)">Rank text, RP bars, owned-ship tags</td></tr>
+<tr><td style="color:var(--fg1)"><i class="sw" style="background:#2E7D4F"></i>paper-lime</td><td style="color:var(--fg1)"><code>#2E7D4F</code></td><td style="color:var(--fg1)">Darker success green for light backgrounds. The bright lime fails on paper</td></tr>
+<tr><td style="color:var(--fg1)">Paper depth</td><td style="color:var(--fg1)"><code>3px + 6px hard shadow</code></td><td style="color:var(--fg1)">Same stacked-shadow recipe as dark cards, tinted warm</td></tr>
+</table></div></div>
+
+<script>
+var $=function(s){return document.querySelector(s)};
+var bc='';var seed=42771;for(var i=0;i<48;i++){seed=(seed*9301+49297)%233280;bc+='<i style="width:'+(1+Math.floor(seed/233280*3))+'px"></i>'}$('#bc').innerHTML=bc;
+var T={
+ships:'<table><tr><th>Ship</th><th>Model</th><th>Relation</th><th>Ship RP</th><th>Loan</th></tr><tr><td><b>HCS TEKKE</b></td><td>Hammerhead</td><td><span class="tg t-own">Owned</span></td><td>9</td><td>None</td></tr><tr><td><b>GRIM HEX</b></td><td>Cutlass Black</td><td><span class="tg t-own">Owned</span></td><td>3</td><td>None</td></tr><tr><td><b>HCS JOMLET</b></td><td>Constellation Andromeda</td><td><span class="tg t-bor">Borrowed</span></td><td>12</td><td>Expires in 2d 4h</td></tr></table>',
+hist:'<table><tr><th>Mission</th><th>Status</th><th>Ship</th><th>Elapsed</th><th>RP</th></tr><tr><td>Operation Komb</td><td><span class="tg t-ok">COMPLETE</span></td><td>HCS JOMLET</td><td>01:28:14</td><td>+3</td></tr><tr><td>Operation Village</td><td><span class="tg t-ok">COMPLETE</span></td><td>HCS TEKKE</td><td>00:54:30</td><td>+3</td></tr><tr><td>Delta Sweep</td><td><span class="tg t-ab">ABORT</span></td><td>GRIM HEX</td><td>00:06:12</td><td>+0</td></tr><tr><td>Iron Veil</td><td><span class="tg t-ok">COMPLETE</span></td><td>HCS JOMLET</td><td>02:10:47</td><td>+7</td></tr></table>',
+rank:'<div class="ranks"><div class="rkc past">Recruit<br>0 to 9</div><div class="rkc cur">Drifter<br>10 to 49</div><div class="rkc">Operator<br>50 to 149</div><div class="rkc">Veteran<br>150 to 399</div><div class="rkc">Commander<br>400+</div></div><p style="font-size:12px;color:var(--ink2);margin-top:10px">Rank titles and thresholds are read from PlatformConfig.rp_ranks. Values shown are samples.</p>'};
+function tab(k){document.querySelectorAll('.tb').forEach(function(b){b.classList.toggle('on',b.dataset.t===k)});$('#tc').innerHTML=T[k]}
+$('#tabs').onclick=function(e){var b=e.target.closest('.tb');if(b)tab(b.dataset.t)};tab('ships');
+function op(){$('#scrim').classList.add('on')}function cl(){$('#scrim').classList.remove('on')}
+$('#open').onclick=op;$('#close').onclick=cl;$('#scrim').onclick=function(e){if(e.target===this)cl()};document.addEventListener('keydown',function(e){if(e.key==='Escape')cl()});
+op();
+</script>

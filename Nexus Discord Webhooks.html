@@ -1,0 +1,873 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Nexus Discord Webhooks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?
+family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+
+<style>
+/* ── TOKEN SYSTEM ──────────────────────────────────────────
+   Dark-first: Discord channel environment, Nexus RSI palette
+   Layout: centered max-width column, channel simulation
+   ────────────────────────────────────────────────────────── */
+:root {
+  /* Nexus dark chrome */
+  --dc-bg:       #020C14;
+  --dc-sidebar:  #030F1A;
+  --dc-msg-bg:   #020C14;
+  --dc-hover:    #061018;
+  --dc-divider:  #1A3A50;
+
+  /* Text */
+  --dc-fg:       #99CCFF;
+  --dc-muted:    #4A7A9A;
+  --dc-username: #CCE8FF;
+  --dc-time:     #3A6A8A;
+
+  /* Nexus four-color palette */
+  --lime:        #44FF88;
+  --blue:        #66AADD;
+  --red:         #FF5544;
+  --amber:       #FFBB33;
+  --purple:      #AA66DD;
+
+  /* Embed */
+  --embed-bg:    #061018;
+  --embed-field-label: #4A7A9A;
+  --embed-field-val:   #99CCFF;
+
+  /* Bot tag */
+  --bot-tag-bg:  #1A4A6A;
+
+  color-scheme: dark;
+
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* Nexus is always dark — single theme by design */
+:root { color-scheme: dark; }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--dc-bg);
+  color: var(--dc-fg);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+/* ── OUTER CHROME ─────────────────────────────────────────── */
+.discord-chrome {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.channel-header {
+  background: var(--dc-bg);
+  border-bottom: 1px solid var(--dc-divider);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+}
+.channel-hash {
+  color: var(--dc-muted);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.channel-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dc-fg);
+  letter-spacing: 0.01em;
+}
+.channel-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--dc-divider);
+  margin: 0 6px;
+}
+.channel-topic {
+  font-size: 12px;
+  color: var(--dc-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ── SECTION DIVIDERS ─────────────────────────────────────── */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--dc-muted);
+  text-transform: uppercase;
+}
+.section-divider::before,
+.section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--dc-divider);
+}
+
+/* ── MESSAGE ROW ──────────────────────────────────────────── */
+.message-group {
+  padding: 4px 16px;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 0 12px;
+  align-items: start;
+  border-radius: 4px;
+  transition: background 0.08s;
+  cursor: default;
+}
+.message-group:hover { background: var(--dc-hover); }
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #030F1A;
+  border: 2px solid #2A6A9A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--blue);
+  flex-shrink: 0;
+  margin-top: 2px;
+  overflow: hidden;
+}
+.avatar-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  gap: 1px;
+}
+.avatar-inner .a1 { font-size: 7px; color: var(--blue); }
+.avatar-inner .a2 { font-size: 6px; color: var(--dc-muted); }
+
+.message-body { min-width: 0; }
+
+.message-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.bot-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dc-username);
+  letter-spacing: 0.01em;
+}
+.bot-tag {
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--bot-tag-bg);
+  color: #ffffff;
+  padding: 2px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.msg-time {
+  font-size: 11px;
+  color: var(--dc-time);
+  letter-spacing: 0.02em;
+}
+
+/* ── EMBED ────────────────────────────────────────────────── */
+.embed {
+  background: var(--embed-bg);
+  border-radius: 4px;
+  border-left: 4px solid var(--blue);
+  padding: 10px 16px 12px 12px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.embed-lime   { border-left-color: var(--lime); }
+.embed-blue   { border-left-color: var(--blue); }
+.embed-red    { border-left-color: var(--red); }
+.embed-amber  { border-left-color: var(--amber); }
+.embed-purple { border-left-color: var(--purple); }
+
+.embed-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.embed-icon { font-size: 17px; line-height: 1; }
+.embed-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.embed-lime   .embed-title { color: var(--lime); }
+.embed-blue   .embed-title { color: var(--blue); }
+.embed-red    .embed-title { color: var(--red); }
+.embed-amber  .embed-title { color: var(--amber); }
+.embed-purple .embed-title { color: var(--purple); }
+
+.embed-desc {
+  font-size: 13px;
+  color: var(--dc-fg);
+  opacity: 0.8;
+  line-height: 1.5;
+}
+
+.embed-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.embed-field { display: flex; flex-direction: column; gap: 2px; }
+.embed-field.full { grid-column: 1 / -1; }
+.field-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--embed-field-label);
+}
+.field-val {
+  font-size: 13px;
+  color: var(--embed-field-val);
+}
+.field-val.accent-lime   { color: var(--lime); }
+.field-val.accent-blue   { color: var(--blue); }
+.field-val.accent-amber  { color: var(--amber); }
+.field-val.accent-red    { color: var(--red); }
+
+.embed-footer {
+  font-size: 11px;
+  color: var(--dc-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+  border-top: 1px solid var(--dc-divider);
+  letter-spacing: 0.02em;
+}
+.footer-dot {
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--dc-muted);
+  flex-shrink: 0;
+}
+
+/* bottom padding */
+.feed-end { height: 32px; }
+
+@media (max-width: 540px) {
+  .embed-fields { grid-template-columns: 1fr; }
+  .embed-field.full { grid-column: 1; }
+  .embed { max-width: 100%; }
+  .channel-topic { display: none; }
+}
+</style>
+
+<div class="discord-chrome">
+
+  <div class="channel-header">
+    <span class="channel-hash">#</span>
+    <span class="channel-name">nexus-operations</span>
+    <div class="channel-divider"></div>
+    <span class="channel-topic">NEXUS INTERSTELLAR TRAFFIC SYSTEM — AUTOMATED DISPATCH</span>
+  </div>
+
+  <!-- ── MISSION EVENTS ───────────────────────────────────── -->
+  <div class="section-divider">Mission Events</div>
+
+  <!-- CREATED -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 20:14</span>
+      </div>
+      <div class="embed embed-blue">
+        <div class="embed-header">
+          <span class="embed-icon">🗺️</span>
+          <span class="embed-title">Mission Created</span>
+        </div>
+        <div class="embed-desc">
+          A new operation has been posted to the mission board.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Mission</div>
+            <div class="field-val">Operation Iron Veil</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Type</div>
+            <div class="field-val">Combat</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Commander</div>
+            <div class="field-val">Peter Tork</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Scheduled</div>
+            <div class="field-val">Oct 25, 21:00 UTC</div>
+          </div>
+          <div class="embed-field full">
+            <div class="field-label">Primary Vessel</div>
+            <div class="field-val">HCS Jomlet · Anvil Gladiator</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAUNCHED -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 21:03</span>
+      </div>
+      <div class="embed embed-lime">
+        <div class="embed-header">
+          <span class="embed-icon">🚀</span>
+          <span class="embed-title">Mission Launched</span>
+        </div>
+        <div class="embed-desc">
+          Operation is now underway. All crew are aboard.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Mission</div>
+            <div class="field-val">Operation Iron Veil</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Type</div>
+            <div class="field-val">Combat</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Commander</div>
+            <div class="field-val">Peter Tork</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Crew Aboard</div>
+            <div class="field-val accent-lime">3 operators</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETE -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 22:31</span>
+      </div>
+      <div class="embed embed-lime">
+        <div class="embed-header">
+          <span class="embed-icon">🏁</span>
+          <span class="embed-title">Mission Complete</span>
+        </div>
+        <div class="embed-desc">
+          Operation concluded successfully. RP distributed to all crew.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Mission</div>
+            <div class="field-val">Operation Iron Veil</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Elapsed Time</div>
+            <div class="field-val accent-lime">01:28:14</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Commander</div>
+            <div class="field-val">Peter Tork</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Crew Size</div>
+            <div class="field-val">3 operators</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABORTED -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 21:45</span>
+      </div>
+      <div class="embed embed-red">
+        <div class="embed-header">
+          <span class="embed-icon">✖</span>
+          <span class="embed-title">Mission Aborted</span>
+        </div>
+        <div class="embed-desc">
+          Operation called off by the commanding officer.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Mission</div>
+            <div class="field-val">Operation Iron Veil</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Commander</div>
+            <div class="field-val">Peter Tork</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CREW EVENTS ──────────────────────────────────────── -->
+  <div class="section-divider">Crew Events</div>
+
+  <!-- SLOT FILLED -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 20:22</span>
+      </div>
+      <div class="embed embed-lime">
+        <div class="embed-header">
+          <span class="embed-icon">✅</span>
+          <span class="embed-title">Crew Slot Filled</span>
+        </div>
+        <div class="embed-desc">
+          An operator has joined the crew roster.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Operator</div>
+            <div class="field-val">Unger Poshet</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Role</div>
+            <div class="field-val">Turret Operator</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Mission</div>
+            <div class="field-val">Operation Iron Veil</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Vessel</div>
+            <div class="field-val">HCS Jomlet</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLOT WITHDRAWN -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 20:48</span>
+      </div>
+      <div class="embed embed-blue">
+        <div class="embed-header">
+          <span class="embed-icon">↩</span>
+          <span class="embed-title">Crew Slot Withdrawn</span>
+        </div>
+        <div class="embed-desc">
+          An operator has vacated their crew position.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Operator</div>
+            <div class="field-val">Unger Poshet</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Role</div>
+            <div class="field-val">Turret Operator</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Mission</div>
+            <div class="field-val">Operation Iron Veil</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Vessel</div>
+            <div class="field-val">HCS Jomlet</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RP EVENTS ────────────────────────────────────────── -->
+  <div class="section-divider">RP Events</div>
+
+  <!-- RANK ADVANCEMENT -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 22:35</span>
+      </div>
+      <div class="embed embed-lime">
+        <div class="embed-header">
+          <span class="embed-icon">⭐</span>
+          <span class="embed-title">Rank Advancement</span>
+        </div>
+        <div class="embed-desc">
+          An operator has reached a new rank in the Hopewell Continuum.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Operator</div>
+            <div class="field-val">Unger Poshet</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">New Rank</div>
+            <div class="field-val accent-lime">Veteran</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHIP RP AWARDED -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 22:35</span>
+      </div>
+      <div class="embed embed-lime">
+        <div class="embed-header">
+          <span class="embed-icon">🚢</span>
+          <span class="embed-title">Ship RP Awarded</span>
+        </div>
+        <div class="embed-desc">
+          A vessel met crew fill threshold and earned Ship RP.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Vessel</div>
+            <div class="field-val">HCS Jomlet</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">RP Earned</div>
+            <div class="field-val accent-lime">+3 Ship RP</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Fill Rate</div>
+            <div class="field-val">100%</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Mission</div>
+            <div class="field-val">Operation Iron Veil</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHIP LOAN EVENTS ─────────────────────────────────── -->
+  <div class="section-divider">Ship Loan Events</div>
+
+  <!-- ACCESS GRANTED -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 20:19</span>
+      </div>
+      <div class="embed embed-amber">
+        <div class="embed-header">
+          <span class="embed-icon">🔑</span>
+          <span class="embed-title">Ship Access Granted</span>
+        </div>
+        <div class="embed-desc">
+          A vessel has been cleared for temporary assignment.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Vessel</div>
+            <div class="field-val">Ole Ass</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Owner</div>
+            <div class="field-val">Grauto</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Borrower</div>
+            <div class="field-val">Peter Tork</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Loan Duration</div>
+            <div class="field-val accent-amber">4 hours</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHIP RECALLED -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 21:12</span>
+      </div>
+      <div class="embed embed-red">
+        <div class="embed-header">
+          <span class="embed-icon">⚠️</span>
+          <span class="embed-title">Ship Recalled</span>
+        </div>
+        <div class="embed-desc">
+          A vessel was recalled by its owner mid-operation.
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Vessel</div>
+            <div class="field-val">Ole Ass</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Owner</div>
+            <div class="field-val">Grauto</div>
+          </div>
+          <div class="embed-field full">
+            <div class="field-label">Note</div>
+            <div class="field-val accent-red">
+              Ship RP forfeited for this mission.
+              Crew RP unaffected.
+            </div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PLAYER EVENTS ────────────────────────────────────── -->
+  <div class="section-divider">Player Events</div>
+
+  <!-- OPERATOR ONLINE -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 20:10</span>
+      </div>
+      <div class="embed embed-blue">
+        <div class="embed-header">
+          <span class="embed-icon">📡</span>
+          <span class="embed-title">Operator Online</span>
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Operator</div>
+            <div class="field-val">Unger Poshet</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Rank</div>
+            <div class="field-val accent-blue">Drifter</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPERATOR OFFLINE -->
+  <div class="message-group">
+    <div class="avatar">
+      <div class="avatar-inner">
+        <span class="a1">NTS</span>
+        <span class="a2">BOT</span>
+      </div>
+    </div>
+    <div class="message-body">
+      <div class="message-meta">
+        <span class="bot-name">Nexus ITS</span>
+        <span class="bot-tag">BOT</span>
+        <span class="msg-time">Today at 23:02</span>
+      </div>
+      <div class="embed embed-blue">
+        <div class="embed-header">
+          <span class="embed-icon">🔌</span>
+          <span class="embed-title">Operator Offline</span>
+        </div>
+        <div class="embed-fields">
+          <div class="embed-field">
+            <div class="field-label">Operator</div>
+            <div class="field-val">Unger Poshet</div>
+          </div>
+          <div class="embed-field">
+            <div class="field-label">Rank</div>
+            <div class="field-val">Drifter</div>
+          </div>
+        </div>
+        <div class="embed-footer">
+          <span>Nexus Interstellar Traffic System</span>
+          <span class="footer-dot"></span>
+          <span>nexus.app-palette.com</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feed-end"></div>
+</div>
+
+</body></html>

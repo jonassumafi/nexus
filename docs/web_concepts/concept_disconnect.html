@@ -1,0 +1,105 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Disconnect Concept</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:dark;--void:#000710;--bg0:#020C14;--bg1:#061018;--bg2:#0A1828;--bg3:#12263A;--rim0:#1A3A50;--rim1:#2A5A7A;--rim2:#3F82B3;--fg0:#CCE8FF;--fg1:#99BBDD;--fg2:#86AFCF;--fg3:#5F87A8;--lime:#44FF88;--blue:#66AADD;--red:#FF5544;--amber:#FFBB33;--cyan:#00EEFF;font-family:'Inter',system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
+.stage{overflow-x:auto;padding-bottom:6px}
+.frame{margin:0 auto;border:1px solid var(--rim0);border-radius:8px;background:var(--bg0);box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.w1280{width:1280px}.w900{width:900px}
+.vig{position:absolute;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.72) 100%)}
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:6px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4)}
+.btn{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:8px 16px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a,0 5px 8px rgba(0,0,0,.4)}
+.btn.go:active{box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 0 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.lg{font-size:15px;padding:12px 26px}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.inp{width:100%;font-size:14px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:5px;padding:9px 11px;box-shadow:0 2px 6px #000 inset;outline:none}
+.inp:focus{border-color:var(--rim2)}
+.inp.bad{border-color:var(--red)}
+textarea.inp{resize:vertical;min-height:120px;line-height:1.6}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--fg2)}
+.hint{font-size:12px;font-weight:400;color:var(--fg3)}
+.err{font-size:12px;font-weight:500;color:var(--red);min-height:16px}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(150,200,240,.25);border-top-color:var(--blue);animation:spin .8s linear infinite;display:inline-block}
+.logo{width:48px;height:48px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 0 #04101a}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:14px}
+.bt1{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.tokpanel{width:100%;max-width:1280px;margin:28px auto 0}
+.tokpanel h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.tokpanel h3::after{content:"";flex:1;height:1px;background:var(--rim0)}
+.tblw{border:1px solid var(--rim0);border-radius:6px;overflow-x:auto;background:var(--bg1)}
+.tokpanel table{width:100%;border-collapse:collapse;font-size:12px}
+.tokpanel th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:7px 12px;border-bottom:1px solid var(--rim1)}
+.tokpanel td{padding:7px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top}
+.tokpanel code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 4px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:7px;vertical-align:-1px;border:1px solid rgba(255,255,255,.25)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.scr{height:620px;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse 50% 50% at 50% 45%,#0C2236 0%,transparent 70%),var(--bg0)}
+.term{width:560px;position:relative;z-index:6;overflow:hidden}
+.th{padding:11px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg2);display:flex;justify-content:space-between;align-items:center}
+.lines{padding:16px 18px;min-height:250px;display:flex;flex-direction:column;gap:9px;background:#02080e;box-shadow:0 3px 10px #000 inset}
+.ln{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--fg1);opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s}
+.ln.on{opacity:1;transform:none}
+.ln .st{margin-left:auto;font-size:12px;font-weight:600;color:var(--fg3);display:flex;align-items:center;gap:6px}
+.ln .st.ok{color:var(--lime)}
+.ln.final{font-weight:700;color:var(--red);font-size:15px;margin-top:6px}
+.prog{height:6px;background:#02080e;box-shadow:0 1px 3px #000 inset;margin:0 18px;border-radius:3px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2a79b0,var(--blue));transition:width .4s linear}
+.foot{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--fg3)}
+</style>
+<div class="stage"><div class="frame w1280">
+  <div class="scr">
+    <div class="raised term">
+      <div class="th"><span>Disconnect</span><span class="badge b-amber" id="bd">In progress</span></div>
+      <div class="lines" id="lines"></div>
+      <div style="height:14px"></div>
+      <div class="prog"><i id="pg"></i></div>
+      <div class="foot"><span id="ft">Closing session</span><button class="btn" id="re" disabled>Replay</button></div>
+    </div>
+    <div class="vig"></div>
+  </div>
+</div></div>
+<div class="tokpanel"><h3>Tokens used on this page</h3><div class="tblw"><table>
+<tr><th>Token</th><th>Value</th><th>Use</th></tr>
+<tr><td>Output well</td><td><code>#02080e + inset shadow</code></td><td>Same recess as inputs and LCD wells. Replaces the old terminal black box</td></tr>
+<tr><td>Line reveal</td><td><code>opacity + 4px rise, 250ms</code></td><td>Each line fades in on a 600ms cadence. Skipped under reduced motion</td></tr>
+<tr><td>Status text</td><td><code>12px, lime when done</code></td><td>Right-aligned result per line</td></tr>
+<tr><td>Final line</td><td><code>15px bold red</code></td><td>CONNECTION TERMINATED. Real build redirects home here</td></tr>
+</table></div></div>
+<script>
+var L=['TERMINATING SESSION...','FLUSHING CREW ASSIGNMENTS...','RELEASING RADIO FREQUENCY...','CLOSING LIVE CONNECTION...','CLEARING LOCAL SESSION...','CONNECTION TERMINATED.'];
+var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches,T=[];
+function run(){T.forEach(clearTimeout);T=[];var box=document.getElementById('lines');box.innerHTML='';
+  document.getElementById('re').disabled=true;document.getElementById('bd').className='badge b-amber';document.getElementById('bd').textContent='In progress';
+  document.getElementById('pg').style.width='0';document.getElementById('ft').textContent='Closing session';
+  L.forEach(function(t,i){var d=document.createElement('div');var fin=i===L.length-1;d.className='ln'+(fin?' final':'');
+    d.innerHTML='<span>'+t+'</span>'+(fin?'':'<span class="st"><span class="spinner" style="width:11px;height:11px;border-width:2px"></span>Working</span>');box.appendChild(d);
+    var at=reduce?0:i*650;T.push(setTimeout(function(){d.classList.add('on');
+      if(i>0){var p=box.children[i-1].querySelector('.st');if(p){p.className='st ok';p.textContent='Done'}}
+      document.getElementById('pg').style.width=((i+1)/L.length*100)+'%';
+      if(fin){document.getElementById('bd').className='badge b-red';document.getElementById('bd').textContent='Disconnected';document.getElementById('ft').textContent='Concept only: the app redirects home here';document.getElementById('re').disabled=false}
+    },at+20))});
+}
+document.getElementById('re').addEventListener('click',run);run();
+</script>

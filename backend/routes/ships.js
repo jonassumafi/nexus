@@ -11,6 +11,7 @@ const PlatformConfig = require('../models/PlatformConfig');
 const { isAuthenticated, isPlatformOwner } = require('../middleware/permissions');
 const { uploadShipModel } = require('../services/cloudinaryService');
 const { emitToOrg, emitToUser } = require('../services/socketManager');
+const { dispatch } = require('../services/nexusDispatch');
 
 const toTitleCase = s => s.split(' ').map(w =>
   w.split('-').map(p => (p[0] || '') + p.slice(1).toLowerCase()).join('-')
@@ -535,6 +536,16 @@ router.post('/:id/approve-access', isAuthenticated, async (req, res) => {
       loanExpiresAt,
     });
 
+    {
+      const borrower = await User.findById(accessReq.requester_id).select('citizen_name username').lean();
+      dispatch('shipAccessGranted', {
+        vesselName: ship.ship_name,
+        ownerName: req.user.citizen_name || req.user.username,
+        borrowerName: borrower?.citizen_name || borrower?.username,
+        loanDuration: '4 hours',
+      });
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -625,6 +636,11 @@ router.post('/:id/withdraw-access', isAuthenticated, async (req, res) => {
       requestId: accessReq._id,
       shipId: ship._id,
       shipName: ship.ship_name,
+    });
+
+    dispatch('shipRecalled', {
+      vesselName: ship.ship_name,
+      ownerName: req.user.citizen_name || req.user.username,
     });
 
     res.json({ success: true });

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nexus — Top Bar Layout Reference</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── TOP SECTION ── logo/title left, ID card right, same height */
+.top-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #040D15;
+  flex-shrink: 0;
+}
+
+/* Logo + Title */
+.logo-block { display: flex; align-items: center; gap: 14px; }
+.logo-img {
+  width: 56px; height: 56px;
+  object-fit: contain;
+  /* In production: <img src="/images/nexus_logo.png" ... /> */
+  background: #06121C;
+  border: 1px solid #2A6A9A;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #2A6A9A;
+}
+.title-block { display: flex; flex-direction: column; justify-content: center; }
+.title-main {
+  font-size: 18px; color: #CCE8FF;
+  font-weight: bold; letter-spacing: 0.12em;
+}
+.title-sub {
+  font-size: 11px; color: #66AADD;
+  letter-spacing: 0.14em; margin-top: 3px;
+}
+
+/* ID Card widget — height matches logo block (56px) */
+.id-card {
+  display: flex;
+  height: 56px;
+  border: 1px solid #2A6A9A;
+  cursor: pointer;
+  background: #FFFFFF;
+  width: 260px;
+  flex-shrink: 0;
+}
+.id-card:hover {
+  border-color: #00EEFF;
+  box-shadow: 0 0 8px rgba(0,238,255,0.25);
+}
+.portrait {
+  width: 44px; flex-shrink: 0;
+  background: #1A3A50;
+  border-right: 1px solid #2A6A9A;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; color: #4488BB;
+  overflow: hidden;
+}
+.portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card-body {
+  padding: 6px 10px; flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: center; gap: 2px;
+  background: #FFFFFF;
+}
+.card-label { font-size: 7px; color: #2A3A4A; letter-spacing: 0.12em; }
+.card-name { font-size: 13px; color: #0D1A24; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-rank { font-size: 9px; color: #0D1A24; }
+.rp-row { display: flex; align-items: center; gap: 5px; }
+.rp-lbl { font-size: 7px; color: #0D1A24; font-weight: bold; }
+.rp-track { flex: 1; height: 3px; background: #C8B898; }
+.rp-fill { height: 100%; background: #1A5A8A; }
+.rp-val { font-size: 7px; color: #0D1A24; font-weight: bold; }
+
+/* ── NAV ROW ── flush against column divider */
+.nav-row {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 20px;
+  gap: 8px;
+  background: #040D15;
+  border-bottom: 1px solid #1A3D55;
+  flex-shrink: 0;
+}
+.nav-btn {
+  font-size: 13px; color: #66AADD;
+  border: 1px solid #66AADD;
+  border-bottom: none;
+  background: #000;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.nav-btn:hover { background: #66AADD; color: #000; }
+.nav-btn.danger { color: #FF5544; border-color: #FF5544; }
+.nav-btn.danger:hover { background: #FF5544; color: #000; }
+
+/* ── THREE COLUMNS ── */
+.columns { display: flex; flex: 1; overflow: hidden; }
+.col-left {
+  width: 220px; flex-shrink: 0;
+  border-right: 1px solid #1A3D55;
+  padding: 12px; background: #040D15;
+  overflow-y: auto;
+}
+.col-mid { flex: 1; padding: 16px; background: #000; overflow-y: auto; }
+.col-right {
+  width: 320px; flex-shrink: 0;
+  border-left: 1px solid #1A3D55;
+  background: #040D15; padding: 12px;
+  overflow-y: auto;
+}
+.col-lbl { font-size: 10px; color: #4488BB; letter-spacing: 0.12em; margin-bottom: 8px; }
+.placeholder { font-size: 11px; color: #1A3D55; }
+</style>
+</head>
+<body>
+
+<div style="height:100vh;display:flex;flex-direction:column;">
+
+  <!-- TOP SECTION -->
+  <div class="top-section">
+    <div class="logo-block">
+      <div class="logo-img">[ LOGO ]</div>
+      <div class="title-block">
+        <div class="title-main">NEXUS INTERSTELLAR</div>
+        <div class="title-sub">TRAFFIC SYSTEM</div>
+      </div>
+    </div>
+    <div class="id-card" title="Click to view ID card">
+      <div class="portrait">[ IMG ]</div>
+      <div class="card-body">
+        <div class="card-label">UEE IDENTIFICATION — NEXUS</div>
+        <div class="card-name">Peter Tork</div>
+        <div class="card-rank">DRIFTER</div>
+        <div class="rp-row">
+          <span class="rp-lbl">RP</span>
+          <div class="rp-track"><div class="rp-fill" style="width:24%"></div></div>
+          <span class="rp-val">12 / 50</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV ROW -->
+  <div class="nav-row">
+    <button class="nav-btn">[ + CREATE MISSION ]</button>
+    <button class="nav-btn">[ MY SHIPS ]</button>
+    <button class="nav-btn">✦ REGISTER SHIP</button>
+    <button class="nav-btn">[ SHIP REGISTRY ]</button>
+    <button class="nav-btn danger">[ DISCONNECT ]</button>
+  </div>
+
+  <!-- THREE COLUMNS -->
+  <div class="columns">
+    <div class="col-left">
+      <div class="col-lbl">MISSION BOARD — 0 AVAILABLE</div>
+      <div class="placeholder">NO ACTIVE MISSIONS</div>
+    </div>
+    <div class="col-mid">
+      <div class="placeholder" style="color:#1A3D55;font-size:13px;">SELECT A MISSION TO VIEW DETAILS</div>
+    </div>
+    <div class="col-right">
+      <div class="col-lbl">ACTIVITY FEED</div>
+      <div class="placeholder">—</div>
+    </div>
+  </div>
+
+</div>
+
+<!--
+IMPLEMENTATION NOTES FOR CLAUDE CODE:
+
+1. TOP SECTION
+   Split existing TopBar into two rows:
+   Row 1 (.top-section): logo + title LEFT, ID card RIGHT
+   Row 2 (.nav-row): nav buttons flush against column divider
+
+2. LOGO
+   <img src="/images/nexus_logo.png"
+     style={{ width: 56, height: 56, objectFit: 'contain' }} />
+   Place ~/nexus/nexus.png at
+   frontend/public/images/nexus_logo.png
+
+3. TITLE
+   Two lines stacked:
+   "NEXUS INTERSTELLAR" — 18px, bold, #CCE8FF, letterSpacing 0.12em
+   "TRAFFIC SYSTEM" — 11px, #66AADD, letterSpacing 0.14em
+
+4. ID CARD
+   height: 56px (matches logo block)
+   width: 260px
+   Flush right, no margin from edge
+   Portrait: width 44px, height 100%, objectFit cover
+   Uses me.portrait_url
+
+5. NAV BUTTONS
+   Sit in their own row below top-section
+   border-bottom: none (tabs into divider)
+   alignItems: flex-end so they sit flush
+   against the 1px solid #1A3D55 border-bottom
+
+6. COLUMN DIVIDER
+   The border-bottom of nav-row IS the
+   top border of the three-column layout.
+   No separate divider needed.
+-->
+
+</body>
+</html>

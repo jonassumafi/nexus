@@ -6,10 +6,10 @@ const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━
 const DOS_DEFS = [
   { text: '> INITIALIZING NEXUS REGISTRY ACCESS PROTOCOL...', color: '#66AADD' },
   { text: '> AUTHENTICATING OPERATOR CREDENTIALS...',          color: '#66AADD' },
-  { text: '> CREDENTIALS VERIFIED — CLEARANCE LEVEL: OPERATOR', color: '#33DDAA' },
+  { text: '> CREDENTIALS VERIFIED — CLEARANCE LEVEL: OPERATOR', color: '#44FF88' },
   { text: '> ESTABLISHING UPLINK TO UEE CENTRAL DATABASE...', color: '#66AADD' },
   // audio.onended gates line 4
-  { text: '> SIGNAL ACQUIRED — NODE 7 ONLINE',               color: '#33DDAA' },
+  { text: '> SIGNAL ACQUIRED — NODE 7 ONLINE',               color: '#44FF88' },
   // Final VESSEL MANIFESTS SYNCHRONIZED line is injected dynamically inside
   // startSequence() with the actual ship count after the bars finish.
 ];
@@ -107,7 +107,7 @@ export default function RegistryBoot({ onComplete }) {
         sched(() => {
           setSignalVisible(true);
           animateBars(() => {
-            addLine(`> VESSEL MANIFESTS SYNCHRONIZED — ${shipCount} RECORDS LOADED`, '#33DDAA');
+            addLine(`> VESSEL MANIFESTS SYNCHRONIZED — ${shipCount} RECORDS LOADED`, '#44FF88');
             sched(() => onCompleteRef.current?.(shipsRef.current), 3000);
           });
         }, 2400);
@@ -147,27 +147,29 @@ export default function RegistryBoot({ onComplete }) {
         width: 700,
         padding: 40,
         boxSizing: 'border-box',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontFamily: "var(--font-mono)",
       }}>
-        {/* Header */}
+        {/* Header — left-aligned to match the DOS log and the other boot
+            sequences (Splash, ShipRegistration BootSequence). Previously
+            title and subtitle were centered while the divider and body
+            lines were left-aligned, which made the horizontal bar look
+            offset. Keeping everything flush-left along the content block's
+            left edge is the consistent idiom. */}
         <div style={{
           fontSize: 20, color: '#CCE8FF', fontWeight: 'bold',
-          letterSpacing: '0.16em', textAlign: 'center',
+          letterSpacing: '0.16em',
           marginBottom: 4,
         }}>
           NEXUS INTERSTELLAR TRAFFIC SYSTEM
         </div>
-        <div style={{ color: '#1A3D55', fontSize: 16, letterSpacing: '0.06em', lineHeight: 1.9 }}>
-          {DIVIDER}
-        </div>
         <div style={{
-          fontSize: 14, color: '#4488BB',
-          letterSpacing: '0.12em', textAlign: 'center',
+          fontSize: 14, color: '#5F87A8',
+          letterSpacing: '0.12em',
           marginBottom: 4,
         }}>
           CENTRAL SHIP REGISTRY — OPERATOR ACCESS
         </div>
-        <div style={{ color: '#1A3D55', fontSize: 16, letterSpacing: '0.06em', lineHeight: 1.9, marginBottom: 20 }}>
+        <div style={{ color: '#1A3A50', fontSize: 16, letterSpacing: '0.06em', lineHeight: 1.9, marginBottom: 20 }}>
           {DIVIDER}
         </div>
 
@@ -193,7 +195,7 @@ export default function RegistryBoot({ onComplete }) {
             {barHeights.map((h, i) => (
               <div key={i} style={{
                 width: 8, height: h,
-                background: activeBars > i ? '#00EEFF' : '#1A3D55',
+                background: activeBars > i ? '#00EEFF' : '#1A3A50',
                 transition: 'background 0.3s',
               }} />
             ))}

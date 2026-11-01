@@ -32,34 +32,35 @@ const MFG_PREFIX = {
 };
 const MANUFACTURERS = ['ALL MANUFACTURERS', ...Object.keys(MFG_PREFIX).sort()];
 
+// Form token styles — mirror the global .inp and .btn recipes so inline
+// styles don't fight the design system.
 const HEADER_BTN_STYLE = {
   width: 220,
-  display: 'block',
-  textAlign: 'center',
-  fontSize: 15,
-  padding: '7px 0',
-  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-  letterSpacing: '0.12em',
+  fontSize: 13,
+  padding: '8px 0',
   cursor: 'pointer',
 };
 
 const LABEL_STYLE = {
-  fontSize: 16,
-  color: '#66AADD',
-  letterSpacing: '0.14em',
+  fontSize: 12,
+  fontWeight: 600,
+  color: 'var(--fg2)',
+  letterSpacing: '0.03em',
   textTransform: 'uppercase',
   marginBottom: 6,
   display: 'block',
 };
 const INPUT_STYLE = {
   width: '100%',
-  background: '#000',
-  border: '1px solid #4488BB',
-  color: '#99CCFF',
-  fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-  fontSize: 16,
-  padding: '8px 10px',
+  background: '#02080e',
+  border: '1px solid var(--rim0)',
+  borderRadius: 5,
+  color: 'var(--fg0)',
+  fontFamily: 'var(--font)',
+  fontSize: 14,
+  padding: '9px 11px',
   outline: 'none',
+  boxShadow: '0 2px 6px #000 inset',
   boxSizing: 'border-box',
 };
 
@@ -84,8 +85,8 @@ const CM_LINE_DEFS = [
   { label: 'LOADING FLEET MANIFEST   ', status: 'OK',     color: '#66AADD', range: [400, 1400] },
   { label: 'INITIALIZING CREW SYSTEM ', status: 'OK',     color: '#66AADD', range: [500, 1500] },
   { label: 'PREPARING PARAMETERS     ', status: 'OK',     color: '#66AADD', range: [400, 1200] },
-  { label: 'ESTABLISHING CONNECTION  ', status: 'READY',  color: '#33DDAA', range: [300, 1000] },
-  { label: 'MISSION TERMINAL         ', status: 'ONLINE', color: '#33DDAA', range: [200, 800]  },
+  { label: 'ESTABLISHING CONNECTION  ', status: 'READY',  color: '#44FF88', range: [300, 1000] },
+  { label: 'MISSION TERMINAL         ', status: 'ONLINE', color: '#44FF88', range: [200, 800]  },
 ];
 
 function BootSequence({ operatorName, onDone }) {
@@ -205,18 +206,23 @@ function BootSequence({ operatorName, onDone }) {
         width: 'fit-content',
         maxWidth: 700,
         padding: '0 40px',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        fontSize: 16,
+        // Monospace so the bracketed [....] progress columns line up
+        // on a common left axis, matching the Ship Registry boot. In
+        // a proportional font the ad-hoc trailing spaces in each
+        // CM_LINE_DEFS label have variable widths and the brackets
+        // staircase visibly.
+        fontFamily: "var(--font-mono, 'JetBrains Mono', ui-monospace, Consolas, monospace)",
+        fontSize: 15,
         lineHeight: 1.9,
-        letterSpacing: '0.06em',
+        letterSpacing: '0.04em',
       }}>
         {header1 && (
-          <div style={{ color: '#99CCFF' }}>
+          <div style={{ color: '#99BBDD' }}>
             NEXUS MISSION COMMAND — TERMINAL ACCESS
           </div>
         )}
         {showDivOpen && (
-          <div style={{ color: '#1A3D55' }}>{CM_DIVIDER}</div>
+          <div style={{ color: '#1A3A50' }}>{CM_DIVIDER}</div>
         )}
         {header2 && (
           <div style={{ color: '#66AADD', whiteSpace: 'pre', marginBottom: 12 }}>
@@ -235,10 +241,10 @@ function BootSequence({ operatorName, onDone }) {
         })}
 
         {showDivClose && (
-          <div style={{ color: '#1A3D55', marginTop: 8 }}>{CM_DIVIDER}</div>
+          <div style={{ color: '#1A3A50', marginTop: 8 }}>{CM_DIVIDER}</div>
         )}
         {showReady && (
-          <div style={{ color: '#33DDAA', whiteSpace: 'pre' }}>
+          <div style={{ color: '#44FF88', whiteSpace: 'pre' }}>
             &gt; MISSION TERMINAL READY
           </div>
         )}
@@ -285,22 +291,18 @@ function deriveCrewRolesFromNodes(nodes) {
 }
 
 function HoverBtn({ onClick, color, disabled, children, style = {} }) {
-  const [hover, setHover] = useState(false);
-  const active = hover && !disabled;
+  // Legacy color prop → variant mapping. Pair with the global .btn utility
+  // so this button inherits the pressable bevel + typography automatically.
+  const variant =
+    color === '#FF5544' ? 'warn' :
+    color === '#44FF88' ? 'go'   :
+    color === '#FFBB33' ? 'amb'  : '';
   return (
     <button
+      className={`btn ${variant}`.trim()}
+      disabled={disabled}
       onClick={disabled ? undefined : () => { playClick(); onClick?.(); }}
-      onMouseEnter={() => !disabled && setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        border: `1px solid ${disabled ? '#1A3D55' : color}`,
-        color: disabled ? '#1A3D55' : (active ? '#000' : color),
-        background: active ? color : '#000',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-        ...HEADER_BTN_STYLE,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        ...style,
-      }}
+      style={{ ...HEADER_BTN_STYLE, ...style }}
     >
       {children}
     </button>
@@ -308,21 +310,13 @@ function HoverBtn({ onClick, color, disabled, children, style = {} }) {
 }
 
 function BackDashBtn({ onClick }) {
-  const [hover, setHover] = useState(false);
   return (
     <button
+      className="btn amb"
       onClick={() => { playClick(); onClick?.(); }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        ...HEADER_BTN_STYLE,
-        border: '1px solid #FFBB33',
-        color: hover ? '#000' : '#FFBB33',
-        background: hover ? '#FFBB33' : '#000',
-        marginTop: 8,
-      }}
+      style={{ ...HEADER_BTN_STYLE, marginTop: 8 }}
     >
-      [ ◀ BACK TO DASHBOARD ]
+      ◀ Back to dashboard
     </button>
   );
 }
@@ -330,38 +324,27 @@ function BackDashBtn({ onClick }) {
 // ─── Stage indicator pills ──────────────────────────────────────────────────
 
 const STAGES = [
-  { id: 1, label: 'BRIEFING' },
-  { id: 2, label: 'FLEET' },
-  { id: 3, label: 'CREW' },
+  { id: 1, label: 'Briefing' },
+  { id: 2, label: 'Fleet' },
+  { id: 3, label: 'Crew' },
 ];
 
 function StagePills({ current, completedMax, onJump }) {
   return (
-    <div style={{ display: 'flex', gap: 8, padding: '8px 20px 12px', borderBottom: '1px solid #0D2030' }}>
+    <div className="steps" style={{ padding: '12px 20px 12px', borderBottom: '1px solid var(--rim0)' }}>
       {STAGES.map(s => {
         const completed = s.id < current && s.id <= completedMax;
         const isCurrent = s.id === current;
-        const future = !completed && !isCurrent;
-        const border = isCurrent ? '#00EEFF' : completed ? '#33DDAA' : '#1A3D55';
-        const color = isCurrent ? '#00EEFF' : completed ? '#33DDAA' : '#1A3D55';
-        const bg = isCurrent ? 'rgba(0,238,255,0.08)' : '#000';
-        const clickable = completed && !future && s.id !== current;
+        const clickable = completed && !isCurrent;
         return (
           <div
             key={s.id}
+            className={`st${isCurrent ? ' cur' : completed ? ' done' : ''}`}
             onClick={clickable ? () => { playClick(); onJump?.(s.id); } : undefined}
-            style={{
-              border: `1px solid ${border}`,
-              color,
-              background: bg,
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-              fontSize: 13,
-              letterSpacing: '0.14em',
-              padding: '4px 12px',
-              cursor: clickable ? 'pointer' : 'default',
-            }}
+            style={{ cursor: clickable ? 'pointer' : 'default' }}
           >
-            {`[ 0${s.id} ${s.label} ]`}
+            <div className="dotn">{completed ? '✓' : String(s.id).padStart(2, '0')}</div>
+            <div className="lb">{s.label}</div>
           </div>
         );
       })}
@@ -394,8 +377,9 @@ function Stage1({ form, setForm, missionTypes, nameStatus, setNameStatus, runNam
   return (
     <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <label style={LABEL_STYLE}>MISSION NAME</label>
+        <label style={LABEL_STYLE}>Mission name</label>
         <input
+          className="inp"
           value={form.name}
           maxLength={80}
           onChange={e => {
@@ -407,28 +391,31 @@ function Stage1({ form, setForm, missionTypes, nameStatus, setNameStatus, runNam
             setForm(f => ({ ...f, name: upper }));
             if (upper.trim()) runNameCheck(upper.trim());
           }}
-          placeholder="e.g. OPERATION IRON VEIL"
+          placeholder="e.g. Operation Iron Veil"
           style={INPUT_STYLE}
         />
         {nameStatus === 'checking' && (
-          <div style={{ fontSize: 16, color: '#66AADD', marginTop: 4 }}>CHECKING...</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--fg2)', marginTop: 4 }}>
+            <span className="spinner" />Checking…
+          </div>
         )}
         {nameStatus === 'available' && (
-          <div style={{ fontSize: 16, color: '#33DDAA', marginTop: 4 }}>✓ AVAILABLE</div>
+          <div style={{ fontSize: 12, color: 'var(--lime)', marginTop: 4, fontWeight: 600 }}>✓ Available</div>
         )}
         {nameStatus === 'taken' && (
-          <div style={{ fontSize: 16, color: '#FF5544', marginTop: 4 }}>✗ NAME TAKEN</div>
+          <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 4, fontWeight: 600 }}>✗ Name taken</div>
         )}
       </div>
 
       <div>
-        <label style={LABEL_STYLE}>MISSION TYPE</label>
+        <label style={LABEL_STYLE}>Mission type</label>
         <select
+          className="inp"
           value={form.mission_type}
           onChange={e => setForm(f => ({ ...f, mission_type: e.target.value }))}
           style={{ ...INPUT_STYLE, cursor: 'pointer' }}
         >
-          <option value="">— SELECT —</option>
+          <option value="">— Select —</option>
           {missionTypes.map(t => (
             <option key={t.name} value={t.name} style={{ background: '#000' }}>
               {t.emoji ? `${t.emoji} ${t.name}` : t.name}
@@ -438,7 +425,7 @@ function Stage1({ form, setForm, missionTypes, nameStatus, setNameStatus, runNam
       </div>
 
       <div>
-        <label style={LABEL_STYLE}>SCHEDULED DATE AND TIME</label>
+        <label style={LABEL_STYLE}>Scheduled date and time</label>
         <div style={{ display: 'flex', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
             <input
@@ -456,7 +443,7 @@ function Stage1({ form, setForm, missionTypes, nameStatus, setNameStatus, runNam
               const dd = String(t.getDate()).padStart(2, '0');
               setForm(f => ({ ...f, mission_date: `${yyyy}-${mm}-${dd}` }));
             }}>
-              [ TODAY ]
+              Today
             </ConvenienceBtn>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
@@ -472,51 +459,51 @@ function Stage1({ form, setForm, missionTypes, nameStatus, setNameStatus, runNam
               const min = String(t.getMinutes()).padStart(2, '0');
               setForm(f => ({ ...f, mission_time: `${hh}:${min}` }));
             }}>
-              [ NOW ]
+              Now
             </ConvenienceBtn>
           </div>
         </div>
         {countdown && (
-          <div style={{ fontSize: 16, color: '#66AADD', marginTop: 4 }}>{countdown}</div>
+          <div style={{ fontSize: 12, color: 'var(--blue)', marginTop: 6, letterSpacing: '0.04em' }}>
+            {countdown}
+          </div>
         )}
         {form.mission_date && form.mission_time && dt && dt.getTime() <= Date.now() && (
-          <div style={{
-            fontSize: 12,
-            color: '#FF5544',
-            letterSpacing: '0.06em',
-            marginTop: 6,
-            fontWeight: 'bold',
-          }}>
-            ⚠ SELECTED TIME HAS ALREADY PASSED — CHOOSE A FUTURE TIME
+          <div className="err" style={{ marginTop: 6 }}>
+            ⚠ Selected time has already passed — choose a future time
           </div>
         )}
       </div>
 
       <div>
-        <label style={LABEL_STYLE}>OBJECTIVES</label>
+        <label style={LABEL_STYLE}>Objectives</label>
         <textarea
+          className="inp"
           rows={6}
           maxLength={2000}
           value={form.objectives}
           onChange={e => setForm(f => ({ ...f, objectives: e.target.value }))}
           placeholder="Describe mission objectives, target location, expected resistance, and rules of engagement."
-          style={{ ...INPUT_STYLE, resize: 'vertical' }}
+          style={{ ...INPUT_STYLE, resize: 'vertical', minHeight: 110 }}
         />
-        <div style={{ textAlign: 'right', color: '#66AADD', fontSize: 16, marginTop: 2 }}>
+        <div className="counter" style={{ marginTop: 4 }}>
           {form.objectives.length} / 2000
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--fg3)', marginTop: 2 }}>
+          Minimum: 10 words required.
         </div>
       </div>
 
       <div>
-        <label style={LABEL_STYLE}>VISIBILITY</label>
+        <label style={LABEL_STYLE}>Visibility</label>
         <div style={{ display: 'flex', gap: 10 }}>
           <VisibilityBtn
-            label="ORG"
+            label="Org"
             disabled
-            tooltip="JOIN AN ORG TO ENABLE"
+            tooltip="Join an org to enable"
           />
           <VisibilityBtn
-            label="PUBLIC"
+            label="Public"
             active={form.is_public}
             onClick={() => setForm(f => ({ ...f, is_public: true }))}
           />
@@ -524,50 +511,46 @@ function Stage1({ form, setForm, missionTypes, nameStatus, setNameStatus, runNam
       </div>
 
       <div>
-        <label style={LABEL_STYLE}>MISSION FREQUENCY</label>
+        <label style={LABEL_STYLE}>Mission frequency</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input
-            value={form.frequency}
-            onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}
-            placeholder="127.4"
-            style={{
-              width: 110,
-              background: '#000',
-              border: '1px solid #4488BB',
-              color: '#00EEFF',
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-              fontSize: 22,
-              padding: '8px 10px',
-              textAlign: 'center',
-              letterSpacing: '0.14em',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-          <span style={{ fontSize: 16, color: '#66AADD', marginLeft: 6 }}>MHz</span>
+          <div className="lcd" style={{
+            width: 140, fontSize: 20, padding: '6px 12px', textAlign: 'center',
+          }}>
+            <input
+              value={form.frequency}
+              onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}
+              placeholder="127.4"
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 0,
+                color: 'inherit',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                fontWeight: 'inherit',
+                textAlign: 'center',
+                letterSpacing: 'inherit',
+                outline: 'none',
+                padding: 0,
+              }}
+            />
+          </div>
+          <span style={{ fontSize: 12, color: 'var(--fg3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>MHz</span>
           <ConvenienceBtn onClick={() => setForm(f => ({ ...f, frequency: generateFreq() }))}>
-            [ GENERATE ]
+            Generate
           </ConvenienceBtn>
         </div>
       </div>
 
       <div>
-        <label style={LABEL_STYLE}>CREW QUEUE WINDOW</label>
+        <label style={LABEL_STYLE}>Crew queue window</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
+            className={`btn${form.queue_on ? ' go' : ''}`}
             onClick={() => { playClick(); setForm(f => ({ ...f, queue_on: !f.queue_on })); }}
-            style={{
-              border: `1px solid ${form.queue_on ? '#33DDAA' : '#1A3D55'}`,
-              color: form.queue_on ? '#33DDAA' : '#66AADD',
-              background: form.queue_on ? 'rgba(51,221,170,0.08)' : '#000',
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-              fontSize: 18,
-              letterSpacing: '0.12em',
-              padding: '6px 14px',
-              cursor: 'pointer',
-            }}
+            style={{ fontSize: 12, padding: '7px 14px' }}
           >
-            {form.queue_on ? '[ ON ]' : '[ OFF ]'}
+            {form.queue_on ? 'On' : 'Off'}
           </button>
           {form.queue_on && (
             <>
@@ -589,61 +572,52 @@ function Stage1({ form, setForm, missionTypes, nameStatus, setNameStatus, runNam
 }
 
 function ConvenienceBtn({ onClick, children }) {
-  const [hover, setHover] = useState(false);
+  // Short-text secondary action — maps to the standard .btn recipe at a
+  // smaller size. Strips the bracketed [ ... ] text style from legacy call
+  // sites since the bevel chrome supersedes the ASCII treatment.
+  const text = typeof children === 'string' ? children.replace(/\[\s*|\s*\]/g, '') : children;
   return (
     <button
+      className="btn"
       onClick={() => { playClick(); onClick?.(); }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
-        background: '#000',
-        border: `1px solid ${hover ? '#66AADD' : '#2A6A9A'}`,
-        color: hover ? '#99CCFF' : '#66AADD',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
         fontSize: 11,
-        padding: '3px 8px',
-        letterSpacing: '0.1em',
-        cursor: 'pointer',
+        padding: '5px 10px',
         marginLeft: 8,
         whiteSpace: 'nowrap',
       }}
     >
-      {children}
+      {text}
     </button>
   );
 }
 
 function VisibilityBtn({ label, active, disabled, tooltip, onClick }) {
   const [hover, setHover] = useState(false);
-  const border = disabled ? '#1A3D55' : (active ? '#33DDAA' : '#4488BB');
-  const color = disabled ? '#1A3D55' : (active ? '#33DDAA' : '#99CCFF');
-  const bg = active ? 'rgba(51,221,170,0.08)' : '#000';
+  // Selected = .btn.go (lime). Default = .btn. Disabled handled via attribute.
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', flex: 1 }}>
       <button
+        className={`btn${active ? ' go' : ''}`}
+        disabled={disabled}
         onClick={disabled ? undefined : () => { playClick(); onClick?.(); }}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
         style={{
-          border: `1px solid ${border}`,
-          color,
-          background: bg,
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
-          fontSize: 18,
-          letterSpacing: '0.14em',
-          padding: '7px 18px',
-          cursor: disabled ? 'not-allowed' : 'pointer',
+          width: '100%',
+          fontSize: 13,
+          padding: '9px 18px',
         }}
       >
-        [ {label} ]
+        {label}
       </button>
       {disabled && tooltip && hover && (
-        <div style={{
-          position: 'absolute', top: '-32px', left: 0,
-          background: '#0D2030', border: '1px solid #1A3D55',
-          color: '#99CCFF', fontSize: 16, padding: '3px 8px',
-          whiteSpace: 'nowrap', letterSpacing: '0.08em',
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        <div className="raised" style={{
+          position: 'absolute', top: '-38px', left: 0,
+          padding: '4px 10px',
+          color: 'var(--fg0)', fontSize: 11,
+          whiteSpace: 'nowrap', letterSpacing: '0.04em',
+          zIndex: 10,
         }}>
           {tooltip}
         </div>
@@ -707,7 +681,7 @@ function Stage2({ form, setForm, myShips, allShips, shipImages, specs, me, borro
     <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 18 }}>
       <Section title="MY SHIPS">
         {(!myShips || myShips.length === 0) ? (
-          <div style={{ fontSize: 16, color: '#1A3D55' }}>
+          <div style={{ fontSize: 16, color: '#1A3A50' }}>
             NO VESSELS REGISTERED — REGISTER A SHIP FIRST
           </div>
         ) : (
@@ -743,7 +717,7 @@ function Stage2({ form, setForm, myShips, allShips, shipImages, specs, me, borro
           </select>
         </div>
         {filteredInventory.length === 0 ? (
-          <div style={{ fontSize: 16, color: '#1A3D55' }}>NO MATCHING SHIPS</div>
+          <div style={{ fontSize: 16, color: '#1A3A50' }}>NO MATCHING SHIPS</div>
         ) : (
           filteredInventory.map(ship => (
             <ShipCardRow
@@ -812,8 +786,8 @@ function ShipCardRow({
 
   return (
     <div style={{
-      background: '#0D2030',
-      border: '1px solid #1A3D55',
+      background: '#061018',
+      border: '1px solid #1A3A50',
       padding: '10px 14px',
       marginBottom: 6,
       display: 'flex',
@@ -837,7 +811,7 @@ function ShipCardRow({
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 16, color: '#99CCFF', letterSpacing: '0.08em' }}>{ship.ship_name}</div>
+        <div style={{ fontSize: 16, color: '#99BBDD', letterSpacing: '0.08em' }}>{ship.ship_name}</div>
         <div style={{ fontSize: 16, color: '#66AADD' }}>{displayName}</div>
         <div style={{ fontSize: 16, color: '#66AADD', marginTop: 2 }}>{crewLabel}</div>
         {showOwner && (
@@ -853,15 +827,15 @@ function ShipCardRow({
             padding: '4px 12px',
             letterSpacing: '0.1em',
             fontWeight: 'bold',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+            fontFamily: "'Inter', system-ui, sans-serif",
           }}>
             ON MISSION
           </div>
         ) : inManifest ? (
           <div style={{
-            border: '1px solid #33DDAA', color: '#33DDAA',
+            border: '1px solid #44FF88', color: '#44FF88',
             padding: '6px 12px', fontSize: 13, letterSpacing: '0.12em',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+            fontFamily: "'Inter', system-ui, sans-serif",
           }}>
             [ ADDED ✓ ]
           </div>
@@ -870,7 +844,7 @@ function ShipCardRow({
             <div style={{
               border: '1px solid #FFBB33', color: '#FFBB33',
               padding: '6px 12px', fontSize: 13, letterSpacing: '0.12em',
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+              fontFamily: "'Inter', system-ui, sans-serif",
               whiteSpace: 'nowrap',
             }}>
               ⏳ REQUEST PENDING
@@ -893,10 +867,10 @@ function ShipCardRow({
                 }
               }}
               style={{
-                border: '1px solid #1A3D55',
-                color: '#99CCFF',
+                border: '1px solid #1A3A50',
+                color: '#99BBDD',
                 background: '#000',
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                fontFamily: "'Inter', system-ui, sans-serif",
                 fontSize: 13,
                 letterSpacing: '0.12em',
                 padding: '6px 12px',
@@ -927,10 +901,10 @@ function SmallBtn({ color, onClick, children, disabled }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        border: `1px solid ${disabled ? '#1A3D55' : color}`,
-        color: disabled ? '#1A3D55' : (active ? '#000' : color),
+        border: `1px solid ${disabled ? '#1A3A50' : color}`,
+        color: disabled ? '#1A3A50' : (active ? '#000' : color),
         background: active ? color : '#000',
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontFamily: "'Inter', system-ui, sans-serif",
         fontSize: 18,
         letterSpacing: '0.12em',
         padding: '6px 12px',
@@ -953,24 +927,24 @@ function FleetManifestStrip({ manifest, onRemove, onMakePrimary }) {
         FLEET MANIFEST · {manifest.length} / 5 SHIPS
       </div>
       {manifest.length === 0 ? (
-        <div style={{ fontSize: 16, color: '#1A3D55' }}>NO SHIPS ASSIGNED</div>
+        <div style={{ fontSize: 16, color: '#1A3A50' }}>NO SHIPS ASSIGNED</div>
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {manifest.map(m => (
             <div key={m.ship_id} style={{
-              background: '#0D2030', border: '1px solid #1A3D55',
+              background: '#061018', border: '1px solid #1A3A50',
               padding: '8px 12px', display: 'inline-flex', gap: 8, alignItems: 'center',
             }}>
               <span style={{
                 color: m.role === 'PRIMARY' ? '#FFBB33' : '#66AADD',
                 fontSize: 13, letterSpacing: '0.12em',
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                fontFamily: "'Inter', system-ui, sans-serif",
               }}>
                 [{m.role === 'PRIMARY' ? '★ PRIMARY' : 'SUPPORT'}]
               </span>
               <span style={{
-                color: '#99CCFF', fontSize: 16,
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                color: '#99BBDD', fontSize: 16,
+                fontFamily: "'Inter', system-ui, sans-serif",
               }}>
                 {m.ship_name}
               </span>
@@ -991,7 +965,7 @@ function FleetManifestStrip({ manifest, onRemove, onMakePrimary }) {
 function Stage3({ form, setForm, me, shipImages }) {
   const fleet = form.fleet || [];
   if (fleet.length === 0) {
-    return <div style={{ padding: 20, fontSize: 16, color: '#1A3D55' }}>NO SHIPS IN FLEET MANIFEST</div>;
+    return <div style={{ padding: 20, fontSize: 16, color: '#1A3A50' }}>NO SHIPS IN FLEET MANIFEST</div>;
   }
   return (
     <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1055,15 +1029,15 @@ function CrewShipCard({ manifestEntry, form, setForm, me, shipImages }) {
   }
 
   return (
-    <div style={{ background: '#0D2030', border: '1px solid #1A3D55', padding: '10px 14px' }}>
+    <div style={{ background: '#061018', border: '1px solid #1A3A50', padding: '10px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <div style={{ fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace" }}>
-          <span style={{ fontSize: 16, color: '#99CCFF', letterSpacing: '0.08em' }}>
+        <div style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+          <span style={{ fontSize: 16, color: '#99BBDD', letterSpacing: '0.08em' }}>
             {ship.ship_name}
           </span>
           <span style={{ fontSize: 16, color: '#66AADD', marginLeft: 10 }}>{ship.ship_model}</span>
         </div>
-        <SmallBtn color="#4488BB" onClick={() => setCollapsed(c => !c)}>
+        <SmallBtn color="#5F87A8" onClick={() => setCollapsed(c => !c)}>
           {collapsed ? '+ EXPAND' : '- COLLAPSE'}
         </SmallBtn>
       </div>
@@ -1072,19 +1046,19 @@ function CrewShipCard({ manifestEntry, form, setForm, me, shipImages }) {
         <div style={{ display: 'flex', gap: 16 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {Object.keys(roleCounts).length === 0 && Object.keys(customRoles).length === 0 ? (
-              <div style={{ fontSize: 16, color: '#1A3D55', padding: 8 }}>
+              <div style={{ fontSize: 16, color: '#1A3A50', padding: 8 }}>
                 NO CREW CONFIGURATION — SHIP HAS NO REGISTERED NODE POSITIONS
               </div>
             ) : (
               <table style={{
                 width: '100%',
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                fontFamily: "'Inter', system-ui, sans-serif",
                 fontSize: 16,
-                color: '#99CCFF',
+                color: '#99BBDD',
                 borderCollapse: 'collapse',
               }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #1A3D55' }}>
+                  <tr style={{ borderBottom: '1px solid #1A3A50' }}>
                     <th style={{ textAlign: 'left', padding: '4px 6px', color: '#66AADD', letterSpacing: '0.12em' }}>ROLE</th>
                     <th style={{ textAlign: 'right', padding: '4px 6px', color: '#66AADD', letterSpacing: '0.12em' }}>SLOTS</th>
                     <th style={{ textAlign: 'right', padding: '4px 6px', color: '#66AADD', letterSpacing: '0.12em' }}>FILLED</th>
@@ -1120,7 +1094,7 @@ function CrewShipCard({ manifestEntry, form, setForm, me, shipImages }) {
               <label style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 marginTop: 10, fontSize: 16, color: '#66AADD', letterSpacing: '0.08em',
-                fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+                fontFamily: "'Inter', system-ui, sans-serif",
                 cursor: 'pointer',
               }}>
                 <input type="checkbox" checked={selfReserveOn} onChange={toggleSelfReserve} />
@@ -1197,7 +1171,7 @@ function AddCustomRole({ onAdd }) {
         onChange={e => setSlots(parseInt(e.target.value || '1', 10))}
         style={{ ...INPUT_STYLE, width: 70, fontSize: 16 }}
       />
-      <SmallBtn color="#33DDAA" onClick={() => {
+      <SmallBtn color="#44FF88" onClick={() => {
         if (role.trim()) { onAdd(role.trim(), slots); setRole(''); setSlots(1); setOpen(false); }
       }}>ADD</SmallBtn>
       <SmallBtn color="#FF5544" onClick={() => { setRole(''); setOpen(false); }}>CANCEL</SmallBtn>
@@ -1208,7 +1182,7 @@ function AddCustomRole({ onAdd }) {
 // ─── Review ─────────────────────────────────────────────────────────────────
 
 function Review({ form, missionTypes }) {
-  const FONT = "'JetBrains Mono', 'Courier New', Courier, monospace";
+  const FONT = "'Inter', system-ui, sans-serif";
   const dt = form.mission_date && form.mission_time
     ? new Date(`${form.mission_date}T${form.mission_time}`)
     : null;
@@ -1245,7 +1219,7 @@ function Review({ form, missionTypes }) {
       {/* Meta row */}
       <div style={{ fontSize: 13, color: '#66AADD', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {typeInfo && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 10px', border: '1px solid #4488BB', color: '#99CCFF', fontSize: 11, fontWeight: 'bold' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 10px', border: '1px solid #5F87A8', color: '#99BBDD', fontSize: 11, fontWeight: 'bold' }}>
             {typeInfo.emoji ? `${typeInfo.emoji} ` : ''}{typeInfo.name}
           </span>
         )}
@@ -1312,7 +1286,7 @@ function Review({ form, missionTypes }) {
                       <b style={{ color: '#44FF88' }}>{role}</b> ×{count}
                     </span>
                   )) : (
-                    <span style={{ fontSize: 11, color: '#4488BB' }}>NO SLOTS</span>
+                    <span style={{ fontSize: 11, color: '#5F87A8' }}>NO SLOTS</span>
                   )}
                 </div>
               </div>
@@ -1320,9 +1294,9 @@ function Review({ form, missionTypes }) {
           })}
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '10px 0', marginTop: 10, borderTop: '1px solid #1A3D55',
+            padding: '10px 0', marginTop: 10, borderTop: '1px solid #1A3A50',
           }}>
-            <span style={{ fontSize: 12, color: '#4488BB', letterSpacing: '0.1em', fontWeight: 'bold' }}>
+            <span style={{ fontSize: 12, color: '#5F87A8', letterSpacing: '0.1em', fontWeight: 'bold' }}>
               TOTAL CREW SLOTS
             </span>
             <span style={{ fontSize: 24, color: '#CCE8FF', fontWeight: 'bold' }}>{totalSlots}</span>
@@ -1409,10 +1383,29 @@ function Wizard({ me, onClose, onSuccess }) {
     nameStatus !== 'taken' &&
     !!form.mission_type &&
     !!dt && dt.getTime() > Date.now() &&
-    form.objectives.trim().length >= 10;
+    form.objectives.trim().split(/\s+/).filter(w => w.length > 0).length >= 10;
   const stage2Valid = (form.fleet || []).some(m => m.role === 'PRIMARY');
   const stage3Valid = true;
   const reviewValid = stage1Valid && stage2Valid;
+
+  // Diagnostic string explaining the FIRST failing precondition. Powers the
+  // hint under the Next button so users don't stare at a greyed-out control
+  // wondering what they missed. Returns '' when the stage is valid.
+  function stage1Hint() {
+    if (!form.name.trim()) return 'Enter a mission name.';
+    if (nameStatus === 'taken') return 'That mission name is already taken.';
+    if (!form.mission_type) return 'Pick a mission type.';
+    if (!form.mission_date || !form.mission_time) return 'Set a scheduled date and time.';
+    if (!dt) return 'Scheduled time is invalid.';
+    if (dt.getTime() <= Date.now()) return 'Scheduled time must be in the future.';
+    const words = form.objectives.trim().split(/\s+/).filter(w => w.length > 0).length;
+    if (words < 10) return `Objectives need at least 10 words (currently ${words}).`;
+    return '';
+  }
+  function stage2Hint() {
+    if (!stage2Valid) return 'Mark one ship as the primary vessel.';
+    return '';
+  }
 
   async function deploy() {
     if (!reviewValid || submitting) return;
@@ -1469,34 +1462,40 @@ function Wizard({ me, onClose, onSuccess }) {
     setStage(s => Math.max(1, s - 1));
   }
 
-  // Header right buttons depend on stage
+  // Header right buttons depend on stage. Each stage shows a `.hint` under
+  // the primary button explaining the first blocking validation when the
+  // Next action is disabled — so users don't stare at a greyed-out control.
   function headerButtons() {
     if (stage === 1) {
+      const hint = stage1Hint();
       return (
         <>
-          <HoverBtn color="#FFBB33" onClick={onClose}>[ CANCEL ]</HoverBtn>
-          <HoverBtn color="#00EEFF" onClick={goNext} disabled={!stage1Valid}>
-            [ NEXT → FLEET ]
+          <HoverBtn color="#FFBB33" onClick={onClose}>Cancel</HoverBtn>
+          <HoverBtn color="#44FF88" onClick={goNext} disabled={!stage1Valid}>
+            Next → Fleet
           </HoverBtn>
+          {hint && <div className="hint" style={{ textAlign: 'right', color: 'var(--amber)' }}>{hint}</div>}
         </>
       );
     }
     if (stage === 2) {
+      const hint = stage2Hint();
       return (
         <>
-          <HoverBtn color="#FFBB33" onClick={goBack}>[ ← BACK ]</HoverBtn>
-          <HoverBtn color="#00EEFF" onClick={goNext} disabled={!stage2Valid}>
-            [ NEXT → CREW ]
+          <HoverBtn color="#FFBB33" onClick={goBack}>← Back</HoverBtn>
+          <HoverBtn color="#44FF88" onClick={goNext} disabled={!stage2Valid}>
+            Next → Crew
           </HoverBtn>
+          {hint && <div className="hint" style={{ textAlign: 'right', color: 'var(--amber)' }}>{hint}</div>}
         </>
       );
     }
     if (stage === 3) {
       return (
         <>
-          <HoverBtn color="#FFBB33" onClick={goBack}>[ ← BACK ]</HoverBtn>
-          <HoverBtn color="#00EEFF" onClick={goNext} disabled={!stage3Valid}>
-            [ NEXT → REVIEW ]
+          <HoverBtn color="#FFBB33" onClick={goBack}>← Back</HoverBtn>
+          <HoverBtn color="#44FF88" onClick={goNext} disabled={!stage3Valid}>
+            Next → Review
           </HoverBtn>
         </>
       );
@@ -1504,44 +1503,39 @@ function Wizard({ me, onClose, onSuccess }) {
     // stage 4 / review
     return (
       <>
-        <HoverBtn color="#FFBB33" onClick={goBack}>[ ← BACK ]</HoverBtn>
-        <HoverBtn color="#33DDAA" onClick={deploy} disabled={!reviewValid || submitting}>
-          {submitting ? '[ DEPLOYING... ]' : '[ DEPLOY MISSION ]'}
+        <HoverBtn color="#FFBB33" onClick={goBack}>← Back</HoverBtn>
+        <HoverBtn color="#44FF88" onClick={deploy} disabled={!reviewValid || submitting}>
+          {submitting ? <><span className="spinner" />Deploying…</> : 'Deploy mission'}
         </HoverBtn>
       </>
     );
   }
 
-  const stageTitle = stage === 4 ? 'REVIEW' : STAGES[stage - 1].label;
+  const stageTitle = stage === 4 ? 'Review' : STAGES[stage - 1].label;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#000' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)' }}>
       {/* Header */}
-      <div style={{
-        padding: '14px 20px',
-        borderBottom: '1px solid #1A3D55',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-        flexShrink: 0,
-      }}>
+      <div className="sh" style={{ alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: 16, color: '#66AADD', letterSpacing: '0.14em',
-            fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+            fontSize: 11, color: 'var(--blue)', fontWeight: 600,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
           }}>
-            STAGE {String(stage === 4 ? '04' : '0' + stage)} / 03 — {stageTitle}
+            Stage {stage === 4 ? '04' : '0' + stage} / 03 — {stageTitle}
           </div>
           {form.name && (
             <div style={{
-              fontSize: 16, color: '#99CCFF', letterSpacing: '0.08em', marginTop: 4,
-              fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+              fontSize: 15, color: 'var(--fg0)', fontWeight: 700,
+              marginTop: 4,
             }}>
               {form.name}
             </div>
           )}
         </div>
         <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
-          gap: 6, paddingRight: 16, paddingLeft: 8, flexShrink: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+          gap: 6, flexShrink: 0, minWidth: 220,
         }}>
           {headerButtons()}
         </div>
@@ -1599,10 +1593,10 @@ function Wizard({ me, onClose, onSuccess }) {
       {error && (
         <div style={{
           padding: '8px 20px',
-          borderTop: '1px solid #1A3D55',
+          borderTop: '1px solid #1A3A50',
           fontSize: 16, color: '#FF5544', letterSpacing: '0.08em',
           flexShrink: 0,
-          fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}>
           {error}
         </div>
@@ -1635,15 +1629,15 @@ export default function CreateMission({ me, onClose, onSuccess }) {
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         background: '#000', padding: 20,
-        fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace",
+        fontFamily: "'Inter', system-ui, sans-serif",
       }}>
         <div style={{
           padding: 30,
-          border: '1px solid #33DDAA',
+          border: '1px solid #44FF88',
           background: 'rgba(51,221,170,0.05)',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: 13, color: '#33DDAA', letterSpacing: '0.14em', fontWeight: 'bold', marginBottom: 8 }}>
+          <div style={{ fontSize: 13, color: '#44FF88', letterSpacing: '0.14em', fontWeight: 'bold', marginBottom: 8 }}>
             ✓ MISSION DEPLOYED
           </div>
           <div style={{ fontSize: 18, color: '#CCE8FF', fontWeight: 'bold' }}>

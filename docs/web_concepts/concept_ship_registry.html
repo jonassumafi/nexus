@@ -1,0 +1,578 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Ship Registry</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+
+:root{
+  color-scheme:dark;
+  --void:#000710; --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A;
+  --rim0:#1A3A50; --rim1:#2A5A7A; --rim2:#3F82B3;
+  --fg0:#CCE8FF; --fg1:#99BBDD; --fg2:#86AFCF; --fg3:#5F87A8;
+  --lime:#44FF88; --blue:#66AADD; --red:#FF5544; --amber:#FFBB33; --cyan:#00EEFF;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+
+.app{max-width:1500px;margin:0 auto;border:1px solid var(--rim0);border-radius:8px;overflow:hidden;background:var(--bg0);
+  box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6)}
+
+/* header */
+.hdr{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{width:48px;height:48px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 0 #04101a}
+.bt1{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.idc{display:flex;align-items:stretch;border-radius:5px;overflow:hidden;border:1px solid var(--rim1);box-shadow:0 3px 0 #04101a,0 8px 14px rgba(0,0,0,.45);flex-shrink:0}
+.idc .ph{width:56px;background:linear-gradient(160deg,#27455f,#0c1d2e);display:flex;align-items:flex-end;justify-content:center}
+.idc .info{padding:8px 12px;min-width:210px;background:linear-gradient(180deg,#14304a,#0b1f33)}
+.idc .k{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--fg3);text-transform:uppercase}
+.idc .nm0{font-size:15px;font-weight:700;color:var(--fg0)}
+.idc .rk{font-size:12px;color:var(--blue)}
+.rpbar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--fg2);margin-top:3px}
+.rpbar .bar{flex:1;height:6px;border-radius:3px;background:#02080e;box-shadow:0 1px 3px #000 inset;overflow:hidden}
+.rpbar .bar i{display:block;height:100%;width:26%;background:linear-gradient(90deg,#2a79b0,var(--blue))}
+
+/* nav */
+.nav{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;background:var(--bg1);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.nav .sp{flex:1}
+.nt{font-size:12px;font-weight:600;letter-spacing:.04em;padding:7px 14px;border-radius:4px;color:var(--fg2);
+  background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.1) inset,0 3px 0 #050e18;transition:all .1s}
+.nt:hover{color:var(--fg0);border-color:var(--rim1)}
+.nt.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.nt.new{color:var(--lime);margin-left:-4px}
+.nt.dc{color:var(--red);border-color:rgba(255,85,68,.4)}
+
+/* body grid */
+.body{display:grid;grid-template-columns:300px minmax(0,1fr) 340px;height:700px}
+.body.wide{grid-template-columns:minmax(0,1fr) 340px}
+.body.wide .board{display:none}
+.col{min-width:0;min-height:0;display:flex;flex-direction:column}
+.board{border-right:1px solid var(--rim0);background:var(--bg0)}
+.center{background:#000b13;overflow-y:auto;padding:16px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.side{border-left:1px solid var(--rim0);background:var(--bg0)}
+.sh{flex-shrink:0;padding:10px 14px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);
+  background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0);display:flex;justify-content:space-between;align-items:center}
+.scroll{flex:1;min-height:0;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+
+/* shared */
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:5px;
+  box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4);transition:transform .15s,border-color .15s}
+.btn{font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:6px 12px;border-radius:4px;border:1px solid var(--rim1);
+  background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.tx.on{color:#fff;border-color:var(--red);background:linear-gradient(180deg,#a8321f,#5e150b);box-shadow:0 1px 0 rgba(255,200,190,.4) inset,0 3px 0 #2a0803}
+.btn[disabled]{opacity:.55;pointer-events:none}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.nm{color:var(--fg0);cursor:pointer;border-bottom:1px dotted var(--rim2)}
+.nm:hover{color:var(--lime);border-bottom-color:var(--lime)}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.collapse>div{overflow:hidden;min-height:0}
+.open>.collapse{grid-template-rows:1fr}
+.empty{padding:28px 12px;text-align:center;font-size:12px;color:var(--fg3)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+
+/* mission board */
+.mc{padding:10px 12px;cursor:pointer;border-left:3px solid var(--lime)}
+.mc.staging{border-left-color:var(--blue)}
+.mc:hover{transform:translateY(-1px);border-color:var(--rim1)}
+.mc.sel{border-color:var(--rim2);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 3px 0 #050e18,0 0 0 1px var(--rim2)}
+.mc-t{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--fg0)}
+.mc-m{font-size:12px;color:var(--fg2);margin-top:3px}
+.mc-m b{color:var(--fg1);font-weight:500}
+.pips{display:flex;gap:4px;margin-top:7px}
+.pip{width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--blue);background:radial-gradient(circle at 35% 30%,#1c3d5a,#0b1d2e);border:1px solid var(--rim1)}
+.pip.vac{border:1px dashed var(--rim1);background:none;color:var(--fg3)}
+
+/* mission detail */
+.dt-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+.dt-h h2{font-size:20px;font-weight:700;color:var(--fg0)}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.meta>div{padding:10px 12px}
+.meta .k{font-size:11px;font-weight:600;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
+.meta .v{font-size:14px;color:var(--fg0);margin-top:2px;font-weight:500}
+.meta .v.t{color:var(--lime);font-variant-numeric:tabular-nums;font-weight:700}
+.h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);margin:4px 0 8px}
+.slots{display:flex;flex-direction:column;gap:8px;max-width:640px}
+.slot{display:flex;align-items:center;gap:12px;padding:9px 12px}
+.slot .role{width:90px;font-size:12px;font-weight:600;color:var(--fg2)}
+.slot .who{flex:1;font-size:13px;color:var(--fg0)}
+.slot .who.open{color:var(--fg3)}
+.acts{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+
+/* ships */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.sc{padding:12px}
+.sc .n{font-size:14px;font-weight:600;color:var(--fg0);display:flex;justify-content:space-between;gap:8px}
+.sc .o{font-size:12px;color:var(--fg2);margin:3px 0 8px}
+.rb{height:6px;border-radius:3px;background:#02080e;box-shadow:0 1px 3px #000 inset;overflow:hidden}
+.rb i{display:block;height:100%;background:linear-gradient(90deg,#1f9c5a,var(--lime))}
+.tblw{border:1px solid var(--rim0);border-radius:5px;overflow-x:auto;background:var(--bg1)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:8px 12px;border-bottom:1px solid var(--rim1)}
+td{padding:9px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);white-space:nowrap}
+.form{display:flex;flex-direction:column;gap:12px;max-width:380px}
+.form label{font-size:12px;font-weight:600;color:var(--fg2);display:flex;flex-direction:column;gap:4px}
+.inp{font-size:13px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:4px;padding:8px 10px;box-shadow:0 2px 6px #000 inset;outline:none;min-width:0}
+.inp:focus{border-color:var(--rim2)}
+
+/* side column: tabs, feed, chat, radio */
+.tabs{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 12px 6px}
+.tab{position:relative;font-size:12px;font-weight:600;padding:7px 0;border-radius:4px;color:var(--fg2);background:linear-gradient(180deg,#0C1D2E,#08141f);border:1px solid var(--rim0);box-shadow:0 1px 0 rgba(150,210,255,.08) inset,0 3px 0 #050e18;transition:all .1s}
+.tab:hover{color:var(--fg0)}
+.tab.on{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47);transform:translateY(2px);box-shadow:0 1px 0 rgba(180,225,255,.3) inset,0 1px 0 #050e18}
+.tab .n{position:absolute;top:-6px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;color:#04140a;background:var(--lime)}
+.tab .n.show{display:flex}
+.feed{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.fi{border-bottom:1px solid rgba(26,58,80,.55);padding:8px 12px;cursor:pointer}
+.fi:hover{background:var(--bg1)}
+.fi.new{animation:drop .45s cubic-bezier(.2,1.2,.4,1)}
+@keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+.fr{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center}
+.ico{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 3px 5px rgba(0,0,0,.6)}
+.ico.lime{background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);color:var(--lime);border:1px solid rgba(68,255,136,.4)}
+.ico.blue{background:radial-gradient(circle at 35% 30%,#24557a,#0c2437);color:var(--blue);border:1px solid rgba(102,170,221,.4)}
+.ico.red{background:radial-gradient(circle at 35% 30%,#7a2418,#2e0c07);color:var(--red);border:1px solid rgba(255,85,68,.4)}
+.ico.amber{background:radial-gradient(circle at 35% 30%,#7a5a14,#2e2106);color:var(--amber);border:1px solid rgba(255,187,51,.4)}
+.ft{font-size:13px;font-weight:600;color:var(--fg0)}
+.ft em{font-style:normal}
+.fs{font-size:12px;color:var(--fg2);margin-top:1px}
+.ftime{font-size:11px;color:var(--fg3);white-space:nowrap}
+.fd{padding:6px 0 2px 35px;font-size:12px;color:var(--fg2);line-height:1.7}
+.fd b{color:var(--fg1);font-weight:500}
+
+.chat{flex:1;min-height:0;display:flex;flex-direction:column}
+.chat[hidden]{display:none}
+.ch-t{flex:1;font-size:13px;font-weight:600;color:var(--fg0)}
+.ch-h{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.ch-list{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.th{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:8px 10px;cursor:pointer}
+.th:hover{transform:translateY(-1px)}
+.av{width:30px;height:30px;border-radius:50%;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--blue);background:radial-gradient(circle at 35% 30%,#1f4666,#0b1d2e);border:1px solid var(--rim1)}
+.th-n{font-size:13px;font-weight:600;color:var(--fg0)}
+.th-p{font-size:12px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.th-u{width:9px;height:9px;border-radius:50%;background:var(--lime)}
+.msgs{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.msgs[hidden],.ch-list[hidden],.compose[hidden]{display:none}
+.bub{max-width:82%;padding:7px 10px;border-radius:8px;font-size:13px;line-height:1.5;color:var(--fg0);word-break:break-word}
+.bub small{display:block;font-size:11px;color:var(--fg3);margin-top:2px}
+.bub.them{align-self:flex-start;background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0)}
+.bub.me{align-self:flex-end;background:linear-gradient(180deg,#1f4a70,#0e2c47);border:1px solid var(--rim2)}
+.compose{flex-shrink:0;display:flex;gap:8px;padding:8px 12px;border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0);background:var(--bg1)}
+.compose .inp{flex:1}
+
+.foot{flex-shrink:0;padding:10px 12px;background:linear-gradient(180deg,#0A1B2B,#061018);border-top:1px solid #000;box-shadow:0 -1px 0 var(--rim0);display:flex;flex-direction:column;gap:8px}
+.rhead{display:flex;justify-content:space-between;align-items:center}
+.rlabel{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--cyan)}
+.ptt{font-size:11px;color:var(--fg3);display:flex;align-items:center;gap:6px}
+kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:600;color:var(--fg1);padding:1px 6px;border-radius:3px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 2px 0 #04101a}
+.rrow{display:flex;align-items:center;gap:8px}
+.lcd{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--cyan);letter-spacing:.06em;background:linear-gradient(180deg,#00060c,#02101a);border-radius:4px;padding:3px 10px;box-shadow:0 2px 6px #000 inset;flex:1}
+.lcd.tx{color:var(--red)}
+.rstate{font-size:12px;font-weight:600;color:var(--fg2);text-align:center}
+.range{font-size:11px;color:var(--fg3);text-align:center}
+.err{color:var(--red)}
+.chatbar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 0;border-radius:5px;font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--fg1);
+  background:linear-gradient(180deg,#14304a,#0b1f33);border:1px solid var(--rim1);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s}
+.chatbar:hover{color:var(--fg0)}
+.chatbar:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.chatbar.on{color:#fff;border-color:var(--rim2)}
+.cb-n{min-width:17px;height:17px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:700;letter-spacing:0;display:none;align-items:center;justify-content:center;color:#04140a;background:var(--lime)}
+.cb-n.show{display:flex}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;padding:9px 16px;border-radius:5px;font-size:13px;font-weight:500;color:var(--fg0);background:#14304a;border:1px solid var(--rim2);box-shadow:0 8px 20px rgba(0,0,0,.6);transition:all .25s;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.note{margin:14px auto 0;max-width:1500px;font-size:12px;color:var(--fg3);line-height:1.7}
+
+
+
+
+
+/* fixed 1280 mockup */
+body{padding-left:16px;padding-right:16px}
+.stage{overflow-x:auto}
+.app{width:1280px;max-width:none;position:relative}
+.body2{display:grid;grid-template-columns:minmax(0,1fr) 340px;height:780px}
+.main{position:relative;min-width:0;min-height:0;overflow-y:auto;background:#000b13;padding:16px 18px 24px;scrollbar-width:thin;scrollbar-color:var(--rim1) transparent}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.ph h2{font-size:20px;font-weight:700;color:var(--fg0)}
+.ph .sub{font-size:12px;color:var(--fg2);margin-top:2px}
+.nt{text-decoration:none;display:inline-block}
+.role-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--fg1);padding:2px 8px;border-radius:10px;background:#02101a;border:1px solid var(--rim0)}
+.role-chip i{width:8px;height:8px;border-radius:50%;background:var(--rc,var(--blue))}
+.thumb{position:relative;width:100%;border-radius:4px;overflow:hidden;background:linear-gradient(160deg,#0c2133,#061018);box-shadow:0 2px 8px #000 inset,0 0 0 1px var(--rim0) inset;display:flex;align-items:center;justify-content:center}
+.thumb svg{width:70%;height:70%;opacity:.55}
+.thumb .mdl{position:absolute;left:8px;bottom:6px;font-size:11px;color:var(--fg3);font-weight:500}
+.card{padding:12px;display:flex;flex-direction:column;gap:10px}
+.card .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.callsign{font-size:15px;font-weight:700;letter-spacing:.04em;color:var(--fg0)}
+.model{font-size:12px;color:var(--fg2)}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stats3>div{padding:6px 8px;border-radius:4px;background:#02101a;box-shadow:0 2px 5px #000 inset}
+.stats3 .k{font-size:11px;color:var(--fg3);font-weight:600}
+.stats3 .v{font-size:15px;font-weight:700;color:var(--fg0);font-variant-numeric:tabular-nums}
+.fill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg2)}
+.fill .rb{flex:1}
+.acts2{display:flex;gap:8px;flex-wrap:wrap}
+.sch{display:none}
+.card.open .sch{display:block}
+.sch .grid{position:relative;height:200px;border-radius:5px;background:#02101a;box-shadow:0 2px 8px #000 inset;overflow:hidden;
+  background-image:linear-gradient(rgba(63,130,179,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(63,130,179,.12) 1px,transparent 1px);background-size:20px 20px}
+.sch .grid svg.hull{position:absolute;inset:8% 6%;width:88%;height:84%;opacity:.35}
+.node{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid var(--rc);background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--rc) 55%,#0b1d2e),#0b1d2e);
+  font-size:10px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 5px rgba(0,0,0,.6);transition:transform .12s}
+.node:hover{transform:scale(1.15)}
+.node.vac{background:#031019;border-style:dashed;color:var(--fg3)}
+.node.sel{outline:2px solid #fff;outline-offset:2px}
+.sch .read{font-size:12px;color:var(--fg2);margin-top:8px;min-height:18px}
+.sch .read b{color:var(--fg0)}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.banner{padding:8px 10px;border-radius:4px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.banner.red{background:rgba(255,85,68,.1);border:1px solid rgba(255,85,68,.35);color:#ffb3aa}
+.banner.amber{background:rgba(255,187,51,.1);border:1px solid rgba(255,187,51,.35);color:#ffdc99}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.b-grey{background:rgba(134,175,207,.1);color:var(--fg2);border:1px solid var(--rim0)}
+.tokens{margin-top:26px;border-top:1px solid var(--rim0);padding-top:14px}
+.tokens .tblw td,.tokens .tblw th{font-size:12px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px;border:1px solid rgba(255,255,255,.2)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan)}
+.cd{font-variant-numeric:tabular-nums;font-weight:600}
+.cd.warn{color:var(--amber)}
+.sel2{appearance:none;-webkit-appearance:none}
+.modal-back{position:absolute;inset:0;background:rgba(0,4,10,.72);display:none;align-items:center;justify-content:center;z-index:40}
+.modal-back.show{display:flex}
+.modal{width:440px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 0 rgba(150,210,255,.15) inset,0 4px 0 #050e18,0 24px 50px rgba(0,0,0,.7)}
+.modal h3{font-size:16px;font-weight:700;color:var(--fg0)}
+.modal .kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;font-size:13px}
+.modal .kv span:nth-child(odd){color:var(--fg3);font-weight:600;font-size:12px}
+.notif{display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;font-size:13px;font-weight:500;border-bottom:1px solid #000}
+.notif.show{display:flex}
+.notif.lime{background:linear-gradient(180deg,#0f3a22,#0a2616);color:#c7ffd9;box-shadow:0 1px 0 rgba(68,255,136,.4)}
+.notif.amber{background:linear-gradient(180deg,#3a2c0c,#261c07);color:#ffe6b0;box-shadow:0 1px 0 rgba(255,187,51,.4)}
+.notif.red{background:linear-gradient(180deg,#4a150e,#2d0c07);color:#ffc8c1;box-shadow:0 1px 0 rgba(255,85,68,.45)}
+.notif .nl{display:flex;align-items:center;gap:10px}
+.notif .nl b{font-weight:700;letter-spacing:.04em}
+
+.boot{position:absolute;inset:0;z-index:30;background:linear-gradient(180deg,#000,#02101a);display:flex;align-items:center;justify-content:center;padding:24px}
+.boot[hidden]{display:none}
+.boot-in{width:560px;max-width:100%;border:1px solid var(--rim0);border-radius:6px;background:#00060c;box-shadow:0 2px 14px #000 inset;padding:18px 20px}
+#bootLines div{font-size:13px;font-weight:500;color:var(--lime);padding:2px 0;opacity:0;animation:bl .25s forwards}
+#bootLines div.done{color:var(--cyan);font-weight:700}
+@keyframes bl{to{opacity:1}}
+.boot-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12px;color:var(--fg3)}
+.demo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;margin-bottom:12px}
+.demo .dl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);margin-right:4px}
+.demo .btn{padding:4px 10px;font-size:12px}
+.filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.filters select{min-width:160px}
+.owner{font-size:12px;color:var(--fg2)}
+.rq{display:flex;flex-direction:column;gap:6px}
+.rq .line{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--fg2)}
+.btn.full{width:100%}
+.btn.ghost{opacity:.65}
+
+</style>
+<div class="stage"><div class="app">
+  <header class="hdr">
+    <div class="brand">
+      <div class="logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#66AADD" stroke-width="1.2"><circle cx="15" cy="15" r="11"/><circle cx="15" cy="15" r="5"/><path d="M15 1v6M15 23v6M1 15h6M23 15h6"/></svg></div>
+      <div><div class="bt1">Nexus Interstellar</div><div class="bt2">Traffic System</div></div>
+    </div>
+    <div class="idc">
+      <div class="ph"><svg width="40" height="46" viewBox="0 0 40 46" fill="#3a6a8e"><circle cx="20" cy="15" r="9"/><path d="M2 46c0-13 8-19 18-19s18 6 18 19z"/></svg></div>
+      <div class="info">
+        <div class="k">UEE Identification · Nexus</div>
+        <div class="nm0">Unger Poshet</div>
+        <div class="rk">Drifter</div>
+        <div class="rpbar"><span>RP</span><div class="bar"><i></i></div><span>13 / 50</span></div>
+      </div>
+    </div>
+  </header>
+  <nav class="nav" id="nav">
+    <a class="nt" href="concept_mission_board.html" data-soon="Mission Board">Mission Board</a>
+    <a class="nt on" href="concept_ship_registry.html">Ship Registry</a>
+    <a class="nt " href="concept_my_ships.html">My Ships</a>
+    <button class="nt" data-soon="Register Ship">Register Ship</button>
+    <button class="nt" data-soon="Create Mission">Create Mission</button>
+    <span class="sp"></span>
+    <button class="nt dc" data-soon="Disconnect">Disconnect</button>
+  </nav>
+  <div class="notif" id="notif"></div>
+  <div class="body2">
+      <main class="main" id="main">
+        <div class="boot" id="boot" hidden>
+          <div class="boot-in"><div id="bootLines"></div><div class="boot-foot"><button class="btn" id="bootSkip">Skip</button><span>Press Esc or click Skip</span></div></div>
+        </div>
+        <div class="ph">
+          <div><h2>Ship Registry</h2><div class="sub" id="regCount">All ships on the platform</div></div>
+          <div style="display:flex;gap:8px;align-items:center"><button class="btn" id="incoming">Incoming requests <span class="cb-n show" id="incN" style="display:inline-flex;margin-left:6px">1</span></button></div>
+        </div>
+        <div class="raised demo"><span class="dl">Demo controls</span>
+          <button class="btn" id="dBoot">Replay boot</button>
+          <button class="btn" id="dOwner">Owner popup</button>
+          <button class="btn" data-ln="approved">Notice: approved</button>
+          <button class="btn" data-ln="denied">Notice: denied</button>
+          <button class="btn" data-ln="recalled">Notice: recalled</button>
+          <button class="btn" id="dApprove">Approve my pending</button>
+        </div>
+        <div class="filters">
+          <input class="inp" id="q" placeholder="Search callsign, model, or owner" style="flex:1;min-width:200px">
+          <select class="inp" id="ft"><option value="">Any ship type</option></select>
+          <select class="inp" id="fo"><option value="">Any owner</option></select>
+        </div>
+        <div class="cards" id="reg" style="grid-template-columns:repeat(3,minmax(0,1fr));align-items:start"></div>
+
+        <div class="tokens">
+          <div class="h3">New tokens on this page</div>
+          <div class="tblw"><table>
+            <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+            <tr><td><i class="sw" style="background:#000"></i>.boot</td><td><code>#000 to #02101a</code></td><td>RegistryBoot panel. Lime terminal lines in Inter, shown once per entry, skippable.</td></tr>
+            <tr><td><i class="sw" style="background:#44FF88"></i>Request: approved</td><td><code>lime</code></td><td>ShipAccessRequest.status approved. Shows loan_expires_at countdown.</td></tr>
+            <tr><td><i class="sw" style="background:#FFBB33"></i>Request: pending</td><td><code>amber</code></td><td>Requested. Shows the 1 hour expires_at countdown. Turns bold amber under 30 minutes.</td></tr>
+            <tr><td><i class="sw" style="background:#FF5544"></i>Request: denied</td><td><code>red</code></td><td>Denied. Disabled state.</td></tr>
+            <tr><td><i class="sw" style="background:#86AFCF"></i>Request: expired, withdrawn</td><td><code>grey-blue</code></td><td>Terminal states. Offer Request again.</td></tr>
+            <tr><td><i class="sw" style="background:#14304a"></i>.modal</td><td><code>raised + 24px shadow</code></td><td>OwnerAccessPopup. Backdrop <code>rgba(0,4,10,.72)</code>.</td></tr>
+            <tr><td><i class="sw" style="background:#0f3a22"></i>.notif lime / amber / red</td><td><code>full width bar</code></td><td>LesseeNotif: approved, denied, recalled.</td></tr>
+          </table></div>
+        </div>
+      </main>
+      <aside class="col side">
+      <div class="sh"><span>Activity</span><span style="display:flex;align-items:center;gap:6px;color:var(--lime);font-size:11px"><i class="live-dot"></i>Live</span></div>
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-t="mission">Missions<span class="n" id="n-mission"></span></button>
+        <button class="tab" data-t="crew">Crew<span class="n" id="n-crew"></span></button>
+        <button class="tab" data-t="ship">Ships<span class="n" id="n-ship"></span></button>
+      </div>
+      <div class="feed" id="feed"></div>
+
+      <div class="chat" id="chat" hidden>
+        <div class="ch-h">
+          <button class="btn" id="chBack" hidden>◂</button>
+          <div class="ch-t" id="chTitle">Direct Messages</div>
+          <button class="btn" id="chClose">✕</button>
+        </div>
+        <div class="ch-list" id="chList"></div>
+        <div class="msgs" id="msgs" hidden></div>
+        <div class="compose" id="compose" hidden><input class="inp" id="msgIn" placeholder="Message" autocomplete="off"><button class="btn" id="send">Send</button></div>
+      </div>
+
+      <div class="foot">
+        <div class="rhead">
+          <span class="rlabel"><i class="live-dot"></i>RADIO</span>
+          <span class="ptt" title="Uses the push-to-talk key saved in your settings">Push to talk <kbd>F8</kbd></span>
+        </div>
+        <div id="radio"></div>
+        <button class="chatbar" id="chatBtn"><span>CHAT</span><span class="cb-n" id="chatN"></span></button>
+      </div>
+    </aside>
+  </div>
+</div></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  var $=function(s,r){return (r||document).querySelector(s)}, $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+  var ME='Unger Poshet', toastT;
+  function toast(t){var e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){e.classList.remove('show')},2400)}
+  function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
+  function ini(n){return n.split(' ').map(function(w){return w[0]}).join('').slice(0,2).toUpperCase()}
+  var NAME_RE=/(Peter Tork|Obi Wagwan|Joe Tekkae|Grauto|Kestrel Voss|Mara Quill|Dax Orrin)/g;
+  function L(h){return h.replace(NAME_RE,function(m){return '<span class="nm" data-u="'+m+'" title="Direct message">'+m+'</span>'})}
+  function nm(n){return n===ME?esc(n):L(esc(n))}
+  function fmtLeft(ms){if(ms<=0)return '0:00';var s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+    return h>0?h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'):m+':'+String(x).padStart(2,'0')}
+  function tickCd(){$$('.cd[data-exp]').forEach(function(e){var l=+e.dataset.exp-Date.now();e.textContent=fmtLeft(l);e.classList.toggle('warn',l<30*60*1000)})}
+  setInterval(tickCd,1000);
+  $$('[data-soon]').forEach(function(b){b.addEventListener('click',function(e){if(b.tagName==='BUTTON'||!b.getAttribute('href')){e.preventDefault()}toast(b.dataset.soon+' is outside this concept')})});
+  var ROLE={Pilot:'#66AADD',Turret:'#FF5544',Gunner:'#AA66DD',Engineer:'#FFBB33',Medic:'#44FF88'};
+  var SIL='<svg viewBox="0 0 100 60" fill="#3a6a8e"><path d="M4 30 L40 22 L58 6 L66 6 L62 24 L92 28 L92 32 L62 36 L66 54 L58 54 L40 38 Z"/></svg>';
+
+  var t0=Date.now(), H=3600e3, M=60e3;
+  var ships=[
+    {id:1,ship_name:'HCS JOMLET',ship_model:'Hammerhead',type:'Gunship',prefix:'HCS',owner:'Peter Tork',fill:75,mc:6,is_mission:true,ar:'21/9',req:null},
+    {id:2,ship_name:'IRIE SPIRIT',ship_model:'Constellation Andromeda',type:'Multi-role',prefix:'HCS',owner:'Grauto',fill:40,mc:4,is_mission:false,ar:'16/9',req:{status:'approved',loan_expires_at:t0+3*H+12*M}},
+    {id:3,ship_name:'OLE ASS',ship_model:'Freelancer MAX',type:'Freighter',prefix:'HCS',owner:'Peter Tork',fill:0,mc:2,is_mission:false,ar:'3/2',req:{status:'pending',expires_at:t0+41*M+10e3}},
+    {id:4,ship_name:'KESTREL ONE',ship_model:'Cutlass Black',type:'Multi-role',prefix:'FRL',owner:'Kestrel Voss',fill:50,mc:9,is_mission:false,ar:'4/3',req:{status:'denied'}},
+    {id:5,ship_name:'QUILL RUNNER',ship_model:'Mercury Star Runner',type:'Data runner',prefix:'FRL',owner:'Mara Quill',fill:25,mc:1,is_mission:false,ar:'16/9',req:{status:'expired'}},
+    {id:6,ship_name:'ORRIN HAUL',ship_model:'Caterpillar',type:'Freighter',prefix:'HCS',owner:'Dax Orrin',fill:60,mc:7,is_mission:false,ar:'21/9',req:{status:'withdrawn'}},
+    {id:7,ship_name:'HCS TEKKE',ship_model:'Corsair',type:'Gunship',prefix:'HCS',owner:'Joe Tekkae',fill:83,mc:5,is_mission:false,ar:'4/3',req:null},
+    {id:8,ship_name:'GRIM HEX',ship_model:'Cutlass Black',type:'Multi-role',prefix:'HCS',owner:'Unger Poshet',fill:25,mc:3,is_mission:false,ar:'4/3',req:null,mine:true},
+    {id:9,ship_name:'WAGWAN ARROW',ship_model:'Arrow',type:'Fighter',prefix:'HCS',owner:'Obi Wagwan',fill:100,mc:2,is_mission:false,ar:'16/9',req:null}
+  ];
+  var types=[],owners=[];
+  ships.forEach(function(s){if(types.indexOf(s.type)<0)types.push(s.type);if(owners.indexOf(s.owner)<0)owners.push(s.owner)});
+  types.sort();owners.sort();
+  $('#ft').innerHTML+=types.map(function(t){return '<option>'+t+'</option>'}).join('');
+  $('#fo').innerHTML+=owners.map(function(t){return '<option>'+t+'</option>'}).join('');
+  var STAT={approved:['b-lime','Approved'],pending:['b-amber','Requested'],denied:['b-red','Denied'],expired:['b-grey','Expired'],withdrawn:['b-grey','Withdrawn']};
+  function reqBlock(s){
+    if(s.mine)return '<div class="rq"><button class="btn full ghost" disabled>Your ship</button></div>';
+    var r=s.req;
+    if(!r)return '<div class="rq">'+(s.is_mission?'<div class="line"><span>Currently on a mission</span></div>':'')+'<button class="btn go full" data-req="'+s.id+'">Request access</button></div>';
+    var st=STAT[r.status],ln='',btn='';
+    if(r.status==='pending'){ln='<span>Expires in <span class="cd" data-exp="'+r.expires_at+'"></span></span>';btn='<button class="btn full" data-wd="'+s.id+'">Withdraw</button>'}
+    else if(r.status==='approved'){ln='<span>Loan ends in <span class="cd" data-exp="'+r.loan_expires_at+'"></span></span>';btn='<button class="btn full ghost" disabled>Approved</button>'}
+    else if(r.status==='denied'){ln='<span>The owner declined this request</span>';btn='<button class="btn full ghost" disabled>Denied</button>'}
+    else{ln='<span>'+(r.status==='expired'?'The 1 hour window passed':'You withdrew this request')+'</span>';btn='<button class="btn go full" data-req="'+s.id+'">Request again</button>'}
+    return '<div class="rq"><div class="line"><span class="badge '+st[0]+'">'+st[1]+'</span>'+ln+'</div>'+btn+'</div>';
+  }
+  function card(s){
+    return '<div class="raised card"><div class="thumb" style="aspect-ratio:'+s.ar+'">'+SIL+'<span class="mdl">No image · '+s.ship_model+'</span></div>'+
+      '<div class="row1"><div><div class="callsign">'+s.ship_name+'</div><div class="model">'+s.ship_model+'</div></div><span class="badge b-blue">'+s.type+'</span></div>'+
+      '<div class="owner">Owner '+nm(s.owner)+' · '+s.prefix+'</div>'+
+      '<div class="fill"><span>Crew fill</span><div class="rb"><i style="width:'+s.fill+'%"></i></div><b style="color:var(--fg0)">'+s.fill+'%</b></div>'+
+      '<div class="owner">Missions completed <b style="color:var(--fg0)">'+s.mc+'</b></div>'+reqBlock(s)+'</div>';
+  }
+  function draw(){
+    var q=$('#q').value.trim().toLowerCase(),t=$('#ft').value,o=$('#fo').value;
+    var list=ships.filter(function(s){return (!q||(s.ship_name+' '+s.ship_model+' '+s.owner).toLowerCase().indexOf(q)>=0)&&(!t||s.type===t)&&(!o||s.owner===o)});
+    $('#regCount').textContent=list.length+' of '+ships.length+' ships';
+    $('#reg').innerHTML=list.length?list.map(card).join(''):'<div class="empty" style="grid-column:1/-1">No ships match these filters.</div>';
+    tickCd();
+  }
+  ['input','change'].forEach(function(ev){['#q','#ft','#fo'].forEach(function(id){$(id).addEventListener(ev,draw)})});
+  function byId(id){return ships.filter(function(s){return s.id===+id})[0]}
+  $('#reg').addEventListener('click',function(e){
+    var b=e.target.closest('[data-req]');
+    if(b){var s=byId(b.dataset.req);s.req={status:'pending',expires_at:Date.now()+H};draw();toast('Request sent to '+s.owner+'. It expires in 1 hour.');return}
+    b=e.target.closest('[data-wd]');
+    if(b){var s2=byId(b.dataset.wd);s2.req={status:'withdrawn'};draw();toast('Request withdrawn')}
+  });
+  $('#dApprove').addEventListener('click',function(){var p=ships.filter(function(s){return s.req&&s.req.status==='pending'})[0];if(!p){toast('No pending request');return}p.req={status:'approved',loan_expires_at:Date.now()+4*H};draw();showNotif('approved',p)});
+
+  /* LesseeNotif */
+  var NT={approved:['lime','APPROVED',function(s){return nm(s.owner)+' approved your request. <b>'+s.ship_name+'</b> is yours for 4 hours.'}],
+    denied:['amber','DENIED',function(s){return nm(s.owner)+' declined your request for <b>'+s.ship_name+'</b>.'}],
+    recalled:['red','RECALLED',function(s){return nm(s.owner)+' recalled <b>'+s.ship_name+'</b>. Return to the hangar and leave any active mission.'}]};
+  function showNotif(k,s){
+    s=s||ships[k==='denied'?3:1];var n=NT[k],e=$('#notif');
+    e.className='notif show '+n[0];
+    e.innerHTML='<div class="nl"><b>'+n[1]+'</b><span>'+n[2](s)+'</span></div><button class="btn" id="nx" style="padding:4px 10px">Dismiss</button>';
+    $('#nx').onclick=function(){e.className='notif'};
+  }
+  $$('[data-ln]').forEach(function(b){b.addEventListener('click',function(){showNotif(b.dataset.ln)})});
+
+  /* OwnerAccessPopup */
+  var popExp=Date.now()+52*M;
+  var pop=document.createElement('div');pop.className='modal-back';pop.id='pop';
+  pop.innerHTML='<div class="raised modal"><h3>Access request</h3><div class="kv"><span>Requester</span><span id="pq">'+nm('Obi Wagwan')+'</span><span>Your ship</span><span><b style="color:var(--fg0)">GRIM HEX</b> · Cutlass Black</span><span>Requested</span><span>8 minutes ago</span><span>Expires in</span><span class="cd" data-exp="'+popExp+'"></span><span>Loan duration</span><select class="inp" id="dur"><option>1 hour</option><option selected>4 hours</option><option>24 hours</option><option>7 days</option><option value="null">Until recalled</option></select></div><div class="acts2" style="justify-content:flex-end"><button class="btn" id="pLater">Later</button><button class="btn warn" id="pDeny">Deny</button><button class="btn go" id="pOk">Approve</button></div></div>';
+  $('.app').appendChild(pop);
+  function openPop(){pop.classList.add('show');tickCd()}
+  $('#dOwner').onclick=openPop;$('#incoming').onclick=openPop;
+  $('#pLater').onclick=function(){pop.classList.remove('show')};
+  $('#pDeny').onclick=function(){pop.classList.remove('show');$('#incN').style.display='none';toast('Request denied. Obi Wagwan was notified.')};
+  $('#pOk').onclick=function(){pop.classList.remove('show');$('#incN').style.display='none';toast('Approved for '+$('#dur').options[$('#dur').selectedIndex].text.toLowerCase()+'. Obi Wagwan was notified.')};
+  pop.addEventListener('click',function(e){if(e.target===pop)pop.classList.remove('show')});
+
+  /* RegistryBoot */
+  var LINES=['INITIALIZING REGISTRY...','FETCHING FLEET MANIFEST...','VERIFYING OWNER SIGNATURES...','SYNCING ACCESS REQUESTS...','REGISTRY ONLINE.'];
+  var bootT=[];
+  function endBoot(){bootT.forEach(clearTimeout);bootT=[];$('#boot').hidden=true}
+  function runBoot(){
+    var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var el=$('#bootLines');el.innerHTML='';$('#boot').hidden=false;
+    LINES.forEach(function(l,i){bootT.push(setTimeout(function(){var d=document.createElement('div');d.textContent=l;if(i===LINES.length-1)d.className='done';el.appendChild(d)},reduce?0:i*420))});
+    bootT.push(setTimeout(endBoot,reduce?900:LINES.length*420+700));
+  }
+  $('#bootSkip').onclick=endBoot;
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){endBoot();pop.classList.remove('show')}});
+  $('#dBoot').onclick=runBoot;
+  draw();runBoot();
+
+/* ── activity feed ── */
+  var data={
+    mission:[
+      ['lime','✓','<em style="color:var(--lime)">Post-mission log</em> · Obi Wagwan','OPERATION KOMB · +3 RP','07/03','Submitted by <b>Obi Wagwan</b><br>Mission <b>Operation Komb</b><br>Reward <b>+3 Crew RP</b>'],
+      ['lime','✓','<em style="color:var(--lime)">Post-mission log</em> · Unger Poshet','OPERATION KOMB · +3 RP','07/03','Mission <b>Operation Komb</b><br>Reward <b>+3 Crew RP</b>'],
+      ['lime','✓','<em style="color:var(--lime)">Post-mission log</em> · Joe Tekkae','OPERATION VILLAGE · +3 RP','07/03','Mission <b>Operation Village</b><br>Reward <b>+3 Crew RP</b>'],
+      ['lime','▲','<em style="color:var(--lime)">Mission launched</em> · Iron Veil','Peter Tork commanding','07/03','Ship <b>HCS Jomlet</b>']
+    ],
+    crew:[
+      ['blue','✓','<em style="color:var(--blue)">Crew slot filled</em> · Joe Tekkae','Joined HCS Jomlet as Turret','07/03','Mission <b>Operation Iron Veil</b>'],
+      ['blue','●','<em style="color:var(--blue)">Operator online</em> · Obi Wagwan','Rank: Recruit','07/03','Connected from <b>Nexus web</b>'],
+      ['lime','★','<em style="color:var(--lime)">Rank advancement</em> · Unger Poshet','Recruit to Drifter','07/02','Threshold reached at <b>10 Crew RP</b>']
+    ],
+    ship:[
+      ['lime','+','<em style="color:var(--lime)">Ship RP awarded</em> · HCS Jomlet','+3 Ship RP · fill threshold reached','07/03','Total <b>3 Ship RP</b>'],
+      ['lime','+','<em style="color:var(--lime)">Ship RP awarded</em> · HCS Tekke','+3 Ship RP · fill threshold reached','07/03','Owner <b>Unger Poshet</b>'],
+      ['amber','⇄','<em style="color:var(--amber)">Access granted</em> · Ole Ass','Loaned to Joe Tekkae','07/02','Owner <b>Grauto</b>']
+    ]
+  };
+  var cur='mission', unread={mission:0,crew:0,ship:0};
+  function row(r,isNew){
+    return '<div class="fi'+(isNew?' new':'')+'"><div class="fr"><div class="ico '+r[0]+'">'+r[1]+'</div><div><div class="ft">'+L(r[2])+'</div><div class="fs">'+L(r[3])+'</div></div><div class="ftime">'+r[4]+'</div></div><div class="collapse"><div><div class="fd">'+L(r[5])+'</div></div></div></div>';
+  }
+  function drawFeed(){$('#feed').innerHTML=data[cur].map(function(r){return row(r)}).join('')}
+  function badges(){['mission','crew','ship'].forEach(function(k){var n=$('#n-'+k);n.textContent=unread[k];n.classList.toggle('show',unread[k]>0)})}
+  $('#tabs').addEventListener('click',function(e){var t=e.target.closest('.tab');if(!t)return;cur=t.dataset.t;unread[cur]=0;$$('.tab').forEach(function(x){x.classList.toggle('on',x===t)});badges();drawFeed()});
+  $('#feed').addEventListener('click',function(e){var r=e.target.closest('.fi');if(r)r.classList.toggle('open')});
+  var st=document.createElement('style');st.textContent='.fi.open .collapse{grid-template-rows:1fr}';document.head.appendChild(st);
+  setTimeout(function(){unread.crew=1;unread.ship=2;badges()},900);
+
+  /* ── radio ── */
+  var tuned=null, tx=false;
+  function drawRadio(){
+    var r=$('#radio');
+    if(tuned===null){
+      r.innerHTML='<div class="rstate">No frequency tuned</div><div class="rrow"><input class="inp" id="fIn" value="127.4" inputmode="decimal" style="flex:1;text-align:center;font-weight:600"><button class="btn go" id="tune">Tune</button></div><div class="range" id="rng">Tunable range 50.0 to 350.0 MHz</div>';
+      $('#tune').onclick=function(){var v=parseFloat($('#fIn').value);var g=$('#rng');if(isNaN(v)||v<50||v>350){g.textContent='Enter a value from 50.0 to 350.0 MHz';g.classList.add('err');return}tuned=Math.round(v*10)/10;drawRadio()};
+      $('#fIn').addEventListener('keydown',function(e){if(e.key==='Enter')$('#tune').click()});
+    }else{
+      r.innerHTML='<div class="rrow"><div class="lcd'+(tx?' tx':'')+'" id="lcd">'+tuned.toFixed(1)+'</div><button class="btn" id="dn">◂</button><button class="btn" id="up">▸</button></div><div class="rrow"><button class="btn tx'+(tx?' on':'')+'" id="txb" style="flex:1">● Transmit</button><button class="btn" id="leave">Leave</button></div>';
+      $('#dn').onclick=function(){tuned=Math.max(50,Math.round((tuned-.1)*10)/10);drawRadio()};
+      $('#up').onclick=function(){tuned=Math.min(350,Math.round((tuned+.1)*10)/10);drawRadio()};
+      $('#txb').onclick=function(){tx=!tx;drawRadio()};
+      $('#leave').onclick=function(){tuned=null;tx=false;drawRadio()};
+    }
+  }
+  var held=false;
+  document.addEventListener('keydown',function(e){if(e.key==='F8'&&!held&&tuned!==null){held=true;e.preventDefault();tx=true;drawRadio()}});
+  document.addEventListener('keyup',function(e){if(e.key==='F8'&&held){held=false;tx=false;drawRadio()}});
+
+  /* ── direct messages ── */
+  var threads={
+    'Obi Wagwan':[{m:0,t:'Forming up at the hangar in 5.',ts:'8:21'},{m:1,t:'On my way.',ts:'8:22'}],
+    'Joe Tekkae':[{m:0,t:'Turret check done, ready when you are.',ts:'8:05'}],
+    'Peter Tork':[{m:1,t:'Can I get a Gunner slot on Iron Veil?',ts:'7:48'}]
+  };
+  var unreadDm={'Joe Tekkae':1}, open=false, active=null;
+  function now(){var d=new Date();return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')}
+  function total(){var t=0;for(var k in unreadDm)t+=unreadDm[k];return t}
+  function cbadge(){var t=total(),b=$('#chatN');b.textContent=t;b.classList.toggle('show',t>0)}
+  function showList(){
+    active=null;$('#chTitle').textContent='Direct Messages';$('#chBack').hidden=true;$('#chList').hidden=false;$('#msgs').hidden=true;$('#compose').hidden=true;
+    var names=Object.keys(threads);
+    $('#chList').innerHTML=names.length?names.map(function(n){var l=threads[n][threads[n].length-1];
+      return '<div class="raised th" data-th="'+n+'"><div class="av">'+ini(n)+'</div><div><div class="th-n">'+n+'</div><div class="th-p">'+(l.m?'You: ':'')+esc(l.t)+'</div></div>'+(unreadDm[n]?'<i class="th-u"></i>':'<span></span>')+'</div>'}).join(''):'<div class="empty">Click any name to start a message.</div>';
+  }
+  function drawMsgs(){var m=$('#msgs');m.innerHTML=(threads[active]||[]).map(function(x){return '<div class="bub '+(x.m?'me':'them')+'">'+esc(x.t)+'<small>'+x.ts+'</small></div>'}).join('');m.scrollTop=m.scrollHeight}
+  function showThread(n){active=n;unreadDm[n]=0;cbadge();$('#chTitle').textContent=n;$('#chBack').hidden=false;$('#chList').hidden=true;$('#msgs').hidden=false;$('#compose').hidden=false;drawMsgs();$('#msgIn').focus()}
+  function openChat(){open=true;$('#chat').hidden=false;$('#tabs').style.display='none';$('#feed').style.display='none';$('#chatBtn').classList.add('on')}
+  function closeChat(){open=false;$('#chat').hidden=true;$('#tabs').style.display='';$('#feed').style.display='';$('#chatBtn').classList.remove('on')}
+  function openThread(n){if(n===ME)return;if(!threads[n])threads[n]=[];openChat();showThread(n)}
+  document.addEventListener('click',function(e){var n=e.target.closest('.nm');if(!n)return;e.stopPropagation();openThread(n.dataset.u)},true);
+  $('#chatBtn').addEventListener('click',function(){if(open)closeChat();else{openChat();showList()}});
+  $('#chClose').addEventListener('click',closeChat);
+  $('#chBack').addEventListener('click',showList);
+  $('#chList').addEventListener('click',function(e){var t=e.target.closest('[data-th]');if(t)showThread(t.dataset.th)});
+  function send(){var i=$('#msgIn'),v=i.value.trim();if(!v||!active)return;threads[active].push({m:1,t:v,ts:now()});i.value='';drawMsgs()}
+  $('#send').addEventListener('click',send);
+  $('#msgIn').addEventListener('keydown',function(e){if(e.key==='Enter')send()});
+
+  
+  drawFeed();badges();drawRadio();cbadge();tickCd();
+})();
+</script>

@@ -6,6 +6,7 @@ const RPLedger = require('../models/RPLedger');
 const { isAuthenticated } = require('../middleware/permissions');
 const { addRPForCrewSlotFilled, incrementUserRPAndUpdateRank } = require('../services/rpService');
 const { emitToAll, emitToOrg } = require('../services/socketManager');
+const { dispatch } = require('../services/nexusDispatch');
 
 const router = express.Router();
 
@@ -70,6 +71,18 @@ router.post('/reserve', isAuthenticated, async (req, res) => {
       ship_name: ship.ship_name, role_name: role, rp_earned,
     });
     emit('crew_fill_updated', { shipId: ship._id, crew_fill_percentage: ship.crew_fill_percentage });
+
+    {
+      const missionDoc = ship.current_mission_id
+        ? await Mission.findById(ship.current_mission_id).select('name').lean()
+        : null;
+      dispatch('crewSlotFilled', {
+        operatorName: req.user.citizen_name || req.user.username,
+        role,
+        missionName: missionDoc?.name,
+        vessel: ship.ship_name,
+      });
+    }
 
     res.json(ship);
   } catch (err) {
@@ -136,6 +149,18 @@ router.post('/withdraw', isAuthenticated, async (req, res) => {
       ship_name: ship.ship_name, role_name: role, rp_deducted,
     });
     emit('crew_fill_updated', { shipId: ship._id, crew_fill_percentage: ship.crew_fill_percentage });
+
+    {
+      const missionDoc = ship.current_mission_id
+        ? await Mission.findById(ship.current_mission_id).select('name').lean()
+        : null;
+      dispatch('crewSlotWithdrawn', {
+        operatorName: req.user.citizen_name || req.user.username,
+        role,
+        missionName: missionDoc?.name,
+        vessel: ship.ship_name,
+      });
+    }
 
     res.json(ship);
   } catch (err) {

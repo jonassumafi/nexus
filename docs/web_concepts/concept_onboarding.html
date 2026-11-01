@@ -1,0 +1,175 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Onboarding Concept</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:dark;--void:#000710;--bg0:#020C14;--bg1:#061018;--bg2:#0A1828;--bg3:#12263A;--rim0:#1A3A50;--rim1:#2A5A7A;--rim2:#3F82B3;--fg0:#CCE8FF;--fg1:#99BBDD;--fg2:#86AFCF;--fg3:#5F87A8;--lime:#44FF88;--blue:#66AADD;--red:#FF5544;--amber:#FFBB33;--cyan:#00EEFF;font-family:'Inter',system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+body{background:var(--void);color:var(--fg1);font-size:13px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px}
+.stage{overflow-x:auto;padding-bottom:6px}
+.frame{margin:0 auto;border:1px solid var(--rim0);border-radius:8px;background:var(--bg0);box-shadow:0 1px 0 rgba(150,210,255,.18) inset,0 20px 50px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.w1280{width:1280px}.w900{width:900px}
+.vig{position:absolute;inset:0;pointer-events:none;z-index:5;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.72) 100%)}
+.raised{background:linear-gradient(180deg,#0F2338,#0A1828);border:1px solid var(--rim0);border-radius:6px;box-shadow:0 1px 0 rgba(150,210,255,.12) inset,0 3px 0 #050e18,0 8px 14px rgba(0,0,0,.4)}
+.btn{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--fg1);padding:8px 16px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,#1B3A55,#0E2236);box-shadow:0 1px 0 rgba(180,225,255,.25) inset,0 3px 0 #04101a,0 5px 8px rgba(0,0,0,.4);transition:transform .08s,box-shadow .08s,color .15s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{color:var(--fg0)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 0 0 #04101a}
+.btn.go{color:#04140a;border-color:#2fbf66;background:linear-gradient(180deg,#5dff9d,#2bc866);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 3px 0 #0e5a2a,0 5px 8px rgba(0,0,0,.4)}
+.btn.go:active{box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 0 0 #0e5a2a}
+.btn.warn{color:var(--red);border-color:rgba(255,85,68,.5)}
+.btn.lg{font-size:15px;padding:12px 26px}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.inp{width:100%;font-size:14px;color:var(--fg0);background:#02080e;border:1px solid var(--rim0);border-radius:5px;padding:9px 11px;box-shadow:0 2px 6px #000 inset;outline:none}
+.inp:focus{border-color:var(--rim2)}
+.inp.bad{border-color:var(--red)}
+textarea.inp{resize:vertical;min-height:120px;line-height:1.6}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--fg2)}
+.hint{font-size:12px;font-weight:400;color:var(--fg3)}
+.err{font-size:12px;font-weight:500;color:var(--red);min-height:16px}
+.badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.b-lime{background:rgba(68,255,136,.12);color:var(--lime);border:1px solid rgba(68,255,136,.3)}
+.b-blue{background:rgba(102,170,221,.12);color:var(--blue);border:1px solid rgba(102,170,221,.3)}
+.b-amber{background:rgba(255,187,51,.12);color:var(--amber);border:1px solid rgba(255,187,51,.3)}
+.b-red{background:rgba(255,85,68,.12);color:var(--red);border:1px solid rgba(255,85,68,.3)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(150,200,240,.25);border-top-color:var(--blue);animation:spin .8s linear infinite;display:inline-block}
+.logo{width:48px;height:48px;border-radius:6px;background:#020a12;border:1px solid var(--rim1);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 0 #04101a}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.brand{display:flex;align-items:center;gap:14px}
+.bt1{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--fg0);text-transform:uppercase;line-height:1.1}
+.bt2{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
+.tokpanel{width:100%;max-width:1280px;margin:28px auto 0}
+.tokpanel h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.tokpanel h3::after{content:"";flex:1;height:1px;background:var(--rim0)}
+.tblw{border:1px solid var(--rim0);border-radius:6px;overflow-x:auto;background:var(--bg1)}
+.tokpanel table{width:100%;border-collapse:collapse;font-size:12px}
+.tokpanel th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:7px 12px;border-bottom:1px solid var(--rim1)}
+.tokpanel td{padding:7px 12px;border-bottom:1px solid rgba(26,58,80,.6);color:var(--fg1);vertical-align:top}
+.tokpanel code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);background:#04101a;border:1px solid var(--rim0);border-radius:3px;padding:0 4px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:7px;vertical-align:-1px;border:1px solid rgba(255,255,255,.25)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.hd{padding:16px 28px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#0A1B2B,#061018);border-bottom:1px solid #000;box-shadow:0 1px 0 var(--rim0)}
+.hd h1{font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg0)}
+.hd p{font-size:12px;color:var(--fg3)}
+.steps{display:flex;align-items:center;gap:0;padding:20px 28px 6px}
+.st{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--fg3)}
+.st .n{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:linear-gradient(180deg,#0C1D2E,#08141f);border:1px solid var(--rim0);box-shadow:0 2px 0 #050e18}
+.st.on{color:var(--fg0)}.st.on .n{color:#fff;border-color:var(--rim2);background:linear-gradient(180deg,#1f4a70,#0e2c47)}
+.st.done{color:var(--lime)}.st.done .n{color:#04140a;background:linear-gradient(180deg,#5dff9d,#2bc866);border-color:#2fbf66}
+.bar{flex:1;height:3px;margin:0 14px;border-radius:2px;background:#02080e;box-shadow:0 1px 2px #000 inset;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--lime);transition:width .3s}
+.body{padding:20px 28px 8px;min-height:430px}
+.body h2{font-size:20px;font-weight:700;color:var(--fg0);margin-bottom:4px}
+.lead{font-size:13px;color:var(--fg2);margin-bottom:18px;max-width:62ch}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.cnt{font-size:12px;color:var(--fg3);font-variant-numeric:tabular-nums}.cnt.over{color:var(--red)}
+.refined[hidden]{display:none}
+.refined{font-size:12px;color:var(--lime);display:flex;align-items:center;gap:6px}
+.act{display:flex;gap:10px;align-items:center}
+.ft{display:flex;justify-content:space-between;align-items:center;padding:16px 28px 22px;border-top:1px solid var(--rim0);margin-top:8px;background:var(--bg1)}
+.por{display:grid;grid-template-columns:230px 1fr;gap:28px}
+.pv{width:230px;height:290px;border-radius:6px;border:1px solid var(--rim1);background:linear-gradient(160deg,#27455f,#0c1d2e);display:flex;align-items:flex-end;justify-content:center;position:relative;overflow:hidden;box-shadow:0 3px 0 #050e18,0 10px 16px rgba(0,0,0,.5)}
+.pv img{width:100%;height:100%;object-fit:cover;display:block}
+.pv .tag{position:absolute;left:8px;top:8px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:3px;background:rgba(2,12,20,.8);color:var(--fg1);border:1px solid var(--rim1)}
+.pv .ov{position:absolute;inset:0;background:rgba(2,10,16,.78);display:none;flex-direction:column;gap:10px;align-items:center;justify-content:center;font-size:13px;color:var(--fg1)}
+.pv.load .ov{display:flex}
+.opts2{display:flex;flex-direction:column;gap:12px}
+.card{padding:16px}
+.card h3{font-size:14px;font-weight:600;color:var(--fg0);margin-bottom:3px}
+.card p{font-size:12px;color:var(--fg3);margin-bottom:12px}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.ch{padding:14px 16px;text-align:left;cursor:pointer;transition:transform .12s,border-color .12s}
+.ch:hover{border-color:var(--rim1)}
+.ch.sel{border-color:var(--rim2);box-shadow:0 1px 0 rgba(180,225,255,.2) inset,0 3px 0 #050e18,0 0 0 1px var(--rim2)}
+.ch b{display:block;font-size:14px;color:var(--fg0)}.ch span{font-size:12px;color:var(--fg3)}
+.code{width:200px;text-transform:uppercase;letter-spacing:.3em;text-align:center;font-weight:700;font-size:18px}
+.orgc{margin-top:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;border-color:rgba(68,255,136,.4)}
+.orgc .em{width:44px;height:44px;border-radius:6px;background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);border:1px solid rgba(68,255,136,.4);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--lime)}
+.orgc b{font-size:15px;color:var(--fg0);display:block}.orgc span{font-size:12px;color:var(--fg2)}
+.sum{max-width:520px;margin:6px 0 0}
+.sum div{display:flex;justify-content:space-between;gap:20px;padding:7px 14px;border-bottom:1px solid rgba(26,58,80,.6);font-size:13px}
+.sum div:last-child{border:0}.sum span{color:var(--fg3)}.sum b{color:var(--fg0);font-weight:500;text-align:right}
+.big{width:64px;height:64px;border-radius:50%;margin:20px 0 14px;background:radial-gradient(circle at 35% 30%,#1b6b3c,#0a2d18);border:1px solid rgba(68,255,136,.5);color:var(--lime);font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 6px #000}
+</style>
+
+<div class="stage"><div class="frame w900">
+  <div class="hd"><div><h1>Citizen Registration</h1><p>Required before your first mission</p></div><div class="logo" style="width:40px;height:40px"><svg width="26" height="26" viewBox="0 0 30 30" fill="none" stroke="#66AADD" stroke-width="1.2"><circle cx="15" cy="15" r="11"/><circle cx="15" cy="15" r="5"/><path d="M15 1v6M15 23v6M1 15h6M23 15h6"/></svg></div></div>
+  <div class="steps" id="steps"></div>
+  <div class="body" id="body"></div>
+  <div class="ft" id="ft"></div>
+</div></div>
+
+<div class="tokpanel" style="max-width:900px"><h3>Tokens used on this page</h3><div class="tblw"><table>
+<tr><th>Token</th><th>Value</th><th>Use</th></tr>
+<tr><td>Step marker</td><td><code>28px circle</code></td><td>Pending: dark raised. Current: blue pressed. Done: lime fill with the same hard under-edge</td></tr>
+<tr><td>Progress rail</td><td><code>3px inset well + lime fill</code></td><td>Fills between completed steps</td></tr>
+<tr><td>Choice card</td><td><code>.raised.ch.sel</code></td><td>Mutually exclusive options (invite code or freelancer) with a 1px rim2 outline when chosen</td></tr>
+<tr><td>Invite code field</td><td><code>18px, tracking .3em, uppercase</code></td><td>Matches Organization.invite_code, 6 characters</td></tr>
+<tr><td>Portrait frame</td><td><code>230 x 290</code></td><td>Neutral silhouette placeholder. Generated and uploaded states share it</td></tr>
+</table></div></div>
+
+<script>
+var S={step:0,citizen_name:'',place_of_birth:'',citizenship:'',biography:'',portrait:null,portraitSrc:'',mode:'code',code:'',org:null,undo:null,done:false};
+var ORGS={K7Q2ZP:{name:'Hopewell Continuum',member_count:24},A1B2C3:{name:'Wolfpack Salvage',member_count:9}};
+var $=function(s){return document.querySelector(s)};
+var STEPS=['Citizen identity','Portrait','Organization'];
+function sil(c){return '<svg width="150" height="200" viewBox="0 0 40 46" fill="'+(c||'#3a6a8e')+'"><circle cx="20" cy="15" r="9"/><path d="M2 46c0-13 8-19 18-19s18 6 18 19z"/></svg>'}
+function drawSteps(){var h='';STEPS.forEach(function(t,i){var cls=S.done||i<S.step?'done':i===S.step?'on':'';
+  h+='<div class="st '+cls+'"><span class="n">'+(cls==='done'?'✓':i+1)+'</span>'+t+'</div>'+(i<2?'<div class="bar"><i style="width:'+(S.done||i<S.step?100:0)+'%"></i></div>':'')});$('#steps').innerHTML=h}
+function row(k,v){return '<div><span>'+k+'</span><b>'+esc(v)+'</b></div>'}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+function render(){drawSteps();var b=$('#body'),f=$('#ft');
+  if(S.done){b.innerHTML='<div class="big">✓</div><h2>Registration complete</h2><p class="lead">Your profile is saved. You will be routed to the Dashboard.</p><div class="raised sum">'+
+    row('citizen_name',S.citizen_name)+row('place_of_birth',S.place_of_birth)+row('citizenship',S.citizenship)+row('portrait',S.portrait==='gen'?'Generated':'Uploaded')+
+    (S.mode==='code'?row('org_id',S.org.name+' ('+S.code+')')+row('is_freelancer','false'):row('org_id','none')+row('is_freelancer','true'))+row('onboarding_complete','true')+'</div>';
+    f.innerHTML='<span class="hint">Concept only: the app would redirect to /dashboard.</span><button class="btn" id="rs">Start over</button>';
+    $('#rs').onclick=function(){S={step:0,citizen_name:'',place_of_birth:'',citizenship:'',biography:'',portrait:null,portraitSrc:'',mode:'code',code:'',org:null,undo:null,done:false};render()};return}
+  if(S.step===0){
+    b.innerHTML='<h2>Citizen identity</h2><p class="lead">This is how other operators will see you on the board and on your ID card.</p>'+
+    '<div class="grid3"><label class="f">Citizen name<input class="inp" id="cn" value="'+esc(S.citizen_name)+'" placeholder="e.g. Unger Poshet"></label><label class="f">Place of birth<input class="inp" id="pb" value="'+esc(S.place_of_birth)+'" placeholder="e.g. Terra, Prime"></label><label class="f">Citizenship<input class="inp" id="cz" value="'+esc(S.citizenship)+'" placeholder="e.g. UEE"></label></div>'+
+    '<label class="f" style="margin-top:16px">Biography<textarea class="inp" id="bio" placeholder="A few lines about your character.">'+esc(S.biography)+'</textarea></label>'+
+    '<div class="row"><span class="cnt" id="cnt"></span><div class="act"><span class="refined" id="rf" hidden>✓ Refined <button class="btn" id="ud" style="padding:3px 10px;font-size:12px">Undo</button></span><button class="btn" id="ai">Refine with AI</button></div></div><div class="err" id="er"></div>';
+    var bio=$('#bio');function cnt(){var n=bio.value.length,c=$('#cnt');c.textContent=n+' / 1000';c.className='cnt'+(n>1000?' over':'')}cnt();bio.oninput=function(){S.biography=bio.value;cnt()};
+    ['cn','pb','cz'].forEach(function(id){$('#'+id).oninput=function(){S[{cn:'citizen_name',pb:'place_of_birth',cz:'citizenship'}[id]]=this.value;this.classList.remove('bad')}});
+    $('#ai').onclick=function(){var t=bio.value.trim();if(t.length<20){$('#er').textContent='Write at least 20 characters first, then refine.';return}$('#er').textContent='';var btn=this;btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Refining';
+      setTimeout(function(){S.undo=bio.value;var r=t.replace(/\s+/g,' ');r=r.charAt(0).toUpperCase()+r.slice(1);if(!/[.!?]$/.test(r))r+='.';r+=' Known for steady nerves under pressure and a habit of keeping every crew member informed.';
+        bio.value=r.slice(0,1000);S.biography=bio.value;cnt();btn.disabled=false;btn.textContent='Refine again';$('#rf').hidden=false},1400)};
+    $('#ud').onclick=function(){if(S.undo!==null){bio.value=S.undo;S.biography=S.undo;S.undo=null;cnt();$('#rf').hidden=true}};
+    f.innerHTML='<span class="hint">Step 1 of 3</span><button class="btn go" id="nx">Next</button>';
+    $('#nx').onclick=function(){var bad=0;[['cn','citizen_name'],['pb','place_of_birth'],['cz','citizenship']].forEach(function(p){var e=$('#'+p[0]);if(!S[p[1]].trim()){e.classList.add('bad');bad=1}});
+      if(bad){$('#er').textContent='Fill in every field.';return}if(S.biography.trim().length<20){$('#er').textContent='Biography needs at least 20 characters.';return}if(S.biography.length>1000){$('#er').textContent='Biography is over 1000 characters.';return}S.step=1;render()};
+  }else if(S.step===1){
+    b.innerHTML='<h2>Portrait</h2><p class="lead">Generate a portrait from your biography, or upload your own image.</p><div class="por"><div class="pv" id="pv"><span id="pi">'+sil()+'</span><span class="tag" id="ptag">'+(S.portrait?(S.portrait==='gen'?'Generated':'Uploaded'):'No portrait')+'</span><div class="ov"><span class="spinner" style="width:28px;height:28px"></span>Generating portrait</div></div>'+
+    '<div class="opts2"><div class="raised card"><h3>Generate</h3><p>Uses Gemini image generation with your name and biography. Each result can be replaced.</p><button class="btn" id="gen">'+(S.portrait==='gen'?'Regenerate':'Generate portrait')+'</button></div>'+
+    '<div class="raised card"><h3>Upload</h3><p>PNG or JPG, shown exactly as stored.</p><input type="file" id="up" accept="image/*" hidden><button class="btn" id="upb">Choose image</button></div><div class="err" id="er"></div></div></div>';
+    function show(){var pv=$('#pv');if(S.portraitSrc&&S.portrait==='up'){$('#pi').innerHTML='<img src="'+S.portraitSrc+'" alt="Uploaded portrait">'}else if(S.portrait==='gen'){$('#pi').innerHTML=sil(S.hue)}}
+    if(S.portrait)show();
+    $('#gen').onclick=function(){var pv=$('#pv');pv.classList.add('load');setTimeout(function(){pv.classList.remove('load');S.portrait='gen';S.hue=['#4f8f7a','#8a6aa6','#a88a52','#5a82b3'][Math.floor(Math.random()*4)];render()},1500)};
+    $('#upb').onclick=function(){$('#up').click()};
+    $('#up').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){S.portrait='up';S.portraitSrc=r.result;render()};r.readAsDataURL(f)};
+    f.innerHTML='<button class="btn" id="bk">Back</button><button class="btn go" id="nx">Next</button>';
+    $('#bk').onclick=function(){S.step=0;render()};$('#nx').onclick=function(){if(!S.portrait){$('#er').textContent='Generate or upload a portrait to continue.';return}S.step=2;render()};
+  }else{
+    b.innerHTML='<h2>Organization</h2><p class="lead">Join an organization with an invite code, or fly as a freelancer.</p><div class="choice"><button class="raised ch '+(S.mode==='code'?'sel':'')+'" data-m="code"><b>I have an invite code</b><span>Six characters from your commander</span></button><button class="raised ch '+(S.mode==='free'?'sel':'')+'" data-m="free"><b>I am a freelancer</b><span>No organization. You can join one later</span></button></div><div id="pane"></div>';
+    function pane(){var p=$('#pane');if(S.mode==='code'){p.innerHTML='<label class="f">Invite code<div style="display:flex;gap:12px;align-items:center"><input class="inp code" id="ic" maxlength="6" value="'+S.code+'" placeholder="K7Q2ZP" autocomplete="off"><button class="btn" id="vf">Verify</button></div></label><div class="err" id="er">'+(S.org?'':'')+'</div><div id="oc"></div><p class="hint" style="margin-top:6px">Try K7Q2ZP or A1B2C3.</p>';
+        function oc(){$('#oc').innerHTML=S.org?'<div class="raised orgc"><div class="em">'+S.org.name.slice(0,2).toUpperCase()+'</div><div><b>'+S.org.name+'</b><span>'+S.org.member_count+' members</span></div><span class="badge b-lime" style="margin-left:auto">Verified</span></div>':''}oc();
+        $('#ic').oninput=function(){this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');S.code=this.value;S.org=null;oc();$('#er').textContent='';this.classList.remove('bad')};
+        $('#vf').onclick=function(){var c=S.code;if(c.length!==6){$('#er').textContent='Invite codes are exactly 6 characters.';$('#ic').classList.add('bad');return}
+          if(ORGS[c]){S.org=ORGS[c];$('#er').textContent='';oc()}else{S.org=null;oc();$('#er').textContent='No organization uses that code.';$('#ic').classList.add('bad')}}}
+      else{p.innerHTML='<div class="raised card" style="max-width:520px"><h3>Freelancer</h3><p>You will see public missions only. Organization missions stay hidden until you join one.</p></div><div class="err" id="er"></div>'}}
+    pane();[].forEach.call(document.querySelectorAll('.ch'),function(c){c.onclick=function(){S.mode=c.dataset.m;render()}});
+    f.innerHTML='<button class="btn" id="bk">Back</button><button class="btn go" id="nx">Enter Nexus</button>';
+    $('#bk').onclick=function(){S.step=1;render()};
+    $('#nx').onclick=function(){if(S.mode==='code'&&!S.org){$('#er').textContent='Verify a valid invite code, or choose freelancer.';return}var btn=this;btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving';setTimeout(function(){S.done=true;render()},1000)};
+  }}
+render();
+</script>
