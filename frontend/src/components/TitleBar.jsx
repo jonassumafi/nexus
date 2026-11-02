@@ -28,6 +28,7 @@ export default function TitleBar({
 }) {
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
   const [maximized, setMaximized] = useState(false);
+  const version = electron?.companion?.version;
 
   // We don't get a dedicated "maximize-changed" event through our IPC —
   // just toggle optimistically on click. Not critical visually.
@@ -75,6 +76,21 @@ export default function TitleBar({
             textTransform: 'uppercase',
           }}>
             {subtitle}
+          </span>
+        )}
+        {version && (
+          <span
+            title={`Nexus Companion v${version}`}
+            style={{
+              fontSize: 9,
+              letterSpacing: '0.08em',
+              color: 'var(--fg3)',
+              opacity: 0.7,
+              fontVariantNumeric: 'tabular-nums',
+              marginLeft: 2,
+            }}
+          >
+            v{version}
           </span>
         )}
       </div>

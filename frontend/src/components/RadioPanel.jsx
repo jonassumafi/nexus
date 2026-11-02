@@ -521,9 +521,9 @@ function TunedView({
 
       {/* MIC VOLUME slider */}
       <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(26,58,80,.4)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <span style={{
-            fontSize: 11, fontWeight: 600, color: 'var(--fg2)',
+            fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
             letterSpacing: '0.08em', textTransform: 'uppercase',
           }}>Mic volume</span>
           <span style={{
@@ -541,8 +541,14 @@ function TunedView({
           value={micSensitivity}
           onChange={e => onSensitivityChange(Number(e.target.value))}
           style={{
-            width: '100%', accentColor: 'var(--rim2)',
-            height: 6, cursor: 'pointer',
+            width: '100%',
+            accentColor: 'var(--cyan, #00EEFF)',
+            height: 10,
+            cursor: 'pointer',
+            background: 'var(--bg0, #020C14)',
+            border: '1px solid var(--rim1, #2A5A7A)',
+            borderRadius: 4,
+            padding: 0,
           }}
         />
       </div>
@@ -755,16 +761,28 @@ function MicLevelMeter({ getLevel, active }) {
   const fillColor = level > 70 ? ALARM_RED : OK_GREEN;
   return (
     <div style={{ padding: '8px 14px', borderBottom: `1px solid ${SOFT_DIVIDER}` }}>
-      <div style={{
-        fontSize: 10, color: INK_PRIMARY, marginBottom: 4, fontWeight: 'bold',
-      }}>
-        MIC LEVEL
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>Mic track</span>
+        <span style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {Math.round(level)}%
+        </span>
       </div>
       <div style={{
-        width: '100%', height: 6, background: 'rgba(0,0,0,0.2)',
-        borderRadius: 2, overflow: 'hidden',
+        width: '100%', height: 10,
+        background: 'var(--bg0, #020C14)',
+        border: '1px solid var(--rim1, #2A5A7A)',
+        borderRadius: 4, overflow: 'hidden',
       }}>
-        <div style={{ height: '100%', width: `${level}%`, background: fillColor, borderRadius: 2, transition: 'width 0.05s' }} />
+        <div style={{
+          height: '100%', width: `${level}%`, background: fillColor,
+          transition: 'width 0.05s',
+        }} />
       </div>
     </div>
   );
@@ -806,20 +824,39 @@ function SettingsView({
   // change.
   useEffect(() => {
     if (!remapListening) return;
-    const handler = (e) => {
-      e.preventDefault();
-      if (isFirstKeydownRef.current) {
-        isFirstKeydownRef.current = false;
-        return;
-      }
-      const newKey = e.key;
+    const commit = (newKey) => {
       setPttKey(newKey);
       try { localStorage.setItem('nexus_ptt_key', newKey); } catch {}
       setRemapListening(false);
       api.put('/users/voice-profile', { ptt_key: newKey }).catch(() => {});
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    const keyHandler = (e) => {
+      e.preventDefault();
+      if (isFirstKeydownRef.current) {
+        isFirstKeydownRef.current = false;
+        return;
+      }
+      commit(e.key);
+    };
+    // Browser mouse buttons: event.button is 0-left, 1-middle, 2-right,
+    // 3-back(mouse4), 4-forward(mouse5), 5+ = extra side buttons. We offset
+    // by 1 so the stored name matches uIOhook's numbering (Mouse4+).
+    const mouseHandler = (e) => {
+      if (e.button < 3) return; // skip left / middle / right
+      e.preventDefault();
+      commit(`Mouse${e.button + 1}`);
+    };
+    window.addEventListener('keydown', keyHandler);
+    window.addEventListener('mousedown', mouseHandler);
+    // Suppress the browser's context menu while we're listening so right-
+    // click doesn't fire the OS menu over the top.
+    const noCtx = (e) => e.preventDefault();
+    window.addEventListener('contextmenu', noCtx);
+    return () => {
+      window.removeEventListener('keydown', keyHandler);
+      window.removeEventListener('mousedown', mouseHandler);
+      window.removeEventListener('contextmenu', noCtx);
+    };
   }, [remapListening, setPttKey]);
 
   const startRemap = () => {
@@ -886,7 +923,26 @@ function SettingsView({
               fontSize: 11, fontWeight: 600, color: 'var(--fg2)',
               letterSpacing: '0.08em', textTransform: 'uppercase',
             }}>Current key</span>
-            <kbd>{(pttKey || 'v').toUpperCase()}</kbd>
+            <kbd>{/^mouse\d+$/i.test(pttKey || '') ? '🖱 ' : ''}{(pttKey || 'v').toUpperCase()}</kbd>
+            {typeof window !== 'undefined' && window.electronAPI?.onPTT ? (
+              <span style={{
+                fontSize: 10, fontWeight: 600,
+                color: 'var(--lime)',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                padding: '2px 6px', border: '1px solid var(--lime)', borderRadius: 3,
+              }} title="Global OS-level hotkey — captures PTT even when Star Citizen is focused">
+                ● Global
+              </span>
+            ) : (
+              <span style={{
+                fontSize: 10, fontWeight: 600,
+                color: 'var(--fg2)',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                padding: '2px 6px', border: '1px solid var(--rim1)', borderRadius: 3,
+              }} title="Browser-only — PTT fires only when this window has keyboard focus. Install the Nexus desktop app for global hotkey support.">
+                Window-only
+              </span>
+            )}
           </div>
           <button
             className={`btn ${remapListening ? 'amb' : ''}`.trim()}
@@ -896,6 +952,18 @@ function SettingsView({
           >
             {remapListening ? 'Press any key…' : 'Remap key'}
           </button>
+          <div style={{
+            fontSize: 10, color: 'var(--fg2)', marginTop: 8, lineHeight: 1.5,
+            maxWidth: 320,
+          }}>
+            Choose a key Star Citizen doesn't bind — CapsLock, Right Ctrl, or Right Alt
+            work well. Standard letter keys (V, B, T, etc.) will fire BOTH the game action
+            AND Nexus PTT, which is usually not what you want.
+            <br /><br />
+            <strong>Mouse buttons work too.</strong> During remap, click any side-button
+            on your mouse (Mouse4, Mouse5, or higher). Left / middle / right-click are
+            reserved for the UI and ignored.
+          </div>
         </div>
       </div>
     </>
@@ -914,16 +982,28 @@ function MicLevelMeterInline({ getLevel }) {
   const fillColor = level > 70 ? '#FF4455' : level > 30 ? '#44FF88' : '#2A5A7A';
   return (
     <div>
-      <div style={{
-        fontSize: 11, color: '#0D1A24', letterSpacing: '0.1em', marginBottom: 6, fontWeight: 'bold',
-      }}>
-        MIC LEVEL
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>Mic track</span>
+        <span style={{
+          fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {Math.round(level)}%
+        </span>
       </div>
       <div style={{
-        width: '100%', height: 8, background: PANEL_BG,
-        border: `1px solid ${PANEL_BORDER}`, overflow: 'hidden',
+        width: '100%', height: 10,
+        background: 'var(--bg0, #020C14)',
+        border: '1px solid var(--rim1, #2A5A7A)',
+        borderRadius: 4, overflow: 'hidden',
       }}>
-        <div style={{ height: '100%', width: `${level}%`, background: fillColor, transition: 'width 0.05s' }} />
+        <div style={{
+          height: '100%', width: `${level}%`, background: fillColor,
+          transition: 'width 0.05s',
+        }} />
       </div>
     </div>
   );

@@ -35,13 +35,11 @@ const MODES = {
   },
   radio: {
     path: '/radio',
-    // v0.6.5 — mute headphones were still clipping at 420 with the
-    // native title bar + Windows DPI padding. Widened to 360 and
-    // bumped height to 460 so every row has breathing space. The
-    // layout itself was also tightened (mute icon shrunk, button
-    // paddings pared back) so the window still reads as "compact".
-    size: { width: 360, height: 460 },
-    minSize: { width: 360, height: 460 },
+    // v0.8.0 — resizable. Thin horizontal strip by default; user can drag
+    // taller to see more peers, or shrink to a one-row minimum. Width
+    // minimum reflects the number of controls that must fit in a row.
+    size: { width: 560, height: 120 },
+    minSize: { width: 420, height: 80 },
   },
 };
 
@@ -77,7 +75,15 @@ function saveState(partial) {
 }
 
 // ─── State ────────────────────────────────────────────────────────────────
-let currentPttKey = 'V';
+let currentPttKey = 'v';
+
+// Normalize a key name for cross-source matching. node-global-key-listener
+// reports e.g. "CAPS LOCK" (with a space); JS KeyboardEvent.key reports
+// "CapsLock" (no space). Strip spaces + uppercase so both forms compare
+// equal.
+function normKey(k) {
+  return String(k || '').toUpperCase().replace(/\s+/g, '');
+}
 let pttDown = false;
 let mainWindow = null;
 let keyboard = null;
@@ -126,7 +132,10 @@ function createWindow() {
     // of app content.
     frame: false,
     alwaysOnTop: state.pinned,
-    resizable: currentMode === 'full', // radio widget is fixed-size
+    // v0.8.0 — all modes resizable. Companion + radio were previously
+    // locked; users wanted to drag them larger / smaller to fit their
+    // overlay layout. The minSize per mode still enforces a sane floor.
+    resizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -143,7 +152,20 @@ function createWindow() {
   });
 
   if (state.pinned) {
-    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    // Pin level: 'floating' (not 'screen-saver').
+    //
+    // 'screen-saver' is the highest window level and will visually
+    // sit above every other window — including the one the user just
+    // clicked. That breaks normal Windows focus semantics (click
+    // another app → that app should cover Nexus). 'floating' keeps
+    // Nexus above regular desktop windows but still respects focus:
+    // clicking a normal app brings it to the foreground over Nexus.
+    //
+    // Trade-off: 'floating' may NOT reliably stay above true
+    // exclusive-fullscreen Star Citizen. If that regresses, we'll
+    // need a dynamic swap (detect SC foreground → 'screen-saver',
+    // otherwise 'floating').
+    mainWindow.setAlwaysOnTop(true, 'floating');
   }
 
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, cb) => cb(true));
@@ -228,13 +250,11 @@ function persistBounds() {
   const b = mainWindow.getBounds();
   const s = loadState();
   const key = currentMode;
-  const nextModeBounds = { ...s[key], x: b.x, y: b.y };
-  // Only persist width/height for full mode; radio size is fixed by the
-  // app and controlled via setRadioExpanded.
-  if (currentMode === 'full') {
-    nextModeBounds.width = b.width;
-    nextModeBounds.height = b.height;
-  }
+  // v0.8.0 — persist width/height for every mode (companion + radio are
+  // now user-resizable). Each mode remembers its own dimensions.
+  const nextModeBounds = {
+    ...s[key], x: b.x, y: b.y, width: b.width, height: b.height,
+  };
   saveState({ [key]: nextModeBounds });
 }
 
@@ -269,37 +289,76 @@ function setRadioExpandedState(expanded) {
 }
 
 // ─── Native global key hook — press and release ───────────────────────────
+// v0.7.0 — swapped from node-global-key-listener (spawned a helper .exe
+// that was being quarantined by Windows Defender in packaged builds) to
+// uiohook-napi (native addon compiled into the Electron binary, no helper
+// process, no .exe to quarantine).
 function startKeyHook() {
   if (keyboard) return;
   try {
-    const { GlobalKeyboardListener } = require('node-global-key-listener');
-    keyboard = new GlobalKeyboardListener();
-    keyboard.addListener((e) => {
-      const name = String(e.name || '').toUpperCase();
-      const want = String(currentPttKey || 'V').toUpperCase();
-      if (name !== want) return;
-      if (e.state === 'DOWN' && !pttDown) {
-        pttDown = true;
-        mainWindow?.webContents.send('nexus:ptt', { down: true });
-      } else if (e.state === 'UP' && pttDown) {
-        pttDown = false;
-        mainWindow?.webContents.send('nexus:ptt', { down: false });
-      }
+    const { uIOhook, UiohookKey } = require('uiohook-napi');
+    keyboard = uIOhook;
+
+    // Reverse-lookup table from uIOhook numeric keycodes → readable names.
+    const CODE_TO_NAME = {};
+    for (const [name, code] of Object.entries(UiohookKey)) {
+      CODE_TO_NAME[code] = name;
+    }
+
+    const nameFor = (keycode) => CODE_TO_NAME[keycode] || `code-${keycode}`;
+
+    uIOhook.on('keydown', (e) => {
+      if (normKey(nameFor(e.keycode)) !== normKey(currentPttKey)) return;
+      if (pttDown) return;
+      pttDown = true;
+      mainWindow?.webContents.send('nexus:ptt', { down: true });
     });
-    console.log('[main] global key hook active, PTT key =', currentPttKey);
+    uIOhook.on('keyup', (e) => {
+      if (normKey(nameFor(e.keycode)) !== normKey(currentPttKey)) return;
+      if (!pttDown) return;
+      pttDown = false;
+      mainWindow?.webContents.send('nexus:ptt', { down: false });
+    });
+
+    // Mouse-button PTT. Side buttons (Mouse4+) are gaming-mouse extras
+    // that don't collide with normal UI clicking, so we accept those as
+    // PTT bindings. Left/middle/right (1-3) are intentionally rejected.
+    uIOhook.on('mousedown', (e) => {
+      if (!e || typeof e.button !== 'number' || e.button < 4) return;
+      if (normKey(`Mouse${e.button}`) !== normKey(currentPttKey)) return;
+      if (pttDown) return;
+      pttDown = true;
+      mainWindow?.webContents.send('nexus:ptt', { down: true });
+    });
+    uIOhook.on('mouseup', (e) => {
+      if (!e || typeof e.button !== 'number' || e.button < 4) return;
+      if (normKey(`Mouse${e.button}`) !== normKey(currentPttKey)) return;
+      if (!pttDown) return;
+      pttDown = false;
+      mainWindow?.webContents.send('nexus:ptt', { down: false });
+    });
+    uIOhook.start();
+
+    console.log('[main] global key hook active (uiohook-napi), PTT key =', currentPttKey);
+    setTimeout(() => {
+      try { mainWindow?.webContents.send('nexus:hook-status', { ok: true, pttKey: currentPttKey, impl: 'uiohook-napi' }); } catch {}
+    }, 2000);
   } catch (err) {
     console.error('[main] key hook failed:', err.message);
+    setTimeout(() => {
+      try { mainWindow?.webContents.send('nexus:hook-status', { ok: false, error: err.message }); } catch {}
+    }, 2000);
   }
 }
 function stopKeyHook() {
-  try { keyboard?.kill(); } catch {}
+  try { keyboard?.stop(); } catch {}
   keyboard = null;
 }
 
 // ─── IPC ──────────────────────────────────────────────────────────────────
 ipcMain.handle('nexus:setPttKey', (_e, key) => {
-  const k = String(key || 'V').toUpperCase();
-  if (k !== currentPttKey) {
+  const k = String(key || 'v');
+  if (normKey(k) !== normKey(currentPttKey)) {
     currentPttKey = k;
     console.log('[main] PTT key updated to', currentPttKey);
   }
@@ -309,9 +368,22 @@ ipcMain.handle('nexus:setPttKey', (_e, key) => {
 ipcMain.handle('nexus:togglePin', () => {
   if (!mainWindow) return false;
   const next = !mainWindow.isAlwaysOnTop();
-  mainWindow.setAlwaysOnTop(next, 'screen-saver');
+  // See comment in createMainWindow for level choice ('floating').
+  mainWindow.setAlwaysOnTop(next, 'floating');
   saveState({ pinned: next });
   return next;
+});
+
+ipcMain.handle('nexus:setOpacity', (_e, v) => {
+  if (!mainWindow) return 1;
+  const value = Math.max(0.3, Math.min(1, Number(v) || 1));
+  try { mainWindow.setOpacity(value); } catch {}
+  saveState({ opacity: value });
+  return value;
+});
+
+ipcMain.handle('nexus:getOpacity', () => {
+  try { return mainWindow?.getOpacity?.() ?? 1; } catch { return 1; }
 });
 
 ipcMain.handle('nexus:setMode', (_e, mode) => {
@@ -387,7 +459,7 @@ ipcMain.handle('nexus:chatPopout:setOpacity', (_e, value) => {
 ipcMain.handle('nexus:chatPopout:togglePin', () => {
   if (!chatPopout) return false;
   const next = !chatPopout.isAlwaysOnTop();
-  chatPopout.setAlwaysOnTop(next, 'screen-saver');
+  chatPopout.setAlwaysOnTop(next, 'floating');
   return next;
 });
 ipcMain.handle('nexus:chatPopout:minimize', () => { try { chatPopout?.minimize(); } catch {} });
@@ -411,6 +483,20 @@ function registerSafeMode() {
     globalShortcut.register('CommandOrControl+Shift+Q', () => {
       try { app.quit(); } catch {}
     });
+    // DevTools openers — F12 is standard, Ctrl+Alt+D is a backup for
+    // when graphics-overlay software has hijacked F12.
+    const openDevTools = () => {
+      try {
+        const wc = mainWindow?.webContents;
+        if (!wc) return;
+        if (wc.isDevToolsOpened()) wc.closeDevTools();
+        else wc.openDevTools({ mode: 'detach' });
+      } catch (err) {
+        console.error('[main] devtools toggle failed:', err.message);
+      }
+    };
+    globalShortcut.register('F12', openDevTools);
+    globalShortcut.register('CommandOrControl+Alt+D', openDevTools);
   } catch (err) {
     console.error('[main] safe-mode shortcut failed:', err.message);
   }

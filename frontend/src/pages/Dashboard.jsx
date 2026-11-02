@@ -16,7 +16,9 @@ import OnlineCount from '../components/OnlineCount';
 import FeedIcon from '../components/FeedIcon';
 import useMyRadio from '../hooks/useMyRadio';
 import RadioRigBadge from '../components/RadioRigBadge';
+import RadioPickerModal from '../components/RadioPickerModal';
 import BugReportModal from '../components/BugReportModal';
+import WhatsNewSplash from '../components/WhatsNewSplash';
 import GlobalChat, { useChatUnread } from '../components/GlobalChat';
 import { useRadioConnection } from '../hooks/useRadioConnection';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
@@ -721,7 +723,7 @@ function IdCardModal({ me, onClose, onRefresh }) {
   );
 }
 
-function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onRegisterShip, onMyShips, onCreateMission, onShipRegistry, onRefresh, myShipsMode, registerMode, createMissionMode, shipRegistryMode, navigate, chatBtnRef, chatOpen, setChatOpen, chatUnread, setShowBugReport }) {
+function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onRegisterShip, onMyShips, onCreateMission, onShipRegistry, onRefresh, myShipsMode, registerMode, createMissionMode, shipRegistryMode, navigate, chatBtnRef, chatOpen, setChatOpen, chatUnread, setShowBugReport, setShowRadioPicker }) {
   const [hoverBtn, setHoverBtn] = useState(null);
 
   // Electron companion state. `electronAPI` is only present when the app is
@@ -998,7 +1000,7 @@ function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onReg
         alignItems: 'center',
         zIndex: 5,
       }}>
-        <RadioRigBadge />
+        <RadioRigBadge onClick={() => setShowRadioPicker(true)} />
         <IdCardWidget
           me={me}
           rpPct={rpPct}
@@ -2698,6 +2700,7 @@ export default function Dashboard() {
     try { return localStorage.getItem('nexus_feed_collapsed') === '1'; } catch { return false; }
   });
   const [showBugReport, setShowBugReport]   = useState(false);
+  const [showRadioPicker, setShowRadioPicker] = useState(false);
   const [chatOpen, setChatOpen]             = useState(false);
   const chatBtnRef                          = useRef(null);
   const { count: chatUnread, markSeen: markChatSeen } = useChatUnread();
@@ -3018,6 +3021,8 @@ export default function Dashboard() {
     }}>
       <TitleBar title="NEXUS" subtitle="Dashboard" />
       <BugReportModal open={showBugReport} onClose={() => setShowBugReport(false)} />
+      <RadioPickerModal open={showRadioPicker} onClose={() => setShowRadioPicker(false)} />
+      <WhatsNewSplash />
       <GlobalChat
         open={chatOpen}
         onOpenChange={setChatOpen}
@@ -3105,6 +3110,7 @@ export default function Dashboard() {
         setChatOpen={setChatOpen}
         chatUnread={chatUnread}
         setShowBugReport={setShowBugReport}
+        setShowRadioPicker={setShowRadioPicker}
       />
 
       {/* 3-panel grid (or MY SHIPS panel when myShipsMode) */}

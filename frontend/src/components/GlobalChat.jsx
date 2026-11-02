@@ -405,11 +405,15 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
 
       <div
         ref={listRef}
+        className="nexus-chat-list"
         style={{
           flex: 1, minHeight: 160,
           overflowY: 'auto',
           padding: '8px 8px',
           display: 'flex', flexDirection: 'column', gap: 6,
+          // Enable container queries so children (ChatRow) can scale
+          // their font size with the chat column width.
+          containerType: 'inline-size',
         }}
       >
         {messages.length === 0 ? (
@@ -579,20 +583,27 @@ function ChatRow({ msg }) {
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
-            fontSize: 12, fontWeight: 700, color: 'var(--fg0)',
+            // Shrunk from 12 → ~10, with container-width scaling.
+            // Floor 8.5px (narrow column) → up to 10.5px (wide).
+            fontSize: 'clamp(8.5px, 3.8cqi, 10.5px)',
+            fontWeight: 700, color: 'var(--fg0)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {msg.citizen_name}
           </span>
           <span style={{
-            fontSize: 10, color: 'var(--fg3)',
+            fontSize: 'clamp(7.5px, 3.2cqi, 9px)',
+            color: 'var(--fg3)',
             fontVariantNumeric: 'tabular-nums',
           }}>
             {timeLabel}
           </span>
         </div>
         <div style={{
-          fontSize: 12.5, color: 'var(--fg1)', lineHeight: 1.45,
+          // Container-query sized body text: scales with chat column.
+          // Floor 9px (very narrow) up to 11.5px (wide).
+          fontSize: 'clamp(9px, 4.2cqi, 11.5px)',
+          color: 'var(--fg1)', lineHeight: 1.45,
           wordWrap: 'break-word', wordBreak: 'break-word',
         }}>
           {msg.text}

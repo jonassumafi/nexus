@@ -1,18 +1,13 @@
-// Radio-only mode — dedicated compact microphone view (360×360).
+// Radio-only mode — compact horizontal strip (v0.7.2).
 //
-// Rebuilt from scratch in v0.6.3. The previous implementation tried to
-// cram the entire companion into a 320×44 strip which showed a clipped
-// unusable fragment of the app. This replacement is purpose-built for
-// the "radio-only" use case: during Star Citizen play, pin a tiny
-// panel in a corner that shows just the mic controls + who is on the
-// frequency.
+// Single-row control strip + tiny 2-column peer grid underneath. All the
+// essentials in a narrow horizontal footprint so it can sit as an
+// unobtrusive overlay next to the Star Citizen window.
 //
-// Layout, top → bottom:
-//   • TitleBar (frameless custom chrome, min / max / close)
-//   • Mode row (⊞ Full · ▬ Companion · ⌖ Pin)
-//   • Frequency input (tunable) + headphones mute button
-//   • Big Transmit button (push-to-talk, bound to the configured key)
-//   • Peer list — operator names with speaking indicator
+// Layout:
+//   • TitleBar
+//   • Row 1 (horizontal): mode nav · freq · transmit · mute · PTT key · pin
+//   • Row 2: 2-column grid of peers on this frequency (highlight on transmit)
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../context/AuthContext.jsx';
@@ -21,7 +16,7 @@ import useMyRadio from '../hooks/useMyRadio';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
 import api from '../services/api';
 import TitleBar from '../components/TitleBar';
-import { playTune, playTransmit, playMute, playUnmute } from '../utils/audioFx';
+import { playTune, playMute, playUnmute } from '../utils/audioFx';
 import FreqTuneInput from '../components/FreqTuneInput';
 
 const PROFILE_FIELDS = [
@@ -37,10 +32,31 @@ export default function RadioWidget() {
   const [profileVersion, setProfileVersion] = useState(0);
   const [pttKey, setPttKey]                 = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
   const [isMuted, setIsMuted]               = useState(false);
-  const [micDeviceId]    = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
-  const [outputDeviceId] = useState(() => localStorage.getItem('nexus_output_device_id') || null);
+  const [micDeviceId, setMicDeviceId]       = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
+  const [outputDeviceId, setOutputDeviceId] = useState(() => localStorage.getItem('nexus_output_device_id') || null);
+  const [micSensitivity, setMicSensitivity] = useState(() => {
+    const stored = Number(localStorage.getItem('nexus_mic_sensitivity'));
+    return Number.isFinite(stored) && stored > 0 ? stored : 100;
+  });
+  const [settingsOpen, setSettingsOpen]     = useState(false);
+  const [inputDevices, setInputDevices]     = useState([]);
+  const [outputDevices, setOutputDevices]   = useState([]);
   const [freqInput, setFreqInput]           = useState('');
   const [pinned, setPinned]                 = useState(false);
+  const [remapListening, setRemapListening] = useState(false);
+  const isFirstKeydownRef = useRef(false);
+  const [opacity, setOpacity]               = useState(1);
+  const [opacityOpen, setOpacityOpen]       = useState(false);
+
+  // Load current window opacity on mount so the slider reflects persisted state.
+  useEffect(() => {
+    (async () => {
+      try {
+        const v = await electron?.getOpacity?.();
+        if (typeof v === 'number') setOpacity(v);
+      } catch {}
+    })();
+  }, [electron]);
 
   useEffect(() => {
     if (!electron?.onWindowState) return;
@@ -54,12 +70,42 @@ export default function RadioWidget() {
     micPermission, requestMicPermission,
     joinFrequency, startPTT, stopPTT,
     setMuted: setHookMuted,
+    setMicSensitivity: setHookSensitivity,
     setSrsRadioSpec,
     setSrsRadioBand,
   } = useRadioConnection({
     voiceProfile, voiceProfileVersion: profileVersion,
     pttKey, micDeviceId, outputDeviceId,
   });
+
+  // Sync sensitivity + device selections into the hook / localStorage.
+  useEffect(() => {
+    try { localStorage.setItem('nexus_mic_sensitivity', String(micSensitivity)); } catch {}
+    setHookSensitivity?.(micSensitivity);
+  }, [micSensitivity, setHookSensitivity]);
+  useEffect(() => {
+    if (micDeviceId == null) { try { localStorage.removeItem('nexus_mic_device_id'); } catch {} return; }
+    try { localStorage.setItem('nexus_mic_device_id', micDeviceId); } catch {}
+  }, [micDeviceId]);
+  useEffect(() => {
+    if (outputDeviceId == null) { try { localStorage.removeItem('nexus_output_device_id'); } catch {} return; }
+    try { localStorage.setItem('nexus_output_device_id', outputDeviceId); } catch {}
+  }, [outputDeviceId]);
+
+  // Enumerate audio devices when the settings panel opens.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const enumerate = () => {
+      navigator.mediaDevices.enumerateDevices().then((devs) => {
+        setInputDevices(devs.filter(d => d.kind === 'audioinput'));
+        setOutputDevices(devs.filter(d => d.kind === 'audiooutput'));
+      }).catch(() => {});
+    };
+    enumerate();
+    navigator.mediaDevices.addEventListener?.('devicechange', enumerate);
+    return () => navigator.mediaDevices.removeEventListener?.('devicechange', enumerate);
+  }, [settingsOpen]);
 
   const { radio: myRadio } = useMyRadio();
   useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
@@ -68,7 +114,6 @@ export default function RadioWidget() {
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setFreqInput(tunedFrequency || ''); }, [tunedFrequency]);
 
-  // Voice profile load.
   useEffect(() => {
     let cancelled = false;
     api.get('/users/voice-profile').then(({ data }) => {
@@ -92,7 +137,6 @@ export default function RadioWidget() {
     return () => { cancelled = true; };
   }, []);
 
-  // Auto-tune to active mission on first mount.
   const autoTunedRef = useRef(false);
   useEffect(() => {
     if (autoTunedRef.current) return;
@@ -103,10 +147,50 @@ export default function RadioWidget() {
     }).catch(() => {});
   }, [user, tunedFrequency, joinFrequency]);
 
-  // Mic permission bootstrap.
   useEffect(() => {
     if (micPermission === 'prompt' || micPermission === 'denied') requestMicPermission?.();
   }, [micPermission, requestMicPermission]);
+
+  // PTT remap — two-phase window keydown listener (same logic as the
+  // Radio-panel settings view). Persists to localStorage, syncs to the
+  // server, and the useRadioConnection effect pushes it to Electron main
+  // so the global hook starts listening for the new key.
+  useEffect(() => {
+    if (!remapListening) return;
+    const commit = (newKey) => {
+      setPttKey(newKey);
+      try { localStorage.setItem('nexus_ptt_key', newKey); } catch {}
+      setRemapListening(false);
+      api.put('/users/voice-profile', { ptt_key: newKey }).catch(() => {});
+    };
+    const keyHandler = (e) => {
+      e.preventDefault();
+      if (isFirstKeydownRef.current) {
+        isFirstKeydownRef.current = false;
+        return;
+      }
+      commit(e.key);
+    };
+    const mouseHandler = (e) => {
+      if (e.button < 3) return;
+      e.preventDefault();
+      commit(`Mouse${e.button + 1}`);
+    };
+    const noCtx = (e) => e.preventDefault();
+    window.addEventListener('keydown', keyHandler);
+    window.addEventListener('mousedown', mouseHandler);
+    window.addEventListener('contextmenu', noCtx);
+    return () => {
+      window.removeEventListener('keydown', keyHandler);
+      window.removeEventListener('mousedown', mouseHandler);
+      window.removeEventListener('contextmenu', noCtx);
+    };
+  }, [remapListening]);
+
+  const startRemap = () => {
+    isFirstKeydownRef.current = true;
+    setRemapListening(true);
+  };
 
   const applyFreq = useCallback(() => {
     const raw = (freqInput || '').trim();
@@ -127,13 +211,16 @@ export default function RadioWidget() {
   }, [isPTTActive, transmittingPeerIds, peers]);
 
   const onPTTDown = useCallback(() => {
-    // Transmit cue fires inside the hook so every mode plays it.
     if (!isMuted) startPTT?.();
   }, [isMuted, startPTT]);
   const onPTTUp   = useCallback(() => { stopPTT?.(); }, [stopPTT]);
   const toggleMute = useCallback(() => {
     setIsMuted(m => { (m ? playUnmute : playMute)(); return !m; });
   }, []);
+
+  const pttLabel = (pttKey || 'V').toUpperCase();
+  const pttIsMouse = /^MOUSE\d+$/i.test(pttKey || '');
+  const pttIcon = pttIsMouse ? '🖱' : '⌨';
 
   return (
     <div style={{
@@ -146,63 +233,33 @@ export default function RadioWidget() {
     }}>
       <TitleBar title="NEXUS" subtitle="Radio" />
 
-      {/* Mode / pin row */}
+      {/* ── Primary row — all controls in a single horizontal strip ─────── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 5,
-        padding: '6px 10px',
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '6px 8px',
         borderBottom: '1px solid var(--rim0)',
         background: 'linear-gradient(180deg, var(--bg2), var(--bg1))',
         flexShrink: 0,
       }}>
         <button className="btn" title="Full dashboard"
           onClick={() => electron?.setMode?.('full')}
-          style={{ fontSize: 10, padding: '4px 8px' }}>⊞ Full</button>
+          style={{ width: 28, height: 26, padding: 0, fontSize: 11, flexShrink: 0 }}>⊞</button>
         <button className="btn" title="Companion"
           onClick={() => electron?.setMode?.('companion')}
-          style={{ fontSize: 10, padding: '4px 8px' }}>▬ Companion</button>
-        <div style={{ flex: 1 }} />
-        <button
-          className={`btn${pinned ? ' nt on' : ''}`}
-          title={pinned ? 'Unpin' : 'Pin on top'}
-          onClick={async () => { if (!electron) return; const next = await electron.togglePin(); setPinned(next); }}
-          style={{ fontSize: 10, padding: '4px 8px' }}
-        >
-          ⌖ {pinned ? 'Pinned' : 'Pin'}
-        </button>
-      </div>
+          style={{ width: 28, height: 26, padding: 0, fontSize: 11, flexShrink: 0 }}>▬</button>
 
-      {/* Frequency + mute */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 10px 4px',
-        flexShrink: 0,
-      }}>
-        <FreqTuneInput
-          value={freqInput}
-          onChange={setFreqInput}
-          onCommit={applyFreq}
-          onCancel={() => setFreqInput(tunedFrequency || '')}
-          transmitting={isPTTActive}
-          lcdFontSize={18}
-          playTune={playTune}
-        />
-        <button
-          className={`btn${isMuted ? ' warn' : ''}`}
-          onClick={toggleMute}
-          title={isMuted ? 'Unmute' : 'Mute'}
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
-          aria-pressed={isMuted}
-          style={{
-            width: 34, height: 32, padding: 0, flexShrink: 0,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <HeadphonesIcon muted={isMuted} />
-        </button>
-      </div>
+        <div style={{ width: 120 }}>
+          <FreqTuneInput
+            value={freqInput}
+            onChange={setFreqInput}
+            onCommit={applyFreq}
+            onCancel={() => setFreqInput(tunedFrequency || '')}
+            transmitting={isPTTActive}
+            lcdFontSize={14}
+            playTune={playTune}
+          />
+        </div>
 
-      {/* Transmit */}
-      <div style={{ padding: '2px 10px 6px', flexShrink: 0 }}>
         <button
           className={`btn${isPTTActive ? ' tx on' : ''}`}
           onMouseDown={onPTTDown}
@@ -210,115 +267,272 @@ export default function RadioWidget() {
           onMouseLeave={onPTTUp}
           disabled={isMuted || !tunedFrequency}
           style={{
-            width: '100%', fontSize: 11,
-            padding: '8px 0', userSelect: 'none',
-            letterSpacing: '0.08em',
+            // flex-grow + height matched to the other row buttons so the
+            // TX button sits inline with ⊞ ▬ mute, remap, pin — same height,
+            // not visually compressed.
+            flex: 1, fontSize: 10, height: 26, padding: '0 8px',
+            userSelect: 'none', letterSpacing: '0.06em',
           }}
         >
-          {isMuted ? '● Mic muted' :
+          {isMuted ? '● Muted' :
            !tunedFrequency ? 'Not tuned' :
-           isPTTActive ? '● Transmitting' : `● Transmit (${(pttKey || 'V').toUpperCase()})`}
+           isPTTActive ? '● TX' : `● TX (${pttLabel})`}
         </button>
+
+        <button
+          className={`btn${isMuted ? ' warn' : ''}`}
+          onClick={toggleMute}
+          title={isMuted ? 'Unmute' : 'Mute'}
+          style={{
+            width: 28, height: 26, padding: 0, flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <HeadphonesIcon muted={isMuted} />
+        </button>
+
+        <button
+          className={`btn${remapListening ? ' amb' : ''}`.trim()}
+          onClick={remapListening ? undefined : startRemap}
+          disabled={remapListening}
+          title={remapListening ? 'Press any key to bind' : `PTT key: ${pttLabel} — click to remap`}
+          style={{
+            fontSize: 10, padding: '0 8px', height: 26,
+            minWidth: 54, letterSpacing: '0.06em',
+            // Force readable text on top of the amber '.amb' background,
+            // which otherwise applies dark text that disappears.
+            ...(remapListening ? { color: '#ffffff', fontWeight: 700 } : {}),
+          }}
+        >
+          {remapListening ? 'Press…' : `${pttIcon} ${pttLabel}`}
+        </button>
+
+        {/* Opacity control — dims the window to see through to Star Citizen */}
+        <div style={{ position: 'relative' }}>
+          <button
+            className="btn"
+            title={`Opacity: ${Math.round(opacity * 100)}%`}
+            onClick={() => setOpacityOpen(o => !o)}
+            style={{
+              width: 28, height: 26, padding: 0, flexShrink: 0,
+              fontSize: 11, letterSpacing: 0,
+            }}
+          >◐</button>
+          {opacityOpen && (
+            <div
+              onMouseLeave={() => setOpacityOpen(false)}
+              style={{
+                position: 'absolute', right: 0, top: '110%', zIndex: 10,
+                padding: '8px 10px',
+                background: 'var(--bg2, #0b1824)',
+                border: '1px solid var(--rim1, #2A5A7A)',
+                borderRadius: 5,
+                boxShadow: '0 6px 16px rgba(0,0,0,.5)',
+                minWidth: 160,
+              }}
+            >
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: 6, fontSize: 10, color: 'var(--fg2)',
+                letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600,
+              }}>
+                <span>Opacity</span>
+                <span style={{ color: 'var(--cyan)', fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.round(opacity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={30} max={100} step={5}
+                value={Math.round(opacity * 100)}
+                onChange={async e => {
+                  const v = Number(e.target.value) / 100;
+                  setOpacity(v);
+                  try { await electron?.setOpacity?.(v); } catch {}
+                }}
+                style={{ width: '100%', accentColor: 'var(--cyan, #00EEFF)' }}
+              />
+            </div>
+          )}
+        </div>
+
+        <button
+          className="btn"
+          title="Settings"
+          onClick={() => setSettingsOpen(o => !o)}
+          style={{ width: 28, height: 26, padding: 0, fontSize: 12, flexShrink: 0 }}
+        >⚙</button>
+
+        <button
+          className={`btn${pinned ? ' nt on' : ''}`}
+          title={pinned ? 'Unpin' : 'Pin on top'}
+          onClick={async () => { if (!electron) return; const next = await electron.togglePin(); setPinned(next); }}
+          style={{ width: 28, height: 26, padding: 0, fontSize: 11, flexShrink: 0 }}
+        >⌖</button>
       </div>
 
-      {/* Peer list — on frequency */}
+      {/* ── Settings panel — expands below the top row when ⚙ is clicked ── */}
+      {settingsOpen && (
+        <div style={{
+          padding: '8px 10px',
+          borderBottom: '1px solid var(--rim0)',
+          background: 'var(--bg1, #0b1824)',
+          display: 'flex', flexDirection: 'column', gap: 8,
+          flexShrink: 0,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: 'var(--fg2)', fontWeight: 700,
+          }}>
+            <span>Settings</span>
+            <button
+              onClick={() => setSettingsOpen(false)}
+              style={{
+                background: 'none', border: 'none', padding: 0,
+                color: 'var(--fg3)', cursor: 'pointer', fontSize: 12,
+              }}>✕</button>
+          </div>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'var(--fg2)',
+              textTransform: 'uppercase', fontWeight: 600 }}>Input device</span>
+            <select
+              className="inp"
+              value={micDeviceId ?? '__default__'}
+              onChange={e => setMicDeviceId(e.target.value === '__default__' ? null : e.target.value)}
+              style={{ fontSize: 11, padding: '3px 6px' }}
+            >
+              <option value="__default__">System default</option>
+              {inputDevices.map((d, i) => (
+                <option key={d.deviceId || `in-${i}`} value={d.deviceId}>
+                  {d.label || `Input ${i + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'var(--fg2)',
+              textTransform: 'uppercase', fontWeight: 600 }}>Output device</span>
+            <select
+              className="inp"
+              value={outputDeviceId ?? '__default__'}
+              onChange={e => setOutputDeviceId(e.target.value === '__default__' ? null : e.target.value)}
+              style={{ fontSize: 11, padding: '3px 6px' }}
+            >
+              <option value="__default__">System default</option>
+              {outputDevices.map((d, i) => (
+                <option key={d.deviceId || `out-${i}`} value={d.deviceId}>
+                  {d.label || `Output ${i + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'var(--fg2)',
+                textTransform: 'uppercase', fontWeight: 600 }}>Mic volume</span>
+              <span style={{ fontSize: 10, color: 'var(--fg0)', fontVariantNumeric: 'tabular-nums' }}>
+                {micSensitivity}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0} max={150} step={5}
+              value={micSensitivity}
+              onChange={e => setMicSensitivity(Number(e.target.value))}
+              style={{
+                width: '100%', height: 10, cursor: 'pointer',
+                accentColor: 'var(--cyan, #00EEFF)',
+                background: 'var(--bg0, #020C14)',
+                border: '1px solid var(--rim1, #2A5A7A)',
+                borderRadius: 4,
+                padding: 0,
+              }}
+            />
+          </div>
+
+          <div style={{
+            fontSize: 9, color: 'var(--fg3)', letterSpacing: '0.08em', textAlign: 'right',
+          }}>
+            PTT key: {pttLabel} · open the full dashboard for more
+          </div>
+        </div>
+      )}
+
+      {/* ── Peers — tiny 2-column grid, highlight on transmit.
+            Collapsed to a 1-line hint when there's nothing to show, so
+            the window can shrink to just the top row + a status strip. */}
       <div style={{
         flex: 1, minHeight: 0, overflowY: 'auto',
-        padding: '0 10px 8px',
+        padding: '2px 8px 4px',
       }}>
-        <div style={{
-          fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: 'var(--fg3)', margin: '2px 0 6px',
-        }}>
-          On frequency {tunedFrequency ? `· ${peers?.length || 0}` : ''}
-        </div>
         {!tunedFrequency ? (
-          <div style={{ padding: '8px 0', fontSize: 11, color: 'var(--fg3)' }}>
-            Tune a frequency to see other operators.
-          </div>
+          <div style={{
+            fontSize: 10, color: 'var(--fg3)', textAlign: 'center',
+            padding: '2px 0', letterSpacing: '0.1em',
+          }}>Tune a frequency.</div>
         ) : (!peers || peers.length === 0) ? (
-          <div style={{ padding: '8px 0', fontSize: 11, color: 'var(--fg3)' }}>
-            No other operators on this frequency.
-          </div>
+          <div style={{
+            fontSize: 10, color: 'var(--fg3)', textAlign: 'center',
+            padding: '2px 0', letterSpacing: '0.1em',
+          }}>No other operators.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '3px 6px',
+          }}>
             {peers.map(p => {
               const speaking = transmittingPeerIds?.includes?.(p.socketId);
-              const initials = (p.citizenName || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
               return (
                 <div
                   key={p.socketId}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '5px 8px',
-                    background: speaking ? 'rgba(68,255,136,.1)' : 'var(--bg1)',
-                    border: `1px solid ${speaking ? 'rgba(68,255,136,.4)' : 'var(--rim0)'}`,
-                    borderRadius: 4,
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '2px 6px',
+                    background: speaking ? 'rgba(68,255,136,.14)' : 'transparent',
+                    border: `1px solid ${speaking ? 'rgba(68,255,136,.55)' : 'var(--rim0)'}`,
+                    borderRadius: 3,
+                    minWidth: 0,
                   }}
                 >
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--blue) 55%, var(--bg3)), color-mix(in srgb, var(--blue) 18%, var(--bg0)) 75%)',
-                    border: '1px solid var(--rim1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 9, fontWeight: 700, color: 'var(--fg0)',
-                    flexShrink: 0,
-                  }}>
-                    {initials}
-                  </div>
                   <span style={{
-                    flex: 1, minWidth: 0, fontSize: 12,
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: speaking ? 'var(--lime)' : 'var(--rim1)',
+                    boxShadow: speaking ? '0 0 5px var(--lime)' : 'none',
+                    flexShrink: 0,
+                  }} />
+                  <span style={{
+                    fontSize: 11,
                     color: speaking ? 'var(--lime)' : 'var(--fg1)',
                     overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                    fontWeight: speaking ? 600 : 400,
                   }}>
                     {p.citizenName || 'Operator'}
                   </span>
-                  {speaking && (
-                    <span className="live-dot" style={{
-                      background: 'var(--lime)',
-                      boxShadow: '0 0 6px var(--lime)',
-                    }} />
-                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
-
-      {/* Footer — who is speaking */}
-      <div style={{
-        padding: '7px 12px',
-        borderTop: '1px solid var(--rim0)',
-        background: 'linear-gradient(180deg, var(--bg1), var(--bg0))',
-        fontSize: 10,
-        color: speakingPeer
-          ? (speakingPeer.self ? 'var(--cyan)' : 'var(--lime)')
-          : 'var(--fg3)',
-        textAlign: 'center',
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-      }}>
-        {speakingPeer ? `${speakingPeer.label} speaking` :
-          tunedFrequency ? 'Standby' : 'Not tuned'}
-      </div>
     </div>
   );
 }
 
-// Headphones icon — identical shape to Companion mode's icon so the
-// mute control is visually consistent across modes.
 function HeadphonesIcon({ muted }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
          aria-hidden="true">
       <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
       <path d="M4 14h3v6H5a1 1 0 0 1-1-1v-5z" />
       <path d="M20 14h-3v6h2a1 1 0 0 0 1-1v-5z" />
       {muted && (
-        <line x1="3" y1="3" x2="21" y2="21"
-              stroke="#FF5544" strokeWidth="2.2" />
+        <line x1="3" y1="3" x2="21" y2="21" stroke="#FF5544" strokeWidth="2.2" />
       )}
     </svg>
   );

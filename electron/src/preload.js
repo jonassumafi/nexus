@@ -15,10 +15,20 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Log the native key-hook startup result once at launch so a quick DevTools
+// peek (F12 or Ctrl+Alt+D) can confirm the hook is alive without flooding
+// the console with every keystroke.
+ipcRenderer.on('nexus:hook-status', (_e, payload) => {
+  try {
+    // eslint-disable-next-line no-console
+    console.log('[hook-status]', payload);
+  } catch {}
+});
+
 contextBridge.exposeInMainWorld('electronAPI', {
   companion: {
     platform: process.platform,
-    version: '0.6.7',
+    version: '0.8.0',
   },
 
   // PTT bridge from the native OS-level key hook.
@@ -36,6 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the native title bar directly, but keep the IPC in case any
   // in-app button still wants to invoke them.
   togglePin()      { return ipcRenderer.invoke('nexus:togglePin'); },
+  setOpacity(v)    { return ipcRenderer.invoke('nexus:setOpacity', v); },
+  getOpacity()     { return ipcRenderer.invoke('nexus:getOpacity'); },
   setMode(mode)    { return ipcRenderer.invoke('nexus:setMode', mode); },
   cycleMode()      { return ipcRenderer.invoke('nexus:cycleMode'); },
   setRadioExpanded(exp) { return ipcRenderer.invoke('nexus:setRadioExpanded', exp); },

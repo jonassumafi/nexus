@@ -339,6 +339,9 @@ export function useRadioConnection({
 
         const audio = new Audio();
         audio.autoplay = true;
+        // Listener-side playback boost — raises perceived voice loudness
+        // without touching the signal path or SRS character shaping.
+        try { audio.volume = 1.8; } catch {}
         peerAudiosRef.current[peerSocketId] = audio;
 
         // Wire the stream through the listener's own SRS rxEffect if we
@@ -387,11 +390,12 @@ export function useRadioConnection({
     }
   }, []);
 
-  // Peer rx DSP bypassed. The listener-side chain (source → rxEffect →
-  // AGC → MediaStreamDestination) silenced peer voices in testing. Each
-  // sender's radio character is already baked into the outbound stream
-  // via their own tx chain in ensureMicAndChain(), so skipping listener
-  // DSP preserves per-radio variation while keeping voices audible.
+  // Peer rx DSP bypassed. Any Web Audio graph routing through
+  // MediaStreamSource → … → MediaStreamDestination → audio.srcObject has
+  // consistently silenced peer voices in testing. Each sender's radio
+  // character is baked into the outbound stream via their own tx chain in
+  // ensureMicAndChain(); listener-side playback is just audio.srcObject
+  // = stream with a volume boost on the <audio> element.
   const attachPeerRxGraph = useCallback((peerSocketId, stream, audio) => {
     detachPeerRxGraph(peerSocketId);
     try { audio.srcObject = stream; } catch {}
@@ -400,12 +404,10 @@ export function useRadioConnection({
   const detachPeerRxGraph = useCallback((peerSocketId) => {
     const graph = peerRxNodesRef.current[peerSocketId];
     if (!graph) return;
-    try { graph.source.disconnect(); } catch {}
-    try { graph.chain?.dispose?.(); } catch {}
-    try { graph.deEmphasis?.disconnect(); } catch {}
-    try { graph.agc?.disconnect(); } catch {}
-    try { graph.agcMakeup?.disconnect(); } catch {}
-    try { graph.dest.disconnect?.(); } catch {}
+    try { graph.source?.disconnect(); } catch {}
+    try { graph.hp?.disconnect(); } catch {}
+    try { graph.lp?.disconnect(); } catch {}
+    try { graph.dest?.disconnect?.(); } catch {}
     delete peerRxNodesRef.current[peerSocketId];
   }, []);
 
@@ -448,6 +450,12 @@ export function useRadioConnection({
     setTransmittingPeerIds([]);
   }, [cleanupPeer]);
 
+  // Keys for persisting the tuned frequency across mode switches. Electron
+  // reloads the frontend URL when switching full/companion/radio, which
+  // blows away in-memory state. Reading this on mount lets the hook
+  // auto-rejoin without the operator retuning.
+  const TUNE_LS_KEY = 'nexus_persisted_tune';
+
   const joinFrequency = useCallback(async (freq, missionId) => {
     if (!socket || !freq) return;
     const f = String(freq).trim();
@@ -471,6 +479,13 @@ export function useRadioConnection({
     // Per-channel squelch bed profile (brick-wall cutoff + optional AM fade).
     try { getRadioChrome(audioCtxRef.current)?.setChannel?.(f); } catch {}
     socket.emit('radio:join', { frequency: f, missionId });
+    // Persist so view-switches (which reload the frontend URL) can rejoin
+    // automatically. Cleared only on explicit leaveFrequency.
+    try {
+      localStorage.setItem(TUNE_LS_KEY, JSON.stringify({
+        freq: f, missionId: missionId || null, ts: Date.now(),
+      }));
+    } catch {}
   }, [socket, ensureMicAndChain, cleanupAllPeers]);
 
   const teardownAudioChain = useCallback(() => {
@@ -505,6 +520,9 @@ export function useRadioConnection({
       socket.emit('radio:leave', { frequency: currentFreqRef.current });
       new Audio('/sounds/radio_disconnect.mp3').play().catch(() => {});
     }
+    // Explicit leave = user intent to stop; clear the persisted tune so
+    // subsequent mode switches don't auto-rejoin.
+    try { localStorage.removeItem(TUNE_LS_KEY); } catch {}
     cleanupAllPeers();
     teardownAudioChain();
     currentFreqRef.current = null;
@@ -581,7 +599,10 @@ export function useRadioConnection({
   }, []);
 
   const stopPTT = useCallback(() => {
-    if (!isPTTActive && !filteredStreamRef.current) return;
+    // Strict guard — only run the close-click + bed-off path if PTT was
+    // genuinely active. The old loose guard fired on every onMouseLeave
+    // over the Transmit button, producing phantom click sounds on hover.
+    if (!isPTTActive) return;
     if (filterChainRef.current) {
       try { filterChainRef.current.playClick('close'); } catch {}
     }
@@ -862,6 +883,32 @@ export function useRadioConnection({
       try { unsubscribeIPC?.(); } catch {}
     };
   }, [startPTT, stopPTT, pttKey]);
+
+  // ── Auto-rejoin persisted tune on mount ───────────────────────────────────
+  // Mode switches (Electron reloads /, /companion, /radio) blow away in-
+  // memory state. Read the persisted tune and rejoin automatically so the
+  // operator stays on their frequency across view switches without needing
+  // to retune. An explicit leaveFrequency clears the persisted value, so
+  // this only auto-rejoins after view switches, not after manual leaves.
+  useEffect(() => {
+    if (!socket) return;
+    let cancelled = false;
+    try {
+      const raw = localStorage.getItem(TUNE_LS_KEY);
+      if (!raw) return;
+      const { freq, missionId } = JSON.parse(raw);
+      if (!freq) return;
+      if (currentFreqRef.current === freq) return;
+      // Small delay — the socket is live but the hook's other mount
+      // effects (TURN cred fetch, event subscriptions) may still be
+      // settling; a short wait avoids a race where join emits before
+      // the server has us tracked.
+      const tid = setTimeout(() => {
+        if (!cancelled) joinFrequency(freq, missionId).catch(() => {});
+      }, 350);
+      return () => { cancelled = true; clearTimeout(tid); };
+    } catch {}
+  }, [socket, joinFrequency]);
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
