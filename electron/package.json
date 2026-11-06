@@ -16,7 +16,6 @@
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
     "electron-updater": "^6.8.11",
-    "node-global-key-listener": "^0.3.0",
     "uiohook-napi": "^1.5.5"
   },
   "devDependencies": {
