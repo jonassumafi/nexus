@@ -18,6 +18,11 @@ const { autoUpdater } = require('electron-updater');
 
 const NEXUS_URL = process.env.NEXUS_URL || 'https://nexus-missions.space';
 
+// Close-to-tray flag. The X button on the custom title bar hides the
+// window; actual quit only happens via the tray menu or an auto-update
+// restart, which both set this true before firing app.quit().
+let isQuitting = false;
+
 // UDP-only sibling build. Set at build time via electron-builder.udp.yml's
 // cross-env, or detected at runtime via the product name baked in by
 // electron-builder. One frontend bundle, two Electron shells — the UDP
@@ -269,6 +274,25 @@ function createWindow() {
   mainWindow.on('move',   persistBounds);
   mainWindow.on('resize', persistBounds);
   mainWindow.on('closed', () => { mainWindow = null; stopKeyHook(); });
+
+  // Close-to-tray: Discord-style. X hides the window but keeps the app
+  // running in the tray. The user has to pick Quit from the tray menu
+  // (or an auto-update restart sets isQuitting=true) to actually exit.
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) { e.preventDefault(); mainWindow.hide(); }
+  });
+
+  // Maximize-to-work-area fix. Frameless Electron windows overshoot
+  // the screen by ~8px on maximize because Windows applies invisible
+  // resize-border padding. Intercept and set bounds directly to the
+  // active display's work area so the content sits flush with the top
+  // edge. The window still reports isMaximized() === true afterward.
+  mainWindow.on('maximize', () => {
+    try {
+      const display = screen.getDisplayNearestPoint(mainWindow.getBounds());
+      mainWindow.setBounds(display.workArea);
+    } catch {}
+  });
 }
 
 // Compute initial window bounds for a mode, clamping to primary display.
@@ -672,7 +696,7 @@ function createTray() {
           } catch {}
         } },
       { type: 'separator' },
-      { label: 'Quit', click: () => app.quit() },
+      { label: 'Quit Nexus', click: () => { isQuitting = true; app.quit(); } },
     ]);
     tray.setContextMenu(menu);
     tray.on('click', () => { try { mainWindow?.show(); mainWindow?.focus(); } catch {} });
@@ -747,6 +771,7 @@ ipcMain.handle('nexus:update:installNow', () => {
   // Fires the install + restart flow immediately. The user should save
   // whatever they're doing first — we don't force a confirmation here
   // because the renderer already does.
+  isQuitting = true;
   try { autoUpdater.quitAndInstall(false, true); }
   catch (err) { console.error('[updater] quitAndInstall failed:', err?.message); }
 });

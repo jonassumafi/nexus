@@ -4,6 +4,31 @@
    injected inline at launch by app.js from window.setupAPI.getSkin()
    so there is no flash of the wrong palette. */
 
+/* Bundled Inter — Windows doesn't ship this family, so without a local
+   @font-face every weight silently falls through to Segoe UI and the
+   installer stops matching the web app's typography. Four weights
+   (400/500/600/700) cover every rule below. */
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 400;
+  src: url('assets/Inter-400.woff2') format('woff2');
+  font-display: block;
+}
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 500;
+  src: url('assets/Inter-500.woff2') format('woff2');
+  font-display: block;
+}
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 600;
+  src: url('assets/Inter-600.woff2') format('woff2');
+  font-display: block;
+}
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 700;
+  src: url('assets/Inter-700.woff2') format('woff2');
+  font-display: block;
+}
+
 :root {
   --lime: #44dd88;
   --red:  #ff5544;
