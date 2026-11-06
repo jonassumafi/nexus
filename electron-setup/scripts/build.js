@@ -51,6 +51,30 @@ if (!fs.existsSync(UNPACKED_SRC)) {
   process.exit(1);
 }
 
+// 1b) Voice check. Run the packaged companion itself in Node mode, load
+// opus the way udp-voice.js does (from inside app.asar), and encode one
+// frame. Catches a native binary for the wrong OS or a missing prebuild,
+// which otherwise ships silently: the app still starts, it just never
+// sends voice.
+log('Checking voice encoder (opus) in the packaged companion');
+{
+  const exe = fs.readdirSync(UNPACKED_SRC).find(n => n.toLowerCase().endsWith('.exe') && !/uninstall/i.test(n));
+  const loader = path.join(UNPACKED_SRC, 'resources', 'app.asar', 'src', 'opus-loader.js');
+  const probe = `const { OpusEncoder } = require(${JSON.stringify(loader)}).loadOpus();`
+    + `const n = new OpusEncoder(48000, 1).encode(Buffer.alloc(1920)).length;`
+    + `if (!n) throw new Error('encoder returned no data'); console.log('opus ok (' + n + ' byte frame)');`;
+  const r = child.spawnSync(path.join(UNPACKED_SRC, exe), ['-e', probe], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, encoding: 'utf8', windowsHide: true,
+  });
+  if (r.status !== 0) {
+    console.error('✗ voice encoder failed to load in the packaged app — the installer would ship with broken voice.');
+    console.error((r.stderr || r.stdout || (r.error && r.error.message) || '').trim().split('\n').slice(0, 6).join('\n'));
+    console.error('  Fix: delete electron/node_modules and run npm install on THIS machine (never copy node_modules between OSes).');
+    process.exit(1);
+  }
+  console.log('  ' + r.stdout.trim());
+}
+
 // 2) Zip the unpacked directory into payload/
 log('Zipping companion payload');
 mkdirp(PAYLOAD_DIR);

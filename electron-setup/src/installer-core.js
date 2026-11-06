@@ -110,18 +110,30 @@ function detectInstall() {
 // ─── Process gating ───────────────────────────────────────────────────
 
 async function isNexusRunning() {
-  const r = await runAsync('tasklist', ['/FI', 'IMAGENAME eq Nexus Companion*.exe', '/FO', 'CSV', '/NH']);
+  const r = await runAsync('tasklist', ['/FI', 'IMAGENAME eq Nexus Companion*', '/FO', 'CSV', '/NH']);
   return /Nexus Companion/i.test(r.stdout);
 }
-async function killNexus() {
-  await runAsync('taskkill', ['/F', '/IM', 'Nexus Companion UDP.exe']);
-  await runAsync('taskkill', ['/F', '/IM', 'Nexus Companion.exe']);
+// taskkill returns as soon as termination is requested; the processes
+// (Electron runs several) hold file locks until they've actually exited.
+// Since close-to-tray, "closed" Nexus is usually still running, so wait
+// for it to be gone before touching its files.
+async function killNexus({ timeoutMs = 15000 } = {}) {
+  await runAsync('taskkill', ['/F', '/T', '/IM', 'Nexus Companion UDP.exe']);
+  await runAsync('taskkill', ['/F', '/T', '/IM', 'Nexus Companion.exe']);
+  const deadline = Date.now() + timeoutMs;
+  while (await isNexusRunning()) {
+    if (Date.now() > deadline) throw new Error('Nexus is still running and could not be closed — quit it from the tray and try again');
+    await new Promise(r => setTimeout(r, 250));
+  }
+  await new Promise(r => setTimeout(r, 300)); // let Windows release file handles
 }
 
 // ─── FS helpers ───────────────────────────────────────────────────────
 
 function rimraf(dir) {
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
+  // Retries cover brief EBUSY/EPERM locks (antivirus scans, handles
+  // still closing after a kill).
+  try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch {}
 }
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -158,24 +170,33 @@ function installUninstaller(installDir) {
 // Windows won't delete (or rename) a running exe, and the portable
 // launcher keeps the uninstaller open until it exits. So when the
 // uninstall runs from the installed uninstaller, hand the last step to a
-// cmd.exe that retries deleting it every second until the launcher has
-// exited, then removes the install dir if that left it empty (rd without
-// /s never deletes a non-empty folder). Gives up after about an hour.
+// tiny script that retries deleting it every second until the launcher
+// has exited, then removes the install dir if that left it empty, then
+// deletes itself. Gives up after about an hour.
 //
-// It must be spawned detached: libuv puts non-detached children in a
-// kill-on-close job, so they die with us. Detached also means no
-// console, which PowerShell can't run without; cmd and ping can.
+// It runs under wscript.exe, a windowless (GUI-subsystem) host, so the
+// user sees nothing. Console tools here (cmd, ping, powershell) each pop
+// a visible console window when started without one, and it must be
+// started detached: libuv puts non-detached children in a kill-on-close
+// job, so they'd die with us.
+const SELF_DELETE_JS = [
+  'var fso = new ActiveXObject("Scripting.FileSystemObject");',
+  'var f = WScript.Arguments(0), d = WScript.Arguments(1);',
+  'for (var i = 0; i < 3600; i++) {',
+  '  try { if (fso.FileExists(f)) fso.DeleteFile(f, true); } catch (e) {}',
+  '  if (!fso.FileExists(f)) break;',
+  '  WScript.Sleep(1000);',
+  '}',
+  'try { var fo = fso.GetFolder(d); if (fo.Files.Count === 0 && fo.SubFolders.Count === 0) fo.Delete(true); } catch (e) {}',
+  'try { fso.DeleteFile(WScript.ScriptFullName, true); } catch (e) {}',
+].join('\r\n');
 function scheduleSelfDelete(file, dir) {
-  if (/["%^]/.test(file + dir)) return false; // can't be quoted safely for cmd
-  const script = 'for /l %i in (1,1,3600) do @('
-    + 'del /f /q "' + file + '" >nul 2>&1'
-    // Explicit if/else: with `if (...) & ping`, cmd folds the ping into
-    // the if, so the loop never waited and burned through in seconds.
-    + ' & if exist "' + file + '" (ping -n 2 127.0.0.1 >nul)'
-    + ' else (rd "' + dir + '" >nul 2>&1 & exit))';
   try {
-    const p = child.spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', '"' + script + '"'], {
-      detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true,
+    const script = path.join(os.tmpdir(), 'nexus-uninstall-cleanup-' + process.pid + '.js');
+    fs.writeFileSync(script, SELF_DELETE_JS);
+    const wscript = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'wscript.exe');
+    const p = child.spawn(wscript, ['//B', '//Nologo', '//E:JScript', script, file, dir], {
+      detached: true, stdio: 'ignore', windowsHide: true,
     });
     p.unref();
     return true;
@@ -469,6 +490,16 @@ async function runUninstall({
   rimraf(path.join(existing.path, STAGING_DIR));
   rimraf(path.join(existing.path, BACKUP_DIR));
   rimraf(path.join(existing.path, UNINSTALLER + '.new'));
+  // Anything of ours still there (besides the running uninstaller) means
+  // a file was locked. Fail now, before the shortcuts and uninstall entry
+  // go, so the user can retry instead of being left with orphaned files
+  // that Windows no longer lists.
+  const leftover = ownedEntries(existing.path, payloadNames)
+    .filter(p => path.basename(p).toLowerCase() !== UNINSTALLER.toLowerCase());
+  if (leftover.length) {
+    throw new Error('could not remove ' + leftover.map(p => path.basename(p)).join(', ')
+      + ' — a file is in use. Close Nexus (tray → Quit Nexus) and try again.');
+  }
   const uninstallerPath = path.join(existing.path, UNINSTALLER);
   if (fs.existsSync(uninstallerPath)) {
     // Still there → it's the exe running this uninstall; it deletes
