@@ -43,7 +43,7 @@ function fmtWhen(d) {
   return t.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-export default function MessagesPopover({ anchorRef, threads = [], meId, onClose, onPick }) {
+export default function MessagesPopover({ anchorRef, threads = [], meId, onClose, onPick, presenceById = {} }) {
   useEffect(() => { injectStyles(); }, []);
   return (
     <AnchoredPopover anchorRef={anchorRef} width={320} onClose={onClose} label="Messages">
@@ -56,14 +56,22 @@ export default function MessagesPopover({ anchorRef, threads = [], meId, onClose
             {threads.map(t => {
               const av = resolveAvatar({ avatar: t.avatar, citizen_name: t.name });
               const mine = String(t.last?.from) === String(meId);
+              const isOnline = !!(presenceById[String(t.peerId)]?.online);
               return (
                 <button
                   key={t.peerId}
                   className="nxt-row"
                   onClick={() => { onClose?.(); onPick?.(t); }}
                 >
-                  <span className="nxt-av">
+                  <span className="nxt-av" style={{ position: 'relative' }}>
                     {av ? <img src={av} alt="" /> : <span>{initialsOf(t.name)}</span>}
+                    <i style={{
+                      position: 'absolute', right: -2, bottom: -2,
+                      width: 10, height: 10, borderRadius: '50%',
+                      background: isOnline ? 'var(--lime)' : 'var(--fg3)',
+                      border: '2px solid var(--bg1)',
+                      boxShadow: isOnline ? '0 0 6px var(--lime)' : 'none',
+                    }} />
                   </span>
                   <span className="nxt-main">
                     <b>{t.name}</b>

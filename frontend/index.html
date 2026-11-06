@@ -2,6 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Public landing redirect. Visitors to nexus-missions.space/ see the
+      marketing page at /landing.html (static file in dist/). Every other
+      path — /dashboard, /missions, /admin, etc. — falls through to the
+      React SPA below, so the Electron Companion keeps working.
+      Runs synchronously before any CSS/JS loads so there's no flicker.
+    -->
+    <script>
+      (function () {
+        // Skip entirely inside the Electron Companion. Full-mode loads
+        // `/` (see MODES.full.path in electron/src/main.js), so redirecting
+        // would send every installed Companion to the marketing page.
+        if (/Electron/i.test(navigator.userAgent)) return;
+        var p = location.pathname;
+        if (p === '/' || p === '/index.html') {
+          location.replace('/landing.html' + location.search + location.hash);
+        }
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />

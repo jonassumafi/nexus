@@ -27,7 +27,7 @@
       {
         "$type": "saturation",
         "gain": 11,
-        "threshold": -30
+        "threshold": -27
       },
       {
         "$type": "sidechainCompressor",
@@ -35,13 +35,13 @@
         "makeUp": 5,
         "release": 0.2,
         "threshold": -35,
-        "ratio": 2.63,
+        "ratio": 2.35,
         "sidechainEffect": {
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 709
+              "$type": "highpass",
+              "frequency": 709
             }
           ]
         }

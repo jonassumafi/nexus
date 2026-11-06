@@ -91,10 +91,14 @@ router.post('/discord/callback', async (req, res) => {
       await user.save();
     }
 
+    // 30-day expiration matches a reasonable "stays logged in across
+    // sessions" expectation for a desktop Companion. Weekly players
+    // used to get kicked back to Discord login on every launch because
+    // the 7-day ceiling expired between sessions.
     const token = jwt.sign(
       { id: user._id, discord_id: user.discord_id, username: user.username, onboarding_complete: user.onboarding_complete },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     dispatch('operatorOnline', {

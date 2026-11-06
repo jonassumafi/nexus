@@ -85,7 +85,7 @@ export default function SharedMicStrip({
           fontSize: 10, fontWeight: 600,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           color: 'var(--fg2)', width: 62, flex: 'none',
-        }}>Volume</span>
+        }}>Outgoing</span>
         <input
           type="range"
           min={0} max={150} step={5}
@@ -96,7 +96,7 @@ export default function SharedMicStrip({
             accentColor: 'var(--cyan, #7ef0dc)',
             cursor: 'pointer',
           }}
-          aria-label="Mic volume"
+          aria-label="Outgoing volume"
         />
         <span style={{
           width: 34, textAlign: 'right', color: 'var(--fg0)',
@@ -111,7 +111,7 @@ export default function SharedMicStrip({
           fontSize: 10, fontWeight: 600,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           color: 'var(--fg2)', width: 62, flex: 'none',
-        }}>Receive</span>
+        }}>Incoming</span>
         <input
           type="range"
           min={0} max={150} step={5}
@@ -122,7 +122,7 @@ export default function SharedMicStrip({
             accentColor: 'var(--cyan, #7ef0dc)',
             cursor: 'pointer',
           }}
-          aria-label="Receive volume"
+          aria-label="Incoming volume"
           title="Loudness of other operators' voices (incoming only)"
         />
         <span style={{

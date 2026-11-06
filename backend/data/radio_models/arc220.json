@@ -8,7 +8,7 @@
         "filters": [
           {
             "$type": "highpass",
-            "frequency": 1700,
+            "frequency": 1530,
             "q": 0.53
           },
           {
@@ -19,7 +19,7 @@
           },
           {
             "$type": "lowpass",
-            "frequency": 5538
+            "frequency": 6090
           }
         ]
       },
@@ -39,8 +39,8 @@
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 709
+              "$type": "highpass",
+              "frequency": 709
             }
           ]
         }

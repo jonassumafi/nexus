@@ -66,7 +66,14 @@ function dayLabel(d) {
   return x.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-export default function DMPane({ meId, peer, messages = [], onClose, onSend, onOpen }) {
+export default function DMPane({ meId, peer, messages = [], onClose, onSend, onOpen, presenceById = {} }) {
+  // Live presence — the `peer` object was captured when the pane was
+  // opened, so its online/on_mission flags freeze. We re-derive them
+  // from the always-live friends map every render so the dot and label
+  // update when a friend comes online while the pane is open.
+  const livePresence = presenceById[String(peer?.userId)] || {};
+  const isOnline = !!(livePresence.online ?? peer?.online);
+  const onMission = !!(livePresence.on_mission ?? peer?.on_mission);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const bodyRef = useRef(null);
@@ -134,7 +141,15 @@ export default function DMPane({ meId, peer, messages = [], onClose, onSend, onO
         </div>
         <div className="dmp-nm">
           <b>{peer?.name || 'Direct message'}</b>
-          <small>{peer?.online ? (peer?.on_mission ? 'On a mission' : 'Online') : 'Offline'}</small>
+          <small>
+            <i style={{
+              display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+              marginRight: 6, verticalAlign: 1,
+              background: isOnline ? 'var(--lime)' : 'var(--fg3)',
+              boxShadow: isOnline ? '0 0 6px var(--lime)' : 'none',
+            }} />
+            {isOnline ? (onMission ? 'On a mission' : 'Online') : 'Offline'}
+          </small>
         </div>
         <button className="dmp-x" aria-label="Close" onClick={onClose}>×</button>
       </div>

@@ -384,13 +384,13 @@ export default function RadioOverlay() {
         <span className="rm-ov-lab">Track</span>
         <div className="rm-ov-bar"><i style={{ width: `${Math.max(0, Math.min(100, micLevel))}%` }} /></div>
         <span className="rm-ov-pct tn">{Math.round(micLevel)}%</span>
-        <span className="rm-ov-lab">Vol</span>
+        <span className="rm-ov-lab">Out</span>
         <input
           className="rm-ov-sl"
           type="range" min={0} max={150} step={5}
           value={micSensitivity}
           onChange={e => setMicSensitivity(Number(e.target.value))}
-          aria-label="Mic volume"
+          aria-label="Outgoing volume"
         />
         <span className="rm-ov-pct tn">{micSensitivity}%</span>
       </div>

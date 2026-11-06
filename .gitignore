@@ -15,6 +15,13 @@ electron-setup/payload/manifest.json
 backend/releases/*.exe
 backend/releases/*.blockmap
 backend/releases/latest*.yml
+backend/releases/udp.yml
+
+# web-archive/ holds snapshots of previously-deployed frontend dist/.
+# Kept on disk as a quick-reference historical record; not useful in
+# git since the source for each snapshot is already recoverable from
+# the corresponding commit.
+web-archive/
 
 # Study / reference material — SRS samples here are GPL v3 and
 # MUST NOT ship in the public repo until Nexus itself commits to GPL.

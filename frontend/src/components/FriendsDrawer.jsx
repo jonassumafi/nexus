@@ -233,7 +233,7 @@ export default function FriendsDrawer({
           {received.length > 0 && <div className="fd-group">Received · {received.length}</div>}
           {received.map(r => (
             <div key={r.requestId} className="fd-req">
-              <button className="fd-av" onClick={() => onOpenCard?.(r.userId, r.ref)} aria-label={`Open ${r.name}'s ID card`}>
+              <button className="fd-av nx-tip" data-tip="Click to open profile" onClick={() => onOpenCard?.(r.userId, r.ref)} aria-label={`Open ${r.name}'s ID card`}>
                 {r.avatar ? <img src={r.avatar} alt="" /> : null}
               </button>
               <div className="fd-nm">
@@ -249,7 +249,7 @@ export default function FriendsDrawer({
           {sent.length > 0 && <div className="fd-group">Sent · {sent.length}</div>}
           {sent.map(r => (
             <div key={r.requestId} className="fd-req">
-              <button className="fd-av" onClick={() => onOpenCard?.(r.userId)} aria-label={`Open ${r.name}'s ID card`}>
+              <button className="fd-av nx-tip" data-tip="Click to open profile" onClick={() => onOpenCard?.(r.userId)} aria-label={`Open ${r.name}'s ID card`}>
                 {r.avatar ? <img src={r.avatar} alt="" /> : null}
               </button>
               <div className="fd-nm">
@@ -272,7 +272,7 @@ function FriendRow({ f, menuOpen, onToggleMenu, confirming, onBeginRemove, onCan
   const canBorrow = (f.ships_available ?? 1) > 0; // default true unless we know otherwise
   return (
     <div className="fd-row">
-      <button className="fd-av" ref={avRef}
+      <button className="fd-av nx-tip" data-tip="Click to open profile" ref={avRef}
         onClick={() => onOpenCard?.(f.userId, avRef)}
         aria-label={`Open ${f.name}'s ID card`}
       >

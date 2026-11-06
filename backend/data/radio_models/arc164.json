@@ -15,7 +15,7 @@
             "$type": "peak",
             "frequency": 2302,
             "q": 0.63,
-            "gain": 13
+            "gain": 15
           },
           {
             "$type": "lowpass",
@@ -35,13 +35,13 @@
         "makeUp": 5,
         "release": 0.2,
         "threshold": -35,
-        "ratio": 2.63,
+        "ratio": 2.95,
         "sidechainEffect": {
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 252
+              "$type": "highpass",
+              "frequency": 252
             }
           ]
         }
@@ -66,7 +66,6 @@
       }
     ]
   },
-
   "rxEffect": {
     "$type": "filters",
     "filters": [

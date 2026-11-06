@@ -11,14 +11,14 @@
   /* ── Chrome ────────────────────────────── */
   --void:  #000710;
   --bg0:   #020C14;
-  --bg1:   var(--bg1);
-  --bg2:   var(--card-lo);
+  --bg1:   #061018;
+  --bg2:   #0A1828;
   --bg3:   #12263A;
   --stage: #000b13;
 
   /* ── Rims / borders ────────────────────── */
   --rim0:  #1A3A50;
-  --rim1:  var(--rim1);
+  --rim1:  #2A5A7A;
   --rim2:  #3F82B3;
 
   /* ── Text tiers ────────────────────────── */
@@ -161,6 +161,45 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--rim2) !important;
   outline: none;
 }
+
+/* ─────────────────────────────────────────
+   Hover tooltip utility (skin-aware)
+   Opt in by adding `.nx-tip` + `data-tip="…"` to any element.
+   Replaces the browser's default title-tooltip with one that
+   follows the app's palette. Positions below by default.
+   ───────────────────────────────────────── */
+.nx-tip { position: relative; }
+.nx-tip[data-tip]:hover::after,
+.nx-tip[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: var(--bg3);
+  border: 1px solid var(--rim1);
+  color: var(--fg1);
+  font: 600 10px Inter, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: 3px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.5);
+  z-index: 9999;
+  pointer-events: none;
+}
+.nx-tip[data-tip-pos="above"]:hover::after,
+.nx-tip[data-tip-pos="above"]:focus-visible::after {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nx-tip[data-tip]:hover::after,
+  .nx-tip[data-tip]:focus-visible::after {
+    animation: nxtip-in 160ms cubic-bezier(.2,.8,.2,1);
+  }
+}
+@keyframes nxtip-in { from { opacity: 0; transform: translateX(-50%) translateY(-2px); } to { opacity: 1; transform: translateX(-50%); } }
 
 /* ─────────────────────────────────────────
    Frame + stage (page-level shell wrapper)

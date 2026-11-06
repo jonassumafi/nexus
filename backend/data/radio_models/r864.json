@@ -8,7 +8,7 @@
         "filters": [
           {
             "$type": "highpass",
-            "frequency": 1825,
+            "frequency": 1550,
             "q": 0.68
           },
           {
@@ -32,7 +32,7 @@
       {
         "$type": "sidechainCompressor",
         "attack": 0.01,
-        "makeUp": 8,
+        "makeUp": 9,
         "release": 0.2,
         "threshold": -26,
         "ratio": 1.18,
@@ -40,8 +40,8 @@
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 751
+              "$type": "highpass",
+              "frequency": 751
             }
           ]
         }

@@ -13,13 +13,13 @@
           },
           {
             "$type": "peak",
-            "frequency": 2302,
+            "frequency": 2530,
             "q": 0.63,
             "gain": 13
           },
           {
             "$type": "lowpass",
-            "frequency": 5165,
+            "frequency": 5680,
             "q": 0.4
           }
         ]
@@ -40,8 +40,8 @@
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 252
+              "$type": "highpass",
+              "frequency": 252
             }
           ]
         }

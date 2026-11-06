@@ -29,8 +29,9 @@ function injectStyles() {
 .idc .idc-x{margin-left:auto;background:none;border:0;color:var(--fg3);cursor:pointer;width:22px;height:22px;display:grid;place-items:center}
 .idc .idc-x:hover{color:var(--fg0)}
 .idc .idc-rows{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
-.idc .idc-row{display:flex;justify-content:space-between;gap:10px;color:var(--fg2);font-size:11.5px}
-.idc .idc-row b{color:var(--fg1);font-weight:600}
+.idc .idc-row{display:flex;justify-content:space-between;gap:10px;color:var(--fg2);font-size:11.5px;align-items:flex-start}
+.idc .idc-row>span:first-child{flex:none;white-space:nowrap}
+.idc .idc-row b{color:var(--fg1);font-weight:600;text-align:right;min-width:0;word-break:break-word;overflow-wrap:anywhere}
 .idc .idc-acts{padding:10px 12px;border-top:1px solid var(--rim0);display:flex;flex-direction:column;gap:8px}
 .idc .idc-hint{color:var(--fg3);font-size:11px}
 .idc .idc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;

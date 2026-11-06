@@ -2916,6 +2916,7 @@ export default function Dashboard() {
         anchorRef={chatBtnRef}
         markSeen={markChatSeen}
         friendIds={new Set(friends.friends.map(f => String(f.userId)))}
+        presenceById={(() => { const m = {}; for (const f of friends.friends) m[String(f.userId)] = { online: !!f.online, on_mission: !!f.on_mission }; return m; })()}
         onAvatarClick={(userId, ref) => {
           setIdCard({ userId, rect: ref?.current ? ref.current.getBoundingClientRect() : null });
         }}
@@ -3053,6 +3054,7 @@ export default function Dashboard() {
           anchorRef={messagesBtnRef}
           threads={dms.threads}
           meId={me?._id}
+          presenceById={(() => { const m = {}; for (const f of friends.friends) m[String(f.userId)] = { online: !!f.online, on_mission: !!f.on_mission }; return m; })()}
           onClose={() => setMessagesPopoverOpen(false)}
           onPick={(t) => {
             const peer = { userId: String(t.peerId), name: t.name, avatar: t.avatar };
@@ -3157,6 +3159,7 @@ export default function Dashboard() {
         <DMPane
           meId={me?._id}
           peer={dmPeer}
+          presenceById={(() => { const m = {}; for (const f of friends.friends) m[String(f.userId)] = { online: !!f.online, on_mission: !!f.on_mission }; return m; })()}
           messages={dms.messagesByPeer[String(dmPeer.userId)] || []}
           onOpen={(p) => dms.setOpenPeer(p.userId)}
           onClose={() => { dms.setOpenPeer(null); setDmPeer(null); }}

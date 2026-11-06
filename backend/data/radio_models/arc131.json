@@ -15,22 +15,20 @@
             "$type": "peak",
             "frequency": 2302,
             "q": 0.63,
-            "gain": 13
+            "gain": 11
           },
           {
             "$type": "lowpass",
-            "frequency": 5165,
+            "frequency": 4650,
             "q": 0.4
           }
         ]
       },
-
       {
         "$type": "saturation",
         "gain": 11,
         "threshold": -30
       },
-
       {
         "$type": "sidechainCompressor",
         "attack": 0.01,
@@ -42,13 +40,12 @@
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 252
+              "$type": "highpass",
+              "frequency": 252
             }
           ]
         }
       },
-
       {
         "$type": "filters",
         "filters": [
@@ -63,14 +60,12 @@
           }
         ]
       },
-
       {
         "$type": "gain",
         "gain": 12
       }
     ]
   },
-
   "rxEffect": {
     "$type": "filters",
     "filters": [

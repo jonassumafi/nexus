@@ -331,7 +331,18 @@ function persistBounds() {
 }
 
 // Switch to a different mode. Persists current bounds, loads the new
-// route, resizes to the new mode's dimensions and remembered position.
+// route, resizes to the new mode's dimensions.
+//
+// Placement rules (v0.9.2+):
+//   full       → maximize to the work area of the current display
+//   companion  → center on the current display's work area
+//   radio      → center on the current display's work area
+//
+// Reason: previously the companion / radio modes would "snap" to a
+// stale saved top-left that was often off-screen or at (0,0) on first
+// switch, which looked like the window had warped away. Centering on
+// switch gives the user a predictable starting point they can then
+// drag wherever they want.
 function switchMode(nextMode) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   if (!MODES[nextMode] || nextMode === currentMode) return;
@@ -339,13 +350,36 @@ function switchMode(nextMode) {
   currentMode = nextMode;
   saveState({ mode: currentMode });
 
+  const m = MODES[currentMode];
   const state = loadState();
-  const b = computeBounds(currentMode, state);
-  // Resize first, then move — order matters for some Linux WMs.
   mainWindow.setResizable(currentMode === 'full');
-  mainWindow.setMinimumSize(MODES[currentMode].minSize.width, MODES[currentMode].minSize.height);
-  mainWindow.setSize(b.width, b.height, true);
-  if (b.x !== undefined && b.y !== undefined) mainWindow.setPosition(b.x, b.y);
+  mainWindow.setMinimumSize(m.minSize.width, m.minSize.height);
+
+  if (currentMode === 'full') {
+    // Un-maximize briefly so setSize takes effect for the fallback case,
+    // then maximize — the on('maximize') handler snaps to the exact
+    // workArea so there's no overshoot past the top edge.
+    try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
+    try { mainWindow.maximize(); } catch {}
+  } else {
+    // Companion + radio: resize to the mode's default size (or whatever
+    // the user last resized this mode to) and center on the active
+    // display. We do not reuse saved x/y here — the user explicitly
+    // asked for centering on switch so they can drag from a known
+    // predictable starting point.
+    const saved = state[currentMode] || {};
+    const width  = Number.isFinite(saved.width)  ? saved.width  : m.size.width;
+    const height = Number.isFinite(saved.height) ? saved.height : m.size.height;
+    try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
+    mainWindow.setSize(width, height, true);
+    try {
+      const display = screen.getDisplayNearestPoint(mainWindow.getBounds());
+      const area = display.workArea;
+      const cx = Math.round(area.x + (area.width  - width)  / 2);
+      const cy = Math.round(area.y + (area.height - height) / 2);
+      mainWindow.setPosition(cx, cy);
+    } catch {}
+  }
   // Clear cache on mode switch too, so any mid-session frontend deploy is
   // picked up without a full app relaunch.
   session.defaultSession.clearCache()

@@ -8,7 +8,7 @@
         "filters": [
           {
             "$type": "highpass",
-            "frequency": 1700,
+            "frequency": 1530,
             "q": 0.53
           },
           {
@@ -34,13 +34,13 @@
         "makeUp": 6,
         "release": 0.2,
         "threshold": -33,
-        "ratio": 1.18,
+        "ratio": 1.32,
         "sidechainEffect": {
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 709
+              "$type": "highpass",
+              "frequency": 709
             }
           ]
         }
@@ -82,6 +82,5 @@
   "encryptionEffect": {
     "$type": "cvsd"
   },
-
   "noiseGain": -33
 }

@@ -8,7 +8,7 @@
         "filters": [
           {
             "$type": "highpass",
-            "frequency": 1825,
+            "frequency": 2100,
             "q": 0.68
           },
           {
@@ -35,13 +35,13 @@
         "makeUp": 8,
         "release": 0.2,
         "threshold": -26,
-        "ratio": 1.18,
+        "ratio": 1.32,
         "sidechainEffect": {
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 751
+              "$type": "highpass",
+              "frequency": 751
             }
           ]
         }

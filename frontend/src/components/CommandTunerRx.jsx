@@ -316,7 +316,7 @@ function CommandTunerActive({
           <span style={{
             fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
             letterSpacing: '0.08em', textTransform: 'uppercase',
-          }}>Mic volume</span>
+          }}>Outgoing</span>
           <span style={{
             fontSize: 11, fontWeight: 600, color: 'var(--fg0)',
             fontVariantNumeric: 'tabular-nums',

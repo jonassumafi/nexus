@@ -89,7 +89,7 @@ export function useChatUnread() {
   return { count, markSeen };
 }
 
-export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mode = 'popover', friendIds, onAvatarClick }) {
+export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mode = 'popover', friendIds, onAvatarClick, presenceById }) {
   const { socket } = useSocketContext();
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
 
@@ -425,7 +425,7 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
             Silence on the net. Be the first to say something.
           </div>
         ) : (
-          messages.map(m => <ChatRow key={m._id} msg={m} friendIds={friendIds} onAvatarClick={onAvatarClick} />)
+          messages.map(m => <ChatRow key={m._id} msg={m} friendIds={friendIds} onAvatarClick={onAvatarClick} presenceById={presenceById} />)
         )}
       </div>
 
@@ -550,11 +550,13 @@ function ResizeEdge({ pos, onMouseDown }) {
   return <div style={styles[pos]} onMouseDown={onMouseDown} />;
 }
 
-function ChatRow({ msg, friendIds, onAvatarClick }) {
+function ChatRow({ msg, friendIds, onAvatarClick, presenceById }) {
   const avatar = avatarFor(msg);
   const avRef = useRef(null);
   const isFriend = !!(friendIds && (friendIds.has?.(String(msg.user_id)) || friendIds.has?.(String(msg.author_id))));
   const clickable = !!onAvatarClick && (msg.user_id || msg.author_id);
+  const authorId = String(msg.user_id || msg.author_id || '');
+  const isOnline = !!(presenceById && presenceById[authorId]?.online);
   const handleAvatar = () => {
     if (!clickable) return;
     onAvatarClick?.(String(msg.user_id || msg.author_id), avRef);
@@ -571,13 +573,29 @@ function ChatRow({ msg, friendIds, onAvatarClick }) {
         ref={avRef}
         onClick={handleAvatar}
         disabled={!clickable}
+        className={clickable ? 'nx-tip' : undefined}
+        data-tip={clickable ? 'Click to open profile' : undefined}
         aria-label={clickable ? `Open ${msg.citizen_name}'s ID card` : msg.citizen_name}
         style={{
+          position: 'relative',
           padding: 0, border: 0, background: 'none',
           cursor: clickable ? 'pointer' : 'default',
           flexShrink: 0,
         }}
       >
+        {/* Online dot — only for friends we actually have presence data for.
+            Avoids showing an incorrect "offline" dot on strangers in the
+            global feed we have no live signal about. */}
+        {authorId && presenceById && presenceById[authorId] && (
+          <i aria-hidden="true" style={{
+            position: 'absolute', right: -1, bottom: -1,
+            width: 9, height: 9, borderRadius: '50%',
+            background: isOnline ? 'var(--lime)' : 'var(--fg3)',
+            border: '2px solid var(--bg1)',
+            boxShadow: isOnline ? '0 0 6px var(--lime)' : 'none',
+            zIndex: 1,
+          }} />
+        )}
         {avatar ? (
           <img src={avatar} alt=""
             style={{

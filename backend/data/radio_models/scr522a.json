@@ -26,8 +26,8 @@
       },
       {
         "$type": "saturation",
-        "gain": 11,
-        "threshold": -21
+        "gain": 12.5,
+        "threshold": -24
       },
       {
         "$type": "sidechainCompressor",
@@ -40,8 +40,8 @@
           "$type": "filters",
           "filters": [
             {
-                "$type": "highpass",
-                "frequency": 381
+              "$type": "highpass",
+              "frequency": 381
             }
           ]
         }

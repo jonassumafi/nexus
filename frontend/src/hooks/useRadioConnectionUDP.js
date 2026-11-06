@@ -294,7 +294,13 @@ export function useRadioConnectionUDP({
     if (peerAudiosRef.current[userId]) return;
     const audio = new Audio();
     audio.autoplay = true;
-    try { audio.volume = Math.max(0, Math.min(3, 1.8 * (rxVolumeRef.current ?? 1.0))); } catch {}
+    // HTML <audio>.volume is clamped to 0..1 by the browser, so the old
+     //   Math.min(3, 1.8 * clamped)
+     // silently maxed the volume for any slider value >= 0.56 — the
+     // slider appeared to "do nothing" above that point and listeners
+     // reported eardrum-blowing playback. 1.0 = browser unity; let the
+     // user's slider map directly to that range.
+    try { audio.volume = Math.max(0, Math.min(1, rxVolumeRef.current ?? 1.0)); } catch {}
     try { audio.srcObject = stream; } catch {}
     if (outputDeviceIdRef.current && typeof audio.setSinkId === 'function') {
       audio.setSinkId(outputDeviceIdRef.current).catch(() => {});
@@ -570,7 +576,7 @@ export function useRadioConnectionUDP({
     const clamped = Math.max(0, Math.min(1.5, Number(v) || 0));
     rxVolumeRef.current = clamped;
     for (const a of Object.values(peerAudiosRef.current)) {
-      try { a.volume = Math.max(0, Math.min(3, 1.8 * clamped)); } catch {}
+      try { a.volume = Math.max(0, Math.min(1, clamped)); } catch {}
     }
   }, []);
 

@@ -54,8 +54,13 @@ export function channelColor(freqString) {
 // ─── Sample URLs ────────────────────────────────────────────────────────
 
 const CLICK_URLS = {
-  up:   ['/sounds/radio/RADIO_TRANS_START.wav', '/sounds/radio/RADIO_TRANS_START_ALTERNATE.wav'],
-  down: ['/sounds/radio/RADIO_TRANS_END.wav',   '/sounds/radio/RADIO_TRANS_END_ALTERNATE.wav'],
+  // ALTERNATE variants pulled: the START_ALTERNATE sample has a
+  // voice-recording tail baked in that leaked onto the air when the
+  // PTT engage happened to pick that variant. Single-sample rotation
+  // keeps the keyup/keydown chrome clean until we re-source cleaner
+  // alternates (or re-record Nexus-original ones).
+  up:   ['/sounds/radio/RADIO_TRANS_START.wav'],
+  down: ['/sounds/radio/RADIO_TRANS_END.wav'],
 };
 const BED_URL = {
   UHF:  '/sounds/radio/UHF_NOISE.wav',

@@ -129,10 +129,10 @@ export default function Banner({
         className="nb"
         style={{ position: 'relative' }}
         aria-pressed={chatOpen || undefined}
-        aria-label={`Chat${chatUnread > 0 ? `, ${chatUnread} unread` : ''}`}
+        aria-label={`Global Chat${chatUnread > 0 ? `, ${chatUnread} unread` : ''}`}
         onClick={onToggleChat}
       >
-        <I name="chat" /> Chat
+        <I name="chat" /> Global Chat
         <Badge n={chatUnread} />
       </button>
       <button
