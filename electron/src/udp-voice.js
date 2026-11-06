@@ -38,7 +38,7 @@ const DECODER_SWEEP_MS = 10_000;
 
 let OpusEncoder = null;
 try {
-  OpusEncoder = require('@discordjs/opus').OpusEncoder;
+  OpusEncoder = require('./opus-loader').loadOpus().OpusEncoder;
 } catch (err) {
   console.error('[udp-voice] @discordjs/opus failed to load:', err.message);
 }
