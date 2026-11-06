@@ -74,6 +74,10 @@ export function useRadioConnection({
   const micGainRef        = useRef(null);
   const sensitivityRef    = useRef(100);
   const isMutedRef        = useRef(false);
+  // Receive-volume multiplier on top of the baked 1.8× playback boost.
+  // 1.0 = unchanged (1.8× effective). Driven by the shared RX slider in
+  // the Mic Strip; applied to every peer <audio> element.
+  const rxVolumeRef       = useRef(1.0);
 
   useEffect(() => { profileRef.current = voiceProfile; }, [voiceProfile]);
   useEffect(() => { peersRef.current = peers; }, [peers]);
@@ -330,6 +334,7 @@ export function useRadioConnection({
         socket.emit('radio:ice-candidate', {
           targetSocketId: peerSocketId,
           candidate: e.candidate,
+          tunerId: 'right',
         });
       };
 
@@ -341,7 +346,7 @@ export function useRadioConnection({
         audio.autoplay = true;
         // Listener-side playback boost — raises perceived voice loudness
         // without touching the signal path or SRS character shaping.
-        try { audio.volume = 1.8; } catch {}
+        try { audio.volume = Math.max(0, Math.min(3, 1.8 * (rxVolumeRef.current ?? 1.0))); } catch {}
         peerAudiosRef.current[peerSocketId] = audio;
 
         // Wire the stream through the listener's own SRS rxEffect if we
@@ -390,24 +395,53 @@ export function useRadioConnection({
     }
   }, []);
 
-  // Peer rx DSP bypassed. Any Web Audio graph routing through
-  // MediaStreamSource → … → MediaStreamDestination → audio.srcObject has
-  // consistently silenced peer voices in testing. Each sender's radio
-  // character is baked into the outbound stream via their own tx chain in
-  // ensureMicAndChain(); listener-side playback is just audio.srcObject
-  // = stream with a volume boost on the <audio> element.
+  // Per-peer RX DSP via AudioContext.destination (the direct-output route
+  // that avoids the MediaStreamSource → DSP → MediaStreamDestination →
+  // <audio>.srcObject silencing bug). The <audio> element path is still
+  // used as fallback when no rxEffect spec is available.
+  //
+  // Graph: MediaStreamSource → [rxChain] → Gain → audioCtx.destination
   const attachPeerRxGraph = useCallback((peerSocketId, stream, audio) => {
     detachPeerRxGraph(peerSocketId);
-    try { audio.srcObject = stream; } catch {}
+    const ctx = audioCtxRef.current;
+    const spec = srsSpecRef.current;
+    if (!ctx || !spec?.rxEffect) {
+      // Fallback — direct <audio> playback.
+      try { audio.srcObject = stream; } catch {}
+      return;
+    }
+    try {
+      const source = ctx.createMediaStreamSource(stream);
+      const chain = buildSrsChain(ctx, spec.rxEffect);
+      const gain = ctx.createGain();
+      gain.gain.value = Math.max(0, Math.min(3, 1.8 * (rxVolumeRef.current ?? 1.0)));
+      if (chain) {
+        source.connect(chain.input);
+        chain.output.connect(gain);
+      } else {
+        source.connect(gain);
+      }
+      gain.connect(ctx.destination);
+      // Mute the <audio> element so we only hear the DSP'd copy. Keeping
+      // the element around also lets setSinkId still route to a chosen
+      // output on hosts that support it; the AudioContext's own output
+      // follows the OS default device.
+      try { audio.muted = true; audio.srcObject = stream; } catch {}
+      peerRxNodesRef.current[peerSocketId] = { source, chain, gain };
+    } catch (err) {
+      console.error('[Radio] rx DSP build failed, falling back to raw:', err);
+      try { audio.muted = false; audio.srcObject = stream; } catch {}
+    }
   }, []);
 
   const detachPeerRxGraph = useCallback((peerSocketId) => {
     const graph = peerRxNodesRef.current[peerSocketId];
     if (!graph) return;
     try { graph.source?.disconnect(); } catch {}
-    try { graph.hp?.disconnect(); } catch {}
-    try { graph.lp?.disconnect(); } catch {}
-    try { graph.dest?.disconnect?.(); } catch {}
+    try { graph.chain?.input?.disconnect?.(); } catch {}
+    try { graph.chain?.output?.disconnect?.(); } catch {}
+    try { graph.chain?.dispose?.(); } catch {}
+    try { graph.gain?.disconnect(); } catch {}
     delete peerRxNodesRef.current[peerSocketId];
   }, []);
 
@@ -462,7 +496,7 @@ export function useRadioConnection({
     if (!f) return;
     // Tear down any prior session.
     if (currentFreqRef.current) {
-      socket.emit('radio:leave', { frequency: currentFreqRef.current });
+      socket.emit('radio:leave', { frequency: currentFreqRef.current, tunerId: 'right' });
       cleanupAllPeers();
     }
     await ensureMicAndChain();
@@ -478,9 +512,11 @@ export function useRadioConnection({
     applyChannelColor(filterChainRef.current, profileRef.current, f);
     // Per-channel squelch bed profile (brick-wall cutoff + optional AM fade).
     try { getRadioChrome(audioCtxRef.current)?.setChannel?.(f); } catch {}
-    socket.emit('radio:join', { frequency: f, missionId });
-    // Persist so view-switches (which reload the frontend URL) can rejoin
-    // automatically. Cleared only on explicit leaveFrequency.
+    socket.emit('radio:join', { frequency: f, missionId, tunerId: 'right' });
+    // Audible self-tune confirmation so the operator KNOWS they're on
+    // the frequency. Separate from freq_connect.mp3 which only fires
+    // when PEERS join the room; this fires when WE successfully tune.
+    try { new Audio('/sounds/freq_connect.mp3').play().catch(() => {}); } catch {}
     try {
       localStorage.setItem(TUNE_LS_KEY, JSON.stringify({
         freq: f, missionId: missionId || null, ts: Date.now(),
@@ -517,7 +553,7 @@ export function useRadioConnection({
 
   const leaveFrequency = useCallback(() => {
     if (currentFreqRef.current && socket) {
-      socket.emit('radio:leave', { frequency: currentFreqRef.current });
+      socket.emit('radio:leave', { frequency: currentFreqRef.current, tunerId: 'right' });
       new Audio('/sounds/radio_disconnect.mp3').play().catch(() => {});
     }
     // Explicit leave = user intent to stop; clear the persisted tune so
@@ -558,13 +594,15 @@ export function useRadioConnection({
     try {
       const rc = getRadioChrome(audioCtxRef.current);
       rc.playKeyUp();
-      rc.setBedActive(true);
+      // Match Command's light-bed intensity so both tuners hiss at the
+      // same subtle level and neither drowns the other out.
+      rc.setBedActive(true, 0.35);
       // KY-58 TX preamble when YOUR rig is crypto-tagged.
       if (srsSpecRef.current?.encryptionEffect?.$type === 'cvsd') {
         try { new Audio('/sounds/radio/KY_58_TX.wav').play().catch(() => {}); } catch {}
       }
     } catch {}
-    socket?.emit('radio:ptt-start', { frequency: currentFreqRef.current });
+    socket?.emit('radio:ptt-start', { frequency: currentFreqRef.current, tunerId: 'right' });
   }, [socket]);
 
   const getInputLevel = useCallback(() => {
@@ -584,6 +622,27 @@ export function useRadioConnection({
     const ctx = audioCtxRef.current;
     if (!gain || !ctx || isMutedRef.current) return;
     gain.gain.setTargetAtTime(value / 100, ctx.currentTime, 0.01);
+  }, []);
+
+  const setRxVolume = useCallback((v) => {
+    const clamped = Math.max(0, Math.min(1.5, Number(v) || 0));
+    rxVolumeRef.current = clamped;
+    const scaled = Math.max(0, Math.min(3, 1.8 * clamped));
+    for (const a of Object.values(peerAudiosRef.current)) {
+      try { a.volume = scaled; } catch {}
+    }
+    // Drive the DSP-path gain nodes too — peers routed through the
+    // AudioContext.destination path get volume via their GainNode, not the
+    // muted <audio> element.
+    const ctx = audioCtxRef.current;
+    for (const graph of Object.values(peerRxNodesRef.current)) {
+      if (graph?.gain) {
+        try {
+          if (ctx) graph.gain.gain.setTargetAtTime(scaled, ctx.currentTime, 0.01);
+          else graph.gain.gain.value = scaled;
+        } catch {}
+      }
+    }
   }, []);
 
   const setMuted = useCallback((muted) => {
@@ -623,15 +682,21 @@ export function useRadioConnection({
     }, 60);
     setIsPTTActive(false);
     if (socket && currentFreqRef.current) {
-      socket.emit('radio:ptt-stop', { frequency: currentFreqRef.current });
+      socket.emit('radio:ptt-stop', { frequency: currentFreqRef.current, tunerId: 'right' });
     }
   }, [socket, isPTTActive]);
 
   // ── Socket listeners ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!socket) return;
+    // This hook is the Crew (right) tuner. The Command tuner (useCommandTunerRx)
+    // shares the same socket, so every radio event is delivered to both hooks.
+    // Drop anything scoped to the Command (left) tuner; server defaults missing
+    // tunerId to 'right' for legacy single-radio callers, which we also accept.
+    const forThisTuner = (p) => (p?.tunerId ?? 'right') === 'right';
 
-    const onRoomPeers = async ({ frequency, peers: list }) => {
+    const onRoomPeers = async ({ frequency, tunerId, peers: list }) => {
+      if ((tunerId ?? 'right') !== 'right') return;
       if (frequency !== currentFreqRef.current) return;
       setPeers(Array.isArray(list) ? list : []);
       // Initiate offers to all existing peers (full-mesh).
@@ -644,6 +709,7 @@ export function useRadioConnection({
             targetSocketId: peer.socketId,
             offer,
             frequency: currentFreqRef.current,
+            tunerId: 'right',
           });
         } catch (err) {
           console.error('[Radio] offer failed:', err);
@@ -652,6 +718,7 @@ export function useRadioConnection({
     };
 
     const onPeerJoined = (peer) => {
+      if (!forThisTuner(peer)) return;
       setPeers(prev => {
         if (prev.some(p => p.socketId === peer.socketId)) return prev;
         return [...prev, peer];
@@ -660,7 +727,9 @@ export function useRadioConnection({
       // The new peer initiates the offer to us — no action needed here.
     };
 
-    const onPeerLeft = ({ socketId, userId }) => {
+    const onPeerLeft = (payload) => {
+      if (!forThisTuner(payload)) return;
+      const { socketId, userId } = payload;
       if (socketId) {
         cleanupPeer(socketId);
         setPeers(prev => prev.filter(p => p.socketId !== socketId));
@@ -672,7 +741,9 @@ export function useRadioConnection({
       new Audio('/sounds/freq_disconnect.mp3').play().catch(() => {});
     };
 
-    const onOffer = async ({ offer, fromSocketId, fromUserId, fromCitizenName, frequency }) => {
+    const onOffer = async (payload) => {
+      if (!forThisTuner(payload)) return;
+      const { offer, fromSocketId, fromUserId, fromCitizenName, frequency } = payload;
       if (frequency !== currentFreqRef.current) return;
       try {
         const pc = await createPeerConnection(fromSocketId);
@@ -683,6 +754,7 @@ export function useRadioConnection({
         socket.emit('radio:answer', {
           targetSocketId: fromSocketId,
           answer,
+          tunerId: 'right',
         });
         // Make sure the peer shows up in the list even before peer-joined arrives.
         setPeers(prev => {
@@ -694,7 +766,9 @@ export function useRadioConnection({
       }
     };
 
-    const onAnswer = async ({ answer, fromSocketId }) => {
+    const onAnswer = async (payload) => {
+      if (!forThisTuner(payload)) return;
+      const { answer, fromSocketId } = payload;
       const pc = peerConnsRef.current[fromSocketId];
       if (!pc) return;
       try {
@@ -705,7 +779,9 @@ export function useRadioConnection({
       }
     };
 
-    const onIce = async ({ candidate, fromSocketId }) => {
+    const onIce = async (payload) => {
+      if (!forThisTuner(payload)) return;
+      const { candidate, fromSocketId } = payload;
       if (!candidate) return;
       const pc = peerConnsRef.current[fromSocketId];
       // Queue candidate if peer connection doesn't exist yet, or if remote
@@ -728,7 +804,9 @@ export function useRadioConnection({
       console.error('[Radio] server error:', message);
     };
 
-    const onPttStart = ({ socketId, crypto }) => {
+    const onPttStart = (payload) => {
+      if (!forThisTuner(payload)) return;
+      const { socketId, crypto } = payload;
       setTransmittingPeerIds(prev => {
         if (prev.includes(socketId)) return prev;
         const next = [...prev, socketId];
@@ -736,7 +814,7 @@ export function useRadioConnection({
         try {
           const rc = getRadioChrome(audioCtxRef.current);
           rc?.playKeyUp();
-          rc?.setBedActive(true);
+          rc?.setBedActive(true, 0.35);
           // KY-58 crypto preamble — plays locally when a peer transmits
           // with a crypto-tagged rig. Modulation-agnostic in Nexus:
           // triggered by preset.spec.encryptionEffect existence, not FM.
@@ -766,7 +844,9 @@ export function useRadioConnection({
       try { new Audio(url).play().catch(() => {}); } catch {}
     };
 
-    const onPttStop = ({ socketId }) => {
+    const onPttStop = (payload) => {
+      if (!forThisTuner(payload)) return;
+      const { socketId } = payload;
       setTransmittingPeerIds(prev => {
         const next = prev.filter(id => id !== socketId);
         transmittingPeerIdsRef.current = next;
@@ -791,6 +871,7 @@ export function useRadioConnection({
       socket.emit('radio:join', {
         frequency: currentFreqRef.current,
         missionId: currentMissionRef.current,
+        tunerId: 'right',
       });
     };
 
@@ -860,8 +941,17 @@ export function useRadioConnection({
     let unsubscribeIPC = null;
     try {
       if (typeof window !== 'undefined' && window.electronAPI?.onPTT) {
-        window.electronAPI.setPttKey?.(pttKey || 'v');
-        unsubscribeIPC = window.electronAPI.onPTT(({ down }) => {
+        // Register under the 'right' tuner slot specifically. The legacy
+        // setPttKey() call wrote to the SAME slot as Command's setPttKeys,
+        // so CapsLock (Command) and V (Crew) collided, and every OS-level
+        // PTT event — whichever key fired it — reached both hooks.
+        window.electronAPI.setPttKeys?.({ right: pttKey || 'v' });
+        unsubscribeIPC = window.electronAPI.onPTT((payload) => {
+          const { down, tunerId } = payload || {};
+          // Server labels each PTT event with the tuner it was bound to.
+          // Pre-tunerId clients send undefined, which we treat as 'right'
+          // so legacy behavior is preserved.
+          if ((tunerId ?? 'right') !== 'right') return;
           if (!currentFreqRef.current) return;
           if (isMutedRef.current) return;
           if (down && !pttDownRef.current) {
@@ -884,38 +974,15 @@ export function useRadioConnection({
     };
   }, [startPTT, stopPTT, pttKey]);
 
-  // ── Auto-rejoin persisted tune on mount ───────────────────────────────────
-  // Mode switches (Electron reloads /, /companion, /radio) blow away in-
-  // memory state. Read the persisted tune and rejoin automatically so the
-  // operator stays on their frequency across view switches without needing
-  // to retune. An explicit leaveFrequency clears the persisted value, so
-  // this only auto-rejoins after view switches, not after manual leaves.
-  useEffect(() => {
-    if (!socket) return;
-    let cancelled = false;
-    try {
-      const raw = localStorage.getItem(TUNE_LS_KEY);
-      if (!raw) return;
-      const { freq, missionId } = JSON.parse(raw);
-      if (!freq) return;
-      if (currentFreqRef.current === freq) return;
-      // Small delay — the socket is live but the hook's other mount
-      // effects (TURN cred fetch, event subscriptions) may still be
-      // settling; a short wait avoids a race where join emits before
-      // the server has us tracked.
-      const tid = setTimeout(() => {
-        if (!cancelled) joinFrequency(freq, missionId).catch(() => {});
-      }, 350);
-      return () => { cancelled = true; clearTimeout(tid); };
-    } catch {}
-  }, [socket, joinFrequency]);
+  // Auto-rejoin from persisted tune removed per operator request. Tuning now
+  // requires an explicit TUNE press on every mount / view switch.
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       try {
         if (socket && currentFreqRef.current) {
-          socket.emit('radio:leave', { frequency: currentFreqRef.current });
+          socket.emit('radio:leave', { frequency: currentFreqRef.current, tunerId: 'right' });
         }
       } catch {}
       for (const sid of Object.keys(peerConnsRef.current)) {
@@ -940,17 +1007,31 @@ export function useRadioConnection({
   // the next ensureMicAndChain() call, so changing radios takes effect on
   // the next tune (or an explicit untune → retune cycle).
   const setSrsRadioSpec = useCallback((spec) => {
+    // Short-circuit if the spec reference hasn't changed. useMyRadio now
+    // broadcasts cross-instance refetches, which causes this setter to
+    // fire more often — but most calls carry the same spec and shouldn't
+    // tear anything down.
+    if (srsSpecRef.current === spec) return;
+    const wasTuned = !!currentFreqRef.current;
     srsSpecRef.current = spec || null;
-    try {
-      srsChainRef.current?.dispose?.();
-    } catch {}
+
+    // If the operator is actively tuned, keep the current tx chain and
+    // live mic stream intact. Changing radios mid-session was tearing
+    // down the mic chain and silently breaking PTT. The new spec takes
+    // effect on the next untune → retune cycle, which matches the
+    // original "takes effect on next tune" intent noted below.
+    if (wasTuned) {
+      // Still rebuild listener-side rx graphs so this radio's rxEffect
+      // applies to incoming peer audio immediately.
+      try { rebuildAllPeerRxGraphs(); } catch {}
+      return;
+    }
+
+    // Not tuned — safe to fully tear down so the next tune builds fresh.
+    try { srsChainRef.current?.dispose?.(); } catch {}
     srsChainRef.current = null;
-    try {
-      filteredStreamRef.current?.getTracks().forEach(t => t.stop());
-    } catch {}
+    try { filteredStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
     filteredStreamRef.current = null;
-    // Rebuild every peer's rx graph with the new listener-side rxEffect.
-    // If spec is null, graphs are torn down and streams play raw.
     try { rebuildAllPeerRxGraphs(); } catch {}
   }, [rebuildAllPeerRxGraphs]);
 
@@ -987,6 +1068,7 @@ export function useRadioConnection({
     getInputLevel,
     setMicSensitivity,
     setMuted,
+    setRxVolume,
     setSrsRadioSpec,
     setSrsRadioBand,
   };

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity Feed Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/*
+ACTIVITY FEED, DAY GROUPS WITH TWO-LINE ROWS. REFERENCE FOR CLAUDE CODE.
+Structure: .feed > .fh (header) + .list > [.day, .it, .it, .day, .it ...]
+  .day  date label, shown once per calendar day, sticky inside the scrolling list
+  .it   one entry. Text clamps to two lines. Time sits at the right, baseline aligned.
+  Row anatomy: rail (1 px) + dot (type color) | text (who bold, action muted, target tinted) | time (HH:MM)
+Type colors: new = blue, log = lime, join = accent teal, done = amber. The dot is the only type cue.
+Everything below is driven by the --af-* variables on .feed. Change them, not the rules.
+Minimum text size is 11 px (time and day label may be 10 px).
+*/
+:root{
+  color-scheme:dark;
+  --bg0:#050f0e; --bg1:#0a1918; --bg2:#102322; --bg3:#183230;
+  --rim0:#234441; --rim1:#3d726d;
+  --acc:#7ef0dc; --acc2:#c4faf0;
+  --t1:#e3faf6; --t2:#8db8b2;
+  --lime:#44FF88; --red:#FF5544; --amber:#FFBB33; --blue:#6fb4ff;
+  --inset:color-mix(in srgb,var(--bg0) 78%,#000);
+  --edge:color-mix(in srgb,var(--bg0) 55%,#000);
+  --hl:color-mix(in srgb,var(--acc) 16%,transparent);
+  --key-hi:color-mix(in srgb,var(--acc) 22%,var(--bg1));
+  --key-lo:color-mix(in srgb,var(--acc) 10%,var(--bg0));
+  --banner:linear-gradient(180deg,color-mix(in srgb,var(--bg3) 80%,var(--bg2)),color-mix(in srgb,var(--bg1) 85%,var(--bg2)));
+  --d2:160ms; --out:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0)}
+body{background:var(--bg0);color:var(--t1);font:12px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
+.tn{font-variant-numeric:tabular-nums}
+.page{max-width:920px;margin:0 auto;display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:14px}
+h1{font:700 18px Inter;text-wrap:balance}
+.lead{color:var(--t2);font-size:13px;max-width:62ch}
+h2{font:700 11px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--acc)}
+.box{border:1px solid var(--rim0);border-radius:8px;background:var(--bg1);padding:12px;display:flex;flex-direction:column;gap:9px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);text-align:left;padding:3px 8px 5px 0}
+td{padding:5px 8px 5px 0;border-top:1px solid var(--edge);vertical-align:top;color:var(--t2)}
+td:first-child{font-weight:600;color:var(--acc2);white-space:nowrap;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+td:nth-child(2){white-space:nowrap;color:var(--t1)}
+.ctl{display:grid;grid-template-columns:110px 1fr 54px;gap:8px;align-items:center;color:var(--t2);font-size:12px}
+.ctl input{accent-color:var(--acc);min-width:0}
+.ctl output{text-align:right;color:var(--t1);font-weight:600}
+.rst{align-self:flex-start;height:26px;padding:0 10px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--key-hi),var(--key-lo));font:600 11px Inter}
+.stage{flex:0 0 320px;width:320px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+
+/* ===== feed ===== */
+.feed{
+  --af-width:320px;
+  --af-max-h:420px;          /* list scrolls past this */
+  --af-text:11px;            /* who, action, target */
+  --af-time:10px;
+  --af-day:10px;
+  --af-lines:2;              /* line clamp */
+  --af-row-py:5px;           /* vertical padding of a row */
+  --af-row-pr:9px;
+  --af-rail-x:11px;          /* rail distance from the left edge */
+  --af-dot:7px;
+  --af-text-left:24px;       /* left padding that clears the rail */
+  --af-gap:8px;              /* text to time */
+  --af-day-py:5px;
+  width:var(--af-width);max-width:100%;
+  border:1px solid var(--rim0);border-radius:8px;background:var(--bg1);overflow:hidden;box-shadow:0 1px 0 var(--hl) inset}
+.fh{display:flex;align-items:center;gap:8px;padding:7px 8px 7px 10px;background:var(--banner);border-bottom:1px solid var(--edge)}
+.live{width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 7px color-mix(in srgb,var(--lime) 70%,transparent);flex:none}
+.ft{font:700 11px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--acc2);flex:1}
+.cnt{font-size:11px;color:var(--t2)}
+.list{max-height:var(--af-max-h);overflow-y:auto;overscroll-behavior:contain}
+.day{position:sticky;top:0;z-index:2;padding:var(--af-day-py) 10px calc(var(--af-day-py) - 2px);font:700 var(--af-day) Inter;letter-spacing:.16em;text-transform:uppercase;color:var(--t2);background:var(--inset);border-bottom:1px solid var(--edge)}
+.it{position:relative;display:flex;gap:var(--af-gap);padding:var(--af-row-py) var(--af-row-pr) var(--af-row-py) var(--af-text-left);align-items:baseline;transition:background var(--d2) var(--out)}
+.it:hover{background:color-mix(in srgb,var(--acc) 7%,var(--bg1))}
+.it::before{content:"";position:absolute;left:var(--af-rail-x);top:0;bottom:0;width:1px;background:var(--rim0)}
+.it::after{content:"";position:absolute;left:calc(var(--af-rail-x) - var(--af-dot) / 2 + .5px);top:calc(var(--af-row-py) + 5px);width:var(--af-dot);height:var(--af-dot);border-radius:50%;background:var(--dot,var(--blue));box-shadow:0 0 0 2px var(--bg1)}
+.it.new{--dot:var(--blue)}.it.log{--dot:var(--lime)}.it.join{--dot:var(--acc)}.it.done{--dot:var(--amber)}
+.tx{flex:1;min-width:0;font:500 var(--af-text)/1.4 Inter;color:var(--t2);display:-webkit-box;-webkit-line-clamp:var(--af-lines);-webkit-box-orient:vertical;overflow:hidden}
+.tx b{font-weight:700;color:var(--t1)}
+.tx em{font-style:normal;font-weight:600;color:var(--acc2)}
+time{font-size:var(--af-time);color:var(--t2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.foot{display:flex;justify-content:space-between;color:var(--t2);font-size:11px}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="stage">
+    <div class="feed" id="feed">
+      <div class="fh"><span class="live"></span><span class="ft">Activity feed</span><span class="cnt tn" id="cnt"></span></div>
+      <div class="list" id="list"></div>
+    </div>
+    <div class="foot tn"><span id="hh"></span><span>Width 320 px</span></div>
+  </div>
+
+  <div class="side">
+    <h1>Activity feed, day groups and two lines</h1>
+    <p class="lead">The chosen layout. Entries are grouped under a sticky date label, hang from a thin rail, and show a colored dot for type. Text is 11 pixels, clamped to two lines. Adjust the sliders to see how each variable behaves. Every value maps to a custom property on the feed element.</p>
+    <div class="box" id="ctls"><h2>Live parameters</h2></div>
+    <div class="box"><h2>Variables</h2>
+      <table><thead><tr><th>Name</th><th>Default</th><th>Effect</th></tr></thead><tbody>
+        <tr><td>--af-width</td><td class="tn">320px</td><td>Feed width. Fills the Companion window minus padding.</td></tr>
+        <tr><td>--af-max-h</td><td class="tn">420px</td><td>List scrolls beyond this. Day labels stay stuck to the top.</td></tr>
+        <tr><td>--af-text</td><td class="tn">11px</td><td>Entry text. Do not go below 11.</td></tr>
+        <tr><td>--af-time</td><td class="tn">10px</td><td>Time, HH:MM, tabular numerals.</td></tr>
+        <tr><td>--af-day</td><td class="tn">10px</td><td>Day label, uppercase, 0.16em tracking.</td></tr>
+        <tr><td>--af-lines</td><td class="tn">2</td><td>Line clamp for the entry text.</td></tr>
+        <tr><td>--af-row-py</td><td class="tn">5px</td><td>Row vertical padding. Two line rows measure about 41 px.</td></tr>
+        <tr><td>--af-rail-x</td><td class="tn">11px</td><td>Rail position from the left edge.</td></tr>
+        <tr><td>--af-dot</td><td class="tn">7px</td><td>Type dot diameter, with a 2 px halo in the feed background.</td></tr>
+        <tr><td>--af-text-left</td><td class="tn">24px</td><td>Clears the rail and dot. Keep above rail plus dot.</td></tr>
+        <tr><td>--af-gap</td><td class="tn">8px</td><td>Space between text and time.</td></tr>
+      </tbody></table>
+    </div>
+    <div class="box"><h2>Rules</h2>
+      <table><tbody>
+        <tr><td>Grouping</td><td></td><td>One day label per calendar day, newest first, in the viewer's local time. Label format: Sun 1 Nov. Use Today and Yesterday when they apply.</td></tr>
+        <tr><td>Type dots</td><td></td><td>new blue, log lime, join teal, done amber. Dot is vertically aligned to the first text line.</td></tr>
+        <tr><td>Emphasis</td><td></td><td>Person bold and bright. Action muted. Target tinted and semibold.</td></tr>
+        <tr><td>Time</td><td></td><td>Local HH:MM, 24 hour. The date is carried by the day label.</td></tr>
+        <tr><td>Overflow</td><td></td><td>Entries clamp with an ellipsis. Full text goes in the title attribute.</td></tr>
+        <tr><td>Hover</td><td></td><td>7 percent teal wash over the row. No movement.</td></tr>
+        <tr><td>Empty</td><td></td><td>Single muted line: No activity yet.</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var items=[
+    {k:"new",who:"Izumi",act:"created",obj:"SPECIAL BOUNTY OPERATIONS[S.B.O] - BOUNTY HUNT",t:"18:20",d:"Sun 1 Nov"},
+    {k:"log",who:"Kestrel",act:"submitted a post-mission log for",obj:"SPECIAL BOUNTY OPERATIONS[S.B.O] - BOUNTY HUNT",t:"17:48",d:"Sun 1 Nov"},
+    {k:"join",who:"Vance",act:"joined",obj:"Hopewell Continuum",t:"16:05",d:"Sun 1 Nov"},
+    {k:"done",who:"Marlow",act:"completed",obj:"CARGO RUN - AREA18 TO LORVILLE",t:"22:40",d:"Sat 31 Oct"},
+    {k:"new",who:"Ibarra",act:"created",obj:"SALVAGE OPS[S.O] - STANTON BELT",t:"19:12",d:"Sat 31 Oct"},
+    {k:"join",who:"Izumi",act:"joined",obj:"Nexus Ship Management",t:"14:30",d:"Fri 30 Oct"},
+    {k:"log",who:"Vance",act:"submitted a post-mission log for",obj:"MINING RUN - ARCCORP WALA",t:"11:02",d:"Fri 30 Oct"}
+  ];
+  var last="",h="";
+  items.forEach(function(i){
+    if(i.d!==last){h+='<div class="day">'+i.d+'</div>';last=i.d}
+    h+='<div class="it '+i.k+'" title="'+i.who+' '+i.act+' '+i.obj+'"><div class="tx"><b>'+i.who+'</b> '+i.act+' <em>'+i.obj+'</em></div><time>'+i.t+'</time></div>';
+  });
+  var L=document.getElementById("list");L.innerHTML=h;
+  document.getElementById("cnt").textContent=items.length+" entries";
+  var F=document.getElementById("feed");
+  function hh(){document.getElementById("hh").textContent="List height "+Math.round(L.getBoundingClientRect().height)+" px"}
+  var P=[["--af-text","Text size",11,14,1,"px"],["--af-time","Time size",10,13,1,"px"],["--af-lines","Line clamp",1,3,1,""],["--af-row-py","Row padding",3,10,1,"px"],["--af-rail-x","Rail x",8,18,1,"px"],["--af-dot","Dot size",5,11,1,"px"],["--af-max-h","Max height",200,520,10,"px"]];
+  var box=document.getElementById("ctls");
+  P.forEach(function(p){
+    var d=getComputedStyle(F).getPropertyValue(p[0]).trim(),v=parseFloat(d);
+    var r=document.createElement("div");r.className="ctl";
+    r.innerHTML='<label for="c'+p[0]+'">'+p[1]+'</label><input id="c'+p[0]+'" type="range" min="'+p[2]+'" max="'+p[3]+'" step="'+p[4]+'" value="'+v+'"><output class="tn">'+v+p[5]+'</output>';
+    var i=r.querySelector("input"),o=r.querySelector("output");
+    i.oninput=function(){F.style.setProperty(p[0],i.value+p[5]);o.textContent=i.value+p[5];hh()};
+    p.push(i,o,d);box.appendChild(r);
+  });
+  var b=document.createElement("button");b.className="rst";b.textContent="Reset";
+  b.onclick=function(){F.removeAttribute("style");P.forEach(function(p){p[6].value=parseFloat(p[8]);p[7].textContent=p[8]});hh()};
+  box.appendChild(b);hh();
+})();
+</script>
+</body>
+</html>

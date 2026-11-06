@@ -1,0 +1,583 @@
+/* Radio motion vocabulary — ported from Radio Motion Set.html.
+   Namespaced with rm- prefix to avoid colliding with other styles.
+   Color tokens come from the existing app theme; only motion tokens
+   are defined here. */
+
+:root {
+  --d1: 90ms;
+  --d2: 160ms;
+  --d3: 280ms;
+  --d4: 420ms;
+  --out: cubic-bezier(.2,.8,.2,1);
+  --snap: cubic-bezier(.34,1.56,.64,1);
+  --inout: cubic-bezier(.45,0,.2,1);
+
+  /* Settings slide parameters (face swap + staggered row entry).
+     Names mirror the HTML prototype's --cfg-* vocabulary exactly so
+     the spec diff stays legible if timings are tuned later. */
+  --cfg-height-dur: 420ms;
+  --cfg-height-ease: cubic-bezier(.45,0,.2,1);
+  --cfg-swap-dur: 420ms;
+  --cfg-fade-dur: 280ms;
+  --cfg-swap-ease: cubic-bezier(.2,.8,.2,1);
+  --cfg-front-out: -26px;
+  --cfg-back-in: 26px;
+  --cfg-blur: 2px;
+  --cfg-title-shift: 14px;
+  --cfg-title-dur: 280ms;
+  --cfg-icon-dur: 420ms;
+  --cfg-icon-ease: cubic-bezier(.34,1.56,.64,1);
+  --cfg-row-stagger: 38ms;
+  --cfg-row-offset: 120ms;
+  --cfg-row-rise: 8px;
+  --cfg-dim: .7;
+  --cfg-rim-glow: 22px;
+}
+
+/* ===== Module (card) base + state rims/rings ===== */
+.rm-mod {
+  position: relative;
+  transition:
+    border-color var(--d3) var(--out),
+    box-shadow   var(--d3) var(--out),
+    filter       var(--d4) var(--inout);
+}
+.rm-mod::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 9px;
+  pointer-events: none;
+  opacity: 0;
+}
+.rm-mod.rm-tx {
+  border-color: color-mix(in srgb, var(--red) 58%, var(--bg0));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--red) 58%, var(--bg0)),
+    0 0 18px color-mix(in srgb, var(--red) 28%, transparent);
+}
+.rm-mod.rm-tx::after {
+  animation: ringr 1.1s var(--out) infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent);
+}
+@keyframes ringr {
+  0%   { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent); }
+  100% { opacity: 0; box-shadow: 0 0 0 8px transparent; }
+}
+.rm-mod.rm-rx {
+  border-color: color-mix(in srgb, var(--lime) 55%, var(--bg0));
+}
+.rm-mod.rm-rx::after {
+  animation: ringg 1.4s var(--out) infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--lime) 50%, transparent);
+}
+@keyframes ringg {
+  0%   { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--lime) 50%, transparent); }
+  100% { opacity: 0; box-shadow: 0 0 0 8px transparent; }
+}
+.rm-mod.rm-locked {
+  border-color: color-mix(in srgb, var(--amber) 35%, var(--rim0));
+}
+.rm-mod.rm-off {
+  filter: saturate(.35) brightness(.7);
+}
+
+/* ===== Shared button motion ===== */
+.rm-btn, .rm-ib {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform    var(--d1) var(--out),
+    box-shadow   var(--d2) var(--out),
+    border-color var(--d2) var(--out),
+    filter       var(--d2) var(--out),
+    opacity      var(--d3) var(--out);
+}
+.rm-btn:hover:not(:disabled),
+.rm-ib:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--cyan) !important;
+  filter: brightness(1.12);
+  box-shadow:
+    0 1px 0 var(--hl) inset,
+    0 3px 0 var(--edge, var(--rim0)),
+    0 0 14px color-mix(in srgb, var(--cyan) 28%, transparent);
+}
+.rm-btn:active:not(:disabled),
+.rm-ib:active:not(:disabled) {
+  transform: translateY(2px);
+  filter: brightness(.92);
+  box-shadow:
+    0 0 0 var(--edge, var(--rim0)),
+    inset 0 2px 4px rgba(0,0,0,.45);
+}
+
+/* Ripple sprite spawned on pointerdown */
+.rm-rip {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--cyan) 55%, transparent);
+  transform: translate(-50%, -50%) scale(0);
+  animation: rip 360ms var(--out) forwards;
+  z-index: 1;
+}
+@keyframes rip {
+  to { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+/* ===== Display (frequency LCD) ===== */
+.rm-disp { position: relative; overflow: hidden; }
+.rm-disp.rm-flash { animation: dflash var(--d4) var(--out); }
+@keyframes dflash {
+  0%   { box-shadow: inset 0 0 22px color-mix(in srgb, var(--cyan) 70%, transparent), 0 1px 0 var(--hl); }
+  100% { box-shadow: inset 0 0 0 transparent, 0 1px 0 var(--hl); }
+}
+.rm-disp.rm-sq { animation: sq 90ms linear; }
+@keyframes sq {
+  0%   { background: #fff; }
+  100% { background: var(--bg0); }
+}
+/* TX scanline sweep */
+.rm-disp::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 30%; left: -40%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--red) 30%, transparent),
+    transparent);
+}
+.rm-mod.rm-tx .rm-disp::after {
+  opacity: 1;
+  animation: sweep 1.4s linear infinite;
+}
+@keyframes sweep { to { left: 120%; } }
+
+/* ===== Digit odometer roll ===== */
+.rm-digits {
+  display: inline-flex;
+  color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+  height: 1.15em;
+  line-height: 1.15;
+}
+.rm-dg {
+  position: relative;
+  display: inline-block;
+  width: .62em;
+  height: 1.15em;
+  overflow: hidden;
+  text-align: center;
+}
+.rm-dg span { position: absolute; inset: 0; display: block; }
+.rm-dg .rm-n.rm-roll { animation: inn var(--d3) var(--out) both; }
+.rm-dg .rm-o        { animation: outt var(--d3) var(--out) both; }
+.rm-pt {
+  display: inline-block;
+  width: .3em;
+  text-align: center;
+}
+@keyframes inn  { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes outt { from { transform: none; opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+
+/* Power collapse/expand on the display */
+.rm-digits.rm-pdn { animation: pdn 340ms var(--inout) forwards; }
+@keyframes pdn {
+  0%   { transform: scale(1,1);   opacity: 1; filter: brightness(1); }
+  55%  { transform: scale(1,.04); opacity: 1; filter: brightness(2.2); }
+  100% { transform: scale(0,.02); opacity: 0; }
+}
+.rm-digits.rm-pup { animation: pup var(--d4) var(--out); }
+@keyframes pup {
+  0%   { transform: scale(.3,.02); opacity: 0; }
+  35%  { transform: scale(1,.04);  opacity: 1; filter: brightness(2.4); }
+  55%  { transform: scale(1,1);    opacity: .3; }
+  65%  { opacity: 1; }
+  75%  { opacity: .4; }
+  100% { opacity: 1; filter: none; }
+}
+
+/* ===== Lock button micro-animations ===== */
+.rm-ib.rm-snap { animation: snap var(--d3) var(--snap); }
+@keyframes snap {
+  0%   { transform: scale(.7) rotate(-18deg); }
+  60%  { transform: scale(1.25) rotate(4deg); }
+  100% { transform: none; }
+}
+.rm-ib.rm-deny,
+.rm-chip.rm-shake { animation: shake 300ms linear; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-4px); }
+  40%     { transform: translateX(4px); }
+  60%     { transform: translateX(-3px); }
+  80%     { transform: translateX(3px); }
+}
+.rm-ib.rm-deny {
+  border-color: var(--amber) !important;
+  color: var(--amber) !important;
+}
+
+/* ===== Status chip (LIVE/TX/RX/OFF/LK/CONN) ===== */
+.rm-chip {
+  transition:
+    background   var(--d2) var(--out),
+    border-color var(--d2) var(--out),
+    color        var(--d2) var(--out);
+}
+.rm-chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  margin-right: 4px;
+  flex: none;
+}
+.rm-chip.rm-chip-live .rm-chip-dot { animation: beat 2s var(--inout) infinite; }
+.rm-chip.rm-chip-rx   .rm-chip-dot { animation: beat .5s var(--inout) infinite; }
+.rm-chip.rm-chip-tx   .rm-chip-dot { animation: beat .6s var(--inout) infinite; }
+.rm-chip.rm-chip-conn .rm-chip-dot {
+  width: 7px; height: 7px;
+  background: none;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.rm-chip.rm-chip-lk {
+  border-color: color-mix(in srgb, var(--amber) 58%, var(--bg0));
+  background: color-mix(in srgb, var(--amber) 16%, var(--bg0));
+  color: color-mix(in srgb, var(--amber) 50%, #fff);
+}
+@keyframes beat {
+  0%,100% { opacity: 1;   transform: scale(1); }
+  50%     { opacity: .35; transform: scale(.7); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Peer rows (on-frequency list) ===== */
+.rm-op {
+  position: relative;
+  transition:
+    background var(--d3) var(--out),
+    box-shadow var(--d3) var(--out);
+  overflow: hidden;
+}
+.rm-op::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--lime);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform var(--d2) var(--out);
+}
+.rm-op.rm-talk {
+  background: color-mix(in srgb, var(--lime) 16%, var(--bg0));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--lime) 22%, transparent);
+}
+.rm-op.rm-talk::before { transform: scaleY(1); }
+.rm-op.rm-talk.rm-weak {
+  background: color-mix(in srgb, var(--amber) 12%, var(--bg0));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--amber) 18%, transparent);
+}
+.rm-op.rm-talk.rm-weak::before { background: var(--amber); }
+.rm-op.rm-tail { animation: tail 420ms var(--out); }
+@keyframes tail {
+  0%   { background: color-mix(in srgb, var(--lime) 16%, var(--bg0)); }
+  100% { background: var(--bg0); }
+}
+.rm-op.rm-me {
+  background: color-mix(in srgb, var(--red) 20%, var(--bg0));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--red) 22%, transparent);
+  animation: opin var(--d3) var(--out);
+}
+.rm-op.rm-me::before { background: var(--red); transform: scaleY(1); }
+.rm-op.rm-in  { animation: opin var(--d3) var(--out), opflash 700ms var(--out); }
+.rm-op.rm-out { animation: opout 240ms var(--inout) forwards; }
+@keyframes opin    { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes opflash { 0%   { background: color-mix(in srgb, var(--lime) 35%, var(--bg0)); } 100% { background: var(--bg0); } }
+@keyframes opout   { to   { opacity: 0; max-height: 0; padding-block: 0; transform: translateX(12px); } }
+@keyframes flick   { 0%,100% { opacity: 1; } 30% { opacity: .55; } 34% { opacity: 1; } 72% { opacity: .7; } 76% { opacity: 1; } }
+@keyframes pop     { from { transform: translateY(3px); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes eq      { to { transform: scaleY(1); } }
+
+/* ===== Settings slide (front/back face swap with measured height) =====
+   The tile body (.rm-faces) holds two children: .rm-front (radio controls)
+   and .rm-back (settings). While closed, front is in the flow and back is
+   absolute + hidden. While open (.rm-cfg on the module root), that flips:
+   back becomes in-flow and front is absolute. JS measures from→to height
+   and pins the inline height during the transition so layout doesn't jump. */
+
+.rm-mod.rm-cfg {
+  border-color: color-mix(in srgb, var(--cyan) 58%, var(--bg0));
+  box-shadow:
+    0 1px 0 var(--hl) inset,
+    0 0 0 1px color-mix(in srgb, var(--cyan) 58%, var(--bg0)),
+    0 0 var(--cfg-rim-glow) color-mix(in srgb, var(--cyan) 18%, transparent);
+}
+.rm-mod.rm-dim {
+  filter: brightness(var(--cfg-dim)) saturate(.7);
+}
+
+.rm-faces {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 7px 7px;
+  transition: height var(--cfg-height-dur) var(--cfg-height-ease);
+}
+.rm-face {
+  transition:
+    transform var(--cfg-swap-dur) var(--cfg-swap-ease),
+    opacity   var(--cfg-fade-dur) var(--cfg-swap-ease),
+    filter    var(--cfg-fade-dur) var(--cfg-swap-ease);
+}
+.rm-face.rm-front {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.rm-face.rm-back {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  transform: translateX(var(--cfg-back-in));
+  pointer-events: none;
+  visibility: hidden;
+  filter: blur(var(--cfg-blur));
+}
+.rm-mod.rm-cfg .rm-face.rm-front {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  opacity: 0;
+  transform: translateX(var(--cfg-front-out));
+  pointer-events: none;
+  filter: blur(var(--cfg-blur));
+}
+.rm-mod.rm-cfg .rm-face.rm-back {
+  position: relative;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  visibility: visible;
+  filter: none;
+}
+.rm-mod.rm-closing .rm-face.rm-back {
+  visibility: visible;
+}
+
+/* Title crossfade: ROLE · RIG → ROLE · SETTINGS */
+.rm-titles {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+}
+.rm-titles > span {
+  position: absolute;
+  left: 0; top: 0; right: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+  transition:
+    opacity   var(--cfg-title-dur) var(--cfg-swap-ease),
+    transform var(--cfg-title-dur) var(--cfg-swap-ease);
+}
+.rm-t-cfg {
+  opacity: 0;
+  transform: translateX(var(--cfg-title-shift));
+  pointer-events: none;
+}
+.rm-mod.rm-cfg .rm-t-main {
+  opacity: 0;
+  transform: translateX(calc(var(--cfg-title-shift) * -1));
+  pointer-events: none;
+}
+.rm-mod.rm-cfg .rm-t-cfg {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Chip collapses to zero width when settings open */
+.rm-mod.rm-cfg .rm-chip {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+  border-width: 0;
+  margin-left: -8px;
+  overflow: hidden;
+  transition:
+    opacity      var(--d2) var(--out),
+    width        var(--d2) var(--out),
+    padding      var(--d2) var(--out),
+    margin-left  var(--d2) var(--out),
+    border-width var(--d2) var(--out);
+}
+
+/* Gear → X crossfade (overshoot) */
+.rm-gear { position: relative; }
+.rm-gear .rm-i-gear,
+.rm-gear .rm-i-close {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition:
+    opacity   var(--d2) var(--out),
+    transform var(--cfg-icon-dur) var(--cfg-icon-ease);
+}
+.rm-gear .rm-i-close {
+  opacity: 0;
+  transform: rotate(-90deg) scale(.6);
+}
+.rm-mod.rm-cfg .rm-gear .rm-i-gear {
+  opacity: 0;
+  transform: rotate(90deg) scale(.6);
+}
+.rm-mod.rm-cfg .rm-gear .rm-i-close {
+  opacity: 1;
+  transform: none;
+}
+
+/* Row stagger — rows rise up with a per-row delay driven by --i */
+.rm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 2px;
+  border-bottom: 1px solid var(--edge, var(--rim0));
+}
+.rm-row.rm-foot {
+  border-bottom: 0;
+  padding-top: 6px;
+  margin-top: 2px;
+  border-top: 1px solid var(--rim0);
+}
+.rm-mod.rm-cfg .rm-face.rm-back .rm-row {
+  animation: rm-rowin var(--cfg-swap-dur) var(--cfg-swap-ease) both;
+  animation-delay: calc(var(--i) * var(--cfg-row-stagger) + var(--cfg-row-offset));
+}
+@keyframes rm-rowin {
+  from { opacity: 0; transform: translateY(var(--cfg-row-rise)); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Capture box for PTT rebind */
+.rm-cap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  min-width: 112px;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1px dashed var(--rim1);
+  background: var(--bg0);
+  color: var(--fg1);
+  transition:
+    border-color var(--d2) var(--out),
+    background   var(--d2) var(--out);
+}
+.rm-cap.rm-armed {
+  border-style: solid;
+  border-color: var(--cyan);
+  background: color-mix(in srgb, var(--cyan) 12%, var(--bg0));
+  animation: rm-armed 1s var(--inout) infinite;
+  color: var(--cyan);
+}
+@keyframes rm-armed {
+  0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cyan) 40%, transparent); }
+  50%     { box-shadow: 0 0 0 5px transparent; }
+}
+.rm-cap.rm-bad {
+  animation: shake 300ms linear;
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.rm-cap.rm-got .rm-key {
+  animation: rm-snapk var(--d3) var(--snap);
+}
+@keyframes rm-snapk {
+  0%   { transform: scale(.5); opacity: 0; }
+  100% { transform: none;      opacity: 1; }
+}
+
+/* Switch thumb for lock toggle on back face */
+.rm-sw {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--rim1);
+  background: var(--bg0);
+  padding: 0;
+  flex: none;
+  cursor: pointer;
+  transition:
+    background   var(--d3) var(--out),
+    border-color var(--d3) var(--out);
+}
+.rm-sw::after {
+  content: "";
+  position: absolute;
+  left: 2px; top: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--fg2);
+  transition:
+    transform  var(--d3) var(--snap),
+    background var(--d2) var(--out);
+}
+.rm-sw[aria-checked=true] {
+  background: color-mix(in srgb, var(--amber) 16%, var(--bg0));
+  border-color: color-mix(in srgb, var(--amber) 58%, var(--bg0));
+}
+.rm-sw[aria-checked=true]::after {
+  transform: translateX(18px);
+  background: var(--amber);
+}
+
+/* Saved indicator — fades in for 1.3s after any change */
+.rm-saved {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--lime) 55%, #fff);
+  transition: opacity var(--d3) var(--out);
+}
+.rm-saved.rm-show { opacity: 1; }
+
+/* ===== Reduced motion carve-out ===== */
+.rm *,
+.rm *::before,
+.rm *::after {
+  animation-duration: .001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}

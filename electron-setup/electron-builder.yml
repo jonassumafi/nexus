@@ -1,0 +1,20 @@
+appId: space.nexus-missions.setup
+productName: "Nexus Setup"
+# The installer is a portable single-file exe that unpacks itself on
+# first run. It carries the companion payload as an asarUnpack'd zip
+# so adm-zip can read it from disk instead of the asar virtual tree.
+npmRebuild: false
+files:
+  - src/**/*
+  - payload/**/*
+asarUnpack:
+  - payload/**/*
+directories:
+  output: dist
+win:
+  target: portable
+  icon: ../electron/build/icon.ico
+  publisherName: "Nexus Interstellar Traffic System"
+  artifactName: "Nexus UDP Setup ${version}.${ext}"
+portable:
+  artifactName: "Nexus UDP Setup ${version}.${ext}"

@@ -1,0 +1,29 @@
+{
+  "_comment": "Receive cue sets — one per radio tuner. The 'classic' set uses the current .wav samples so existing behavior is bit-identical. The 'command' set adds a SELCAL-style 2-tone pre-chirp before the click so Command-channel traffic is immediately audibly distinct from Crew-channel traffic. Define new sets here and reference them from each radio's cueSet field.",
+  "sets": {
+    "classic": {
+      "name": "Classic",
+      "description": "The current PTT clicks — standard SRS key-up / key-down samples.",
+      "pre": null,
+      "up":   ["/sounds/radio/RADIO_TRANS_START.wav", "/sounds/radio/RADIO_TRANS_START_ALTERNATE.wav"],
+      "down": ["/sounds/radio/RADIO_TRANS_END.wav",   "/sounds/radio/RADIO_TRANS_END_ALTERNATE.wav"],
+      "clickGain": 0.45
+    },
+    "command": {
+      "name": "Command",
+      "description": "SELCAL-style 2-tone chord preceding a crisper click — flags priority traffic so you can tell the Command channel apart from Crew at a glance.",
+      "pre": {
+        "kind": "chord",
+        "freqs": [1250, 1850],
+        "ms": 420,
+        "gain": 0.32,
+        "attackMs": 8,
+        "releaseMs": 90,
+        "waveform": "sine"
+      },
+      "up":   ["/sounds/radio/RADIO_TRANS_START.wav"],
+      "down": ["/sounds/radio/RADIO_TRANS_END.wav"],
+      "clickGain": 0.45
+    }
+  }
+}

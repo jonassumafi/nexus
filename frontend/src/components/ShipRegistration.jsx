@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import api from '../services/api';
+import TerminalBoot from './TerminalBoot';
 
 const modemSnd = new Audio('/sounds/modem.mp3');
 const playClick = () => {
@@ -57,199 +58,50 @@ const ROLE_CATEGORIES = [
 
 // ─── Boot sequence ──────────────────────────────────────────────────────────
 
-// Splash-style dot animation system, parameterized by per-flow LINE_DEFS.
-const DOT_SLOTS = 20;
-const TICK_MS = 80;
-const IDLE_P = 'idle';
-const ANIMATING_P = 'animating';
-const RESOLVED_P = 'resolved';
-const DIVIDER_LINE = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
-
-function dotsString(n) {
-  return '[' + '.'.repeat(n) + ' '.repeat(DOT_SLOTS - n) + ']';
-}
-function randIntR(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
-
-const REG_LINE_DEFS = [
-  { label: 'AUTHENTICATING OPERATOR  ', status: 'OK',     color: '#66AADD', range: [600, 1800] },
-  { label: 'ACCESSING FLEET REGISTRY ', status: 'OK',     color: '#66AADD', range: [500, 1600] },
-  { label: 'VERIFYING CLEARANCE      ', status: 'OK',     color: '#66AADD', range: [400, 1400] },
-  { label: 'LOADING CONFIG SUITE     ', status: 'OK',     color: '#66AADD', range: [500, 1500] },
-  { label: 'INITIALIZING CREW EDITOR ', status: 'OK',     color: '#66AADD', range: [400, 1200] },
-  { label: 'ESTABLISHING CONNECTION  ', status: 'READY',  color: '#44FF88', range: [300, 1000] },
-  { label: 'REGISTRY TERMINAL        ', status: 'ONLINE', color: '#44FF88', range: [200, 800]  },
+const REG_PHASES = [
+  { label: 'AUTHENTICATING OPERATOR',  status: 'OK'     },
+  { label: 'ACCESSING FLEET REGISTRY', status: 'OK'     },
+  { label: 'VERIFYING CLEARANCE',      status: 'OK'     },
+  { label: 'LOADING CONFIG SUITE',     status: 'OK'     },
+  { label: 'INITIALIZING CREW EDITOR', status: 'OK'     },
+  { label: 'ESTABLISHING CONNECTION',  status: 'READY'  },
+  { label: 'REGISTRY TERMINAL',        status: 'ONLINE' },
 ];
 
 function BootSequence({ operatorName, onDone }) {
-  const [duration] = useState(() => 5000 + Math.random() * 2000);
-  const seqRef = useRef(null);
   const sndRef = useRef(null);
-  // Ref-latched callback so parent re-renders that hand us a new onDone
-  // identity (e.g. a sibling fetch resolving mid-boot) cannot re-trigger
-  // the animation effect below.
-  const onDoneRef = useRef(onDone);
-  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
-
-  const [header1, setHeader1]     = useState(false);
-  const [header2, setHeader2]     = useState(false);
-  const [showDivOpen, setDivOpen] = useState(false);
-  const [showDivClose, setDivClose] = useState(false);
-  const [showReady, setShowReady] = useState(false);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [lineStates, setLineStates] = useState(
-    REG_LINE_DEFS.map(() => ({ phase: IDLE_P, dots: 0 }))
-  );
-
-  if (!seqRef.current) {
-    const HEADER_TIME = 700;
-    const TAIL_TIME = 500;
-    const budget = Math.max(2000, duration - HEADER_TIME - TAIL_TIME);
-    let durations = REG_LINE_DEFS.map(({ range }) => randIntR(range[0], range[1]));
-    const total = durations.reduce((s, d) => s + d, 0);
-    if (total > budget) {
-      const scale = budget / total;
-      durations = durations.map(d => Math.max(Math.floor(d * scale), 150));
-    }
-    seqRef.current = { durations, headerTime: HEADER_TIME };
-  }
 
   useEffect(() => {
     const snd = new Audio('/sounds/processing.mp3');
     snd.loop = true;
     snd.volume = 0.4;
-    snd.muted = true;
     snd.play().catch(() => {});
     sndRef.current = snd;
-    const unmute = setTimeout(() => { try { snd.muted = false; } catch (e) {} }, 80);
-    const stopSnd = setTimeout(() => {
-      try { snd.pause(); snd.currentTime = 0; snd.src = ''; snd.load(); } catch (e) {}
-    }, duration);
-
-    const tids = [];
-    const iids = [];
-    const schedule = (fn, delay) => { tids.push(setTimeout(fn, delay)); };
-
-    schedule(() => setHeader1(true), 0);
-    schedule(() => setDivOpen(true), 150);
-    schedule(() => setHeader2(true), 300);
-
-    let cursor = seqRef.current.headerTime;
-    REG_LINE_DEFS.forEach((_, index) => {
-      const dur = seqRef.current.durations[index];
-      schedule(() => {
-        setLineStates(prev => {
-          const next = [...prev];
-          next[index] = { phase: ANIMATING_P, dots: 0 };
-          return next;
-        });
-        let dotPos = 0;
-        const iid = setInterval(() => {
-          dotPos = (dotPos + 1) % (DOT_SLOTS + 1);
-          setLineStates(prev => {
-            const next = [...prev];
-            if (next[index].phase === ANIMATING_P) {
-              next[index] = { phase: ANIMATING_P, dots: dotPos };
-            }
-            return next;
-          });
-        }, TICK_MS);
-        iids.push(iid);
-        schedule(() => {
-          clearInterval(iid);
-          setLineStates(prev => {
-            const next = [...prev];
-            next[index] = { phase: RESOLVED_P, dots: DOT_SLOTS };
-            return next;
-          });
-        }, dur);
-      }, cursor);
-      cursor += dur;
-    });
-
-    schedule(() => setDivClose(true), cursor + 100);
-    schedule(() => setShowReady(true),  cursor + 250);
-    schedule(() => setShowPrompt(true), cursor + 400);
-
-    const doneTimer = setTimeout(() => { onDoneRef.current?.(); }, duration + 3000);
-
     return () => {
-      clearTimeout(unmute);
-      clearTimeout(stopSnd);
-      clearTimeout(doneTimer);
-      tids.forEach(clearTimeout);
-      iids.forEach(clearInterval);
-      try { snd.pause(); snd.currentTime = 0; snd.src = ''; snd.load(); } catch (e) {}
+      try { snd.pause(); snd.currentTime = 0; snd.src = ''; snd.load(); } catch {}
     };
-  }, [duration]);
-
-  const lineColor = (ls, idx) =>
-    ls.phase === RESOLVED_P ? REG_LINE_DEFS[idx].color : '#66AADD';
+  }, []);
 
   return (
     <div style={{
       background: '#000',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100%',
-      width: '100%',
-      overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: '100%', width: '100%', overflow: 'hidden',
     }}>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        width: 'fit-content',
-        maxWidth: 700,
-        padding: '0 40px',
-        fontFamily: "var(--font-mono)",
-        fontSize: 16,
-        lineHeight: 1.9,
-        letterSpacing: '0.06em',
-      }}>
-        {header1 && (
-          <div style={{ color: '#99BBDD' }}>
-            NEXUS FLEET REGISTRY — TERMINAL ACCESS v2.1
-          </div>
-        )}
-        {showDivOpen && (
-          <div style={{ color: '#1A3A50' }}>{DIVIDER_LINE}</div>
-        )}
-        {header2 && (
-          <div style={{ color: '#66AADD', whiteSpace: 'pre', marginBottom: 12 }}>
-            {`OPERATOR: ${operatorName || 'UNKNOWN'}  //  AUTH: VERIFIED`}
-          </div>
-        )}
-
-        {REG_LINE_DEFS.map((def, i) => {
-          const ls = lineStates[i];
-          if (ls.phase === IDLE_P) return null;
-          return (
-            <div key={i} style={{ color: lineColor(ls, i), whiteSpace: 'pre' }}>
-              {def.label}{dotsString(ls.dots)}{ls.phase === RESOLVED_P ? '  ' + def.status : ''}
-            </div>
-          );
-        })}
-
-        {showDivClose && (
-          <div style={{ color: '#1A3A50', marginTop: 8 }}>{DIVIDER_LINE}</div>
-        )}
-        {showReady && (
-          <div style={{ color: '#44FF88', whiteSpace: 'pre' }}>
-            &gt; REGISTRY TERMINAL READY
-          </div>
-        )}
-        {showPrompt && (
-          <div style={{ color: '#00EEFF', whiteSpace: 'pre' }}>
-            &gt; AWAITING VESSEL DATA INPUT...
-            <span style={{
-              display: 'inline-block', width: 8, height: 14,
-              background: '#66AADD', verticalAlign: 'middle', marginLeft: 6,
-              animation: 'blink 0.8s step-end infinite',
-            }} />
-          </div>
-        )}
-      </div>
+      <TerminalBoot
+        title="NEXUS FLEET REGISTRY — TERMINAL ACCESS v2.1"
+        operatorLine={<>OPERATOR: <b>{operatorName || 'UNKNOWN'}</b> &nbsp;//&nbsp; AUTH: <b>VERIFIED</b></>}
+        phases={REG_PHASES}
+        phaseDelay={700}
+        onComplete={() => {
+          try { sndRef.current?.pause(); } catch {}
+          onDone?.();
+        }}
+        completeDelay={1200}
+        awaitingLabel="AWAITING VESSEL DATA INPUT"
+        readyLabel="REGISTRY TERMINAL READY"
+        loadingLabel="REGISTRY TERMINAL LOADING"
+      />
     </div>
   );
 }

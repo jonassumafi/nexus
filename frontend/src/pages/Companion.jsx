@@ -1,31 +1,35 @@
-// Companion mode — 340×540 bespoke middle-size layout.
+// Companion mode — 324×640 pinned-dock layout.
 //
-// Structure (top to bottom):
-//   • Chassis strip: pin + mode switcher + close (always visible)
-//   • Operator header: name + rank + RP (compact chip, dark)
-//   • Mission bar: if on an active mission — name + elapsed + commander
-//   • 3-tab feed: Missions / Crew / Ships — compact activity feed
-//   • Radio strip: freq + PTT + mute + peer badge
+// Six bands stack top → bottom:
+//   1. TitleBar (toolbar icons live in its extras slot)
+//   2. Profile band (avatar + name/rank + RP / missions)
+//   3. Tabs band (Missions / Crew / Ships)
+//   4. Content band (flex 1, scrolls)
+//   5. Dock (pinned to bottom; slides front ↔ settings face)
 //
-// Routing: /companion, auth-aware (shows login prompt if not logged in).
-// Shares voice-profile state via the useRadioConnection hook.
+// The dock holds two radio tiles (Crew left, Command right) + ONE shared
+// mic strip. Tapping a tile's gear slides the whole dock to a settings
+// face scoped to that radio. Content shrinks to let the dock grow but
+// never past its 72px min-height, so the window never overflows.
 
 import { useEffect, useMemo, useState, useCallback, useRef, Component } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuthContext }   from '../context/AuthContext.jsx';
 import { useRadioConnection } from '../hooks/useRadioConnection';
+import { useRadioConnectionUDP } from '../hooks/useRadioConnectionUDP';
+import { useCommandTunerRx } from '../hooks/useCommandTunerRx';
 import useMyRadio from '../hooks/useMyRadio';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
+import { resolveAvatar, initialsOf } from '../utils/avatar';
+import formatModel from '../utils/formatShipModel';
 import api from '../services/api';
-import ThemePicker from '../components/ThemePicker';
 import TitleBar from '../components/TitleBar';
-import { playTune, playTransmit, playMute, playUnmute } from '../utils/audioFx';
 import FreqTuneInput from '../components/FreqTuneInput';
+import SharedMicStrip from '../components/SharedMicStrip';
+import RadioPickerModal from '../components/RadioPickerModal';
+import { playTune } from '../utils/audioFx';
+import '../components/radioMotion.css';
 
-// Error boundary — a renderer crash inside Companion was manifesting as
-// the Electron window "abruptly closing" because the sub-mode window
-// has no fallback UI. Catching render errors here keeps the frame alive
-// and gives the user a path back to full mode.
+// ── Error boundary ────────────────────────────────────────────────────
 class CompanionBoundary extends Component {
   constructor(props) { super(props); this.state = { err: null }; }
   static getDerivedStateFromError(err) { return { err }; }
@@ -60,93 +64,90 @@ const PROFILE_FIELDS = [
   'distortion', 'static_level', 'pitch_shift', 'bit_crush',
 ];
 
-const FEED_CATEGORY = {
-  mission_created:     { tab: 'missions', tone: 'blue',   glyph: '+' },
-  mission_launched:    { tab: 'missions', tone: 'lime',   glyph: '▲' },
-  mission_complete:    { tab: 'missions', tone: 'cyan',   glyph: '✓' },
-  mission_aborted:     { tab: 'missions', tone: 'red',    glyph: '■' },
-  slot_filled:         { tab: 'crew',     tone: 'blue',   glyph: '✓' },
-  slot_withdrawn:      { tab: 'crew',     tone: 'red',    glyph: '−' },
-  rank_advancement:    { tab: 'crew',     tone: 'purple', glyph: '★' },
-  rank_advanced:       { tab: 'crew',     tone: 'purple', glyph: '★' },
-  player_connected:    { tab: 'crew',     tone: 'lime',   glyph: '●' },
-  player_disconnected: { tab: 'crew',     tone: 'dim',    glyph: '○' },
-  ship_borrowed:       { tab: 'ships',    tone: 'amber',  glyph: '⇄' },
-  ship_fill_bonus:     { tab: 'ships',    tone: 'amber',  glyph: '✦' },
-  post_mission_log:    { tab: 'missions', tone: 'lime',   glyph: '✎' },
-};
-
 export default function CompanionExport() {
   return <CompanionBoundary><Companion /></CompanionBoundary>;
 }
 
-function Companion() {
-  const navigate = useNavigate();
-  const { user: jwtUser, isAuthenticated } = useAuthContext();
+// Pick transport once at mount — hooks can't be swapped mid-render.
+// Radio presets come from the backend as { id, label, band, family, blurb }.
+// The visible "short" form is the last word of the label (e.g. "VX-51
+// Fieldmaster" → "Fieldmaster"). Mirrors Dashboard/CrewRadioCard's helper.
+function shortOfLabel(label) {
+  if (!label) return '';
+  const parts = String(label).trim().split(/\s+/);
+  return parts[parts.length - 1] || label;
+}
 
-  // JWT only carries { id, discord_id, username, onboarding_complete }.
-  // Fetch /auth/me for the full operator record so citizen_name / rp_rank /
-  // total_rp / missions_completed / current_mission_assignment aren't
-  // undefined. Fall back to the JWT payload if the fetch fails.
+const initialTransport = (() => {
+  try {
+    if (import.meta.env.VITE_NEXUS_UDP_ONLY === '1') return 'udp';
+    if (typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('udp') === '1') return 'udp';
+  } catch {}
+  return 'webrtc';
+})();
+
+function Companion() {
+  const { user: jwtUser } = useAuthContext();
+  const electron = typeof window !== 'undefined' ? window.electronAPI : null;
+
+  // Full operator record
   const [me, setMe] = useState(null);
   useEffect(() => {
     let cancelled = false;
     api.get('/auth/me').then(({ data }) => { if (!cancelled) setMe(data); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
-  const user = me || jwtUser || {};
-  const electron = typeof window !== 'undefined' ? window.electronAPI : null;
+  const user = me || jwtUser || null;
 
-  const [pinned, setPinned] = useState(false);
-  useEffect(() => {
-    if (!electron?.onWindowState) return;
-    return electron.onWindowState((s) => {
-      if (s && typeof s.pinned === 'boolean') setPinned(s.pinned);
-    });
-  }, [electron]);
-
-  // Voice / radio state (mirrors Dashboard's pattern)
+  // ── Voice / radio state ────────────────────────────────────────────
   const [voiceProfile, setVoiceProfile]     = useState(null);
-  const [profileVersion, setProfileVersion] = useState(0);
-  const [pttKey, setPttKey] = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
+  const [profileVersion] = useState(0);
+  const [pttKey, setPttKeyState] = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
   const [micSensitivity, setMicSensitivity] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
-  const [freqInput, setFreqInput] = useState('');
+  const [crewLocked, setCrewLocked] = useState(false);
+  const [crewPowered, setCrewPowered] = useState(true);
+  const [commandLocked, setCommandLocked] = useState(false);
+  const [commandPowered, setCommandPowered] = useState(true);
   const [micDeviceId]    = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
   const [outputDeviceId] = useState(() => localStorage.getItem('nexus_output_device_id') || null);
 
-  const {
-    tunedFrequency, peers, transmittingPeerIds, isPTTActive,
-    joinFrequency, startPTT, stopPTT,
-    setMicSensitivity: setHookMicSensitivity,
-    setMuted: setHookMuted,
-    setSrsRadioSpec,
-    setSrsRadioBand,
-  } = useRadioConnection({
+  const useCrewHook = initialTransport === 'udp' ? useRadioConnectionUDP : useRadioConnection;
+  const crew = useCrewHook({
     voiceProfile, voiceProfileVersion: profileVersion,
-    pttKey, micDeviceId, outputDeviceId,
+    pttKey, micDeviceId, outputDeviceId, me,
   });
 
-  // Load the player's assigned SRS radio-model and feed both the DSP
-  // spec AND the squelch bed band to the hook. Spec drives tx filter
-  // chain; band swaps the chrome's noise bed to the appropriate real
-  // SRS recording (UHF/VHF/HF/FM).
   const { radio: myRadio } = useMyRadio();
-  useEffect(() => { setSrsRadioSpec(myRadio?.spec || null); }, [myRadio, setSrsRadioSpec]);
-  useEffect(() => { setSrsRadioBand(myRadio?.band || 'VHF'); }, [myRadio, setSrsRadioBand]);
+  const { radio: myCommandRadio } = useMyRadio({ tunerId: 'left' });
 
-  useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
-  useEffect(() => { setHookMicSensitivity(micSensitivity); }, [micSensitivity, setHookMicSensitivity]);
+  useEffect(() => { crew.setSrsRadioSpec?.(myRadio?.spec || null); }, [myRadio, crew.setSrsRadioSpec]);
+  useEffect(() => { crew.setSrsRadioBand?.(myRadio?.band || 'VHF'); }, [myRadio, crew.setSrsRadioBand]);
+  useEffect(() => { crew.setMuted?.(isMuted); }, [isMuted, crew.setMuted]);
+  useEffect(() => { crew.setMicSensitivity?.(micSensitivity); }, [micSensitivity, crew.setMicSensitivity]);
 
-  // Load voice profile on mount
+  // Command tuner
+  const command = useCommandTunerRx({
+    voiceProfile,
+    srsSpec: myCommandRadio?.spec || null,
+    micDeviceId, outputDeviceId,
+    otherPttKey: pttKey,
+    locked: commandLocked,
+  });
+
+  // Persist pttKey helper
+  const setPttKey = useCallback((k) => {
+    setPttKeyState(k);
+    try { localStorage.setItem('nexus_ptt_key', k); } catch {}
+  }, []);
+
+  // Load voice profile
   useEffect(() => {
     let cancelled = false;
     api.get('/users/voice-profile').then(({ data }) => {
       if (cancelled) return;
-      if (data?.ptt_key) {
-        setPttKey(data.ptt_key);
-        try { localStorage.setItem('nexus_ptt_key', data.ptt_key); } catch {}
-      }
+      if (data?.ptt_key) setPttKey(data.ptt_key);
       if (data?.needs_generation) setVoiceProfile(randomVoiceProfile());
       else {
         const cleaned = {};
@@ -160,219 +161,79 @@ function Companion() {
       }
     }).catch(() => { if (!cancelled) setVoiceProfile(randomVoiceProfile()); });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch missions + feed. Fires on mount — if the API returns 401 (not
-  // authenticated), these promises just reject silently and the component
-  // renders with empty data, which still produces a usable UI frame.
+  // Data fetches
   const [missions, setMissions] = useState([]);
   const [myShips, setMyShips]   = useState([]);
   useEffect(() => {
-    // Live data only. Empty state is now a legitimate "nothing here yet"
-    // instead of the dummy fallback — important for real test sessions.
     api.get('/missions').then(({ data }) => setMissions(Array.isArray(data) ? data : [])).catch(() => setMissions([]));
     api.get('/ships/mine').then(({ data }) => setMyShips(Array.isArray(data) ? data : [])).catch(() => setMyShips([]));
   }, []);
 
-  // Auto-tune to current mission frequency
-  const autoTunedRef = useRef(false);
-  useEffect(() => {
-    if (autoTunedRef.current || !user?.current_mission_assignment?.mission_id || tunedFrequency) return;
-    autoTunedRef.current = true;
-    const mid = user.current_mission_assignment.mission_id;
-    api.get(`/missions/${mid}`).then(({ data }) => {
-      if (data?.frequency) joinFrequency(data.frequency, data._id);
-    }).catch(() => {});
-  }, [user, tunedFrequency, joinFrequency]);
-
-  // Current active mission (if any)
   const myMissionId = user?.current_mission_assignment?.mission_id;
   const myMission = myMissionId ? missions.find(m => String(m._id) === String(myMissionId)) : null;
 
-  // Elapsed timer
-  const [elapsed, setElapsed] = useState(0);
+  // Pin state
+  const [pinned, setPinned] = useState(false);
   useEffect(() => {
-    if (!myMission?.launched_at && !myMission?.start_time) return;
-    const anchor = new Date(myMission.launched_at || myMission.start_time).getTime();
-    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - anchor) / 1000)));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [myMission?.launched_at, myMission?.start_time]);
+    if (!electron?.onWindowState) return;
+    return electron.onWindowState((s) => {
+      if (s && typeof s.pinned === 'boolean') setPinned(s.pinned);
+    });
+  }, [electron]);
 
-  // ── Tab-specific data derivations ────────────────────────────────────
+  // Tabs
   const [activeTab, setActiveTab] = useState('missions');
 
-  // Missions tab: open missions waiting for crew. Falls back to the dummy
-  // list so there's always something to look at even if /missions is empty.
-  const openMissions = useMemo(() => {
-    return missions
-      .filter(m => (m.status || 'waiting') === 'waiting')
-      .slice(0, 20);
-  }, [missions]);
+  // Real backend statuses: "WAITING FOR CREW", "FINALIZED", "IN PROGRESS",
+  // "COMPLETE", "ABORT". "Open" for the Companion means a mission still
+  // accepting crew — WAITING FOR CREW or FINALIZED. Previous filter checked
+  // for a lowercase "waiting" that never existed, so the list was always empty.
+  const openMissions = useMemo(
+    () => missions
+      .filter(m => {
+        const s = String(m.status || '').toUpperCase();
+        return s === 'WAITING FOR CREW' || s === 'FINALIZED';
+      })
+      .slice(0, 20),
+    [missions]
+  );
 
-  // Crew tab: the roster of my current mission. No dummy fallback —
-  // empty means "no active mission crew" and that's the honest state.
+  // Real data: primary_ship + supporting_ships[], each ship carries crew_roles
+  // (not crew_slots), and role entries key `slots` (not `capacity`). Previous
+  // reads returned empty, so the Crew tab always said "No active mission crew."
   const crewRoster = useMemo(() => {
-    if (!myMission?.ships?.length) return [];
+    const ships = myMission
+      ? [myMission.primary_ship, ...(myMission.supporting_ships || [])].filter(Boolean)
+      : [];
+    if (!ships.length) return [];
     const out = [];
-    for (const ship of myMission.ships) {
-      for (const roleName of Object.keys(ship.crew_slots || {})) {
-        const slot = ship.crew_slots[roleName];
-        for (const filled of (slot.filled || [])) {
+    for (const ship of ships) {
+      for (const [roleName, role] of Object.entries(ship.crew_roles || {})) {
+        for (const occupant of (role.filled || [])) {
           out.push({
-            citizen_name: filled.citizen_name,
-            role: roleName,
-            ship: ship.ship?.name || ship.name,
-            filled: true,
+            name: occupant?.citizen_name || 'Operator',
+            status: roleName,
+            open: false,
           });
         }
-        const openCount = Math.max(0, (slot.capacity || 0) - (slot.filled || []).length);
+        const total = role.slots || role.capacity || 0;
+        const openCount = Math.max(0, total - (role.filled || []).length);
         for (let i = 0; i < openCount; i++) {
-          out.push({ role: roleName, ship: ship.ship?.name || ship.name, filled: false });
+          out.push({ name: null, status: roleName, open: true });
         }
       }
     }
     return out;
   }, [myMission]);
 
-  // Ships tab: the player's own ships. No fallback.
-  const myShipList = myShips;
-
-  // Who is speaking (same pattern as RadioWidget)
-  const speakingPeer = useMemo(() => {
-    if (isPTTActive) return { label: 'You', self: true };
-    const t = Array.from(transmittingPeerIds || []);
-    if (t.length === 0) return null;
-    const p = (peers || []).find(x => t.includes(x.socketId));
-    return p ? { label: p.citizenName || 'Operator', self: false } : null;
-  }, [isPTTActive, transmittingPeerIds, peers]);
-
-  const onPTTDown = useCallback(() => {
-    // Transmit cue is played centrally inside useRadioConnection.startPTT
-    // so it fires from every mode. Here we just open the mic.
-    if (!isMuted) startPTT?.();
-  }, [isMuted, startPTT]);
-  const onPTTUp   = useCallback(() => { stopPTT?.(); }, [stopPTT]);
-  const toggleMute = useCallback(() => {
-    setIsMuted(m => { (m ? playUnmute : playMute)(); return !m; });
-  }, []);
-
-  // Keep the input in sync with the currently tuned frequency when the
-  // user isn't actively typing (e.g. auto-tune to a mission).
-  useEffect(() => { setFreqInput(tunedFrequency || ''); }, [tunedFrequency]);
-
-  // Apply a typed frequency. Accepts a flexible numeric input (e.g. "127",
-  // "127.4", "127.40"). Rejects empty / unparseable values silently so a
-  // blur without typing doesn't clear the current tuning.
-  const applyFreq = useCallback(() => {
-    const raw = (freqInput || '').trim();
-    if (!raw) { setFreqInput(tunedFrequency || ''); return; }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) { setFreqInput(tunedFrequency || ''); return; }
-    const normalized = n.toFixed(1);
-    if (normalized === tunedFrequency) return;
-    try { joinFrequency(normalized, null); } catch {}
-  }, [freqInput, tunedFrequency, joinFrequency]);
-
-  // ── Chassis strip (window chrome) ───────────────────────────────────────
-  const chassis = (
-    <div className="topbar" style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '8px 14px', gap: 6,
-      borderBottom: '1px solid var(--edge, var(--rim0))',
-    }}>
-      <span className="eng" style={{ fontSize: 10, letterSpacing: '0.16em' }}>
-        Nexus Companion
-      </span>
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <ThemePicker compact />
-        <button className={`btn${pinned ? ' nt on' : ''}`}
-          onClick={async () => { if (!electron) return; const next = await electron.togglePin(); setPinned(next); }}
-          title={pinned ? 'Unpin' : 'Pin on top'}
-          style={{ width: 26, height: 22, padding: 0, fontSize: 11 }}>⌖</button>
-        <button className="btn"
-          onClick={() => electron?.setMode?.('full')}
-          title="Full dashboard"
-          style={{ width: 26, height: 22, padding: 0, fontSize: 10 }}>⊞</button>
-        <button className="btn"
-          onClick={() => electron?.setMode?.('radio')}
-          title="Radio-only"
-          style={{ width: 26, height: 22, padding: 0, fontSize: 10 }}>▬</button>
-      </div>
-    </div>
-  );
-
-  // ── Operator header + stats ─────────────────────────────────────────────
-  const header = (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '10px 12px',
-      borderTop: '1px solid var(--rim0)',
-      borderBottom: '1px solid var(--rim0)',
-      background: 'linear-gradient(180deg, var(--bg2), var(--bg1))',
-    }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: '50%',
-        background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--blue) 55%, var(--bg3)), color-mix(in srgb, var(--blue) 18%, var(--bg0)) 75%)',
-        border: '1px solid var(--rim1)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 11, fontWeight: 700, color: 'var(--fg0)',
-        flexShrink: 0,
-      }}>
-        {(user?.citizen_name || user?.username || 'OP').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg0)',
-          overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-          {user?.citizen_name || user?.username || 'Unknown operator'}
-        </div>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--blue)',
-          letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          {user?.rp_rank?.title || 'Drifter'}
-        </div>
-      </div>
-      <div style={{ fontSize: 10, color: 'var(--fg3)', textAlign: 'right' }}>
-        <div><b style={{ color: 'var(--lime)', fontSize: 13 }}>{user?.total_rp ?? 0}</b> RP</div>
-        <div style={{ marginTop: 1 }}>{user?.missions_completed ?? 0} missions</div>
-      </div>
-    </div>
-  );
-
-  // ── Mission bar (if on mission) ─────────────────────────────────────────
-  const missionBar = myMission && (
-    <div className="raised" style={{
-      margin: '8px 10px 0', padding: '7px 10px',
-      borderColor: 'rgba(68,255,136,.3)',
-      background: 'linear-gradient(180deg, rgba(68,255,136,.1), rgba(68,255,136,.03))',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--lime)',
-            overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-            ● {myMission.name}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--fg2)', marginTop: 1 }}>
-            {myMission.mission_type} · Cmdr {myMission.created_by?.citizen_name || '—'}
-          </div>
-        </div>
-        <div className="lcd" style={{ fontSize: 13, padding: '2px 8px', marginLeft: 8 }}>
-          {formatHMS(elapsed)}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Join a mission from the Missions tab. Fires crew/reserve; on success,
-  // the socket will push the slot_filled event back and the parent app
-  // state will update. Dummy entries just acknowledge visually.
   const [joiningId, setJoiningId] = useState(null);
   const joinMission = useCallback(async (mission) => {
-    if (!mission || !mission._id) return;
+    if (!mission?._id) return;
     setJoiningId(mission._id);
     try {
-      // Pick the first ship + first open role as a default — the full dashboard
-      // has a slot picker, but companion is a quick join.
       const ship = (mission.ships || [])[0];
       const roleName = ship && Object.keys(ship.crew_slots || {}).find(r => {
         const s = ship.crew_slots[r];
@@ -389,343 +250,806 @@ function Companion() {
     setJoiningId(null);
   }, []);
 
-  // ── 3-tab content ────────────────────────────────────────────────────
-  const tabs = (
+  // ── Dock / settings slide state ───────────────────────────────────
+  const [openSettingsTuner, setOpenSettingsTuner] = useState(null); // 'crew' | 'command' | null
+  const [cfgClosing, setCfgClosing] = useState(false);
+  const facesRef = useRef(null);
+  const frontRef = useRef(null);
+  const backRef = useRef(null);
+
+  const animateFaces = useCallback((opening) => {
+    const f = facesRef.current;
+    if (!f) return;
+    const from = f.getBoundingClientRect().height;
+    let to;
+    if (opening) {
+      const back = backRef.current;
+      const prevVis = back.style.visibility;
+      back.style.visibility = 'visible';
+      to = back.offsetHeight;
+      back.style.visibility = prevVis;
+    } else {
+      to = frontRef.current?.offsetHeight || 0;
+    }
+    f.style.height = from + 'px';
+    void f.offsetHeight;
+    f.style.height = to + 'px';
+    const clear = () => { f.style.height = ''; f.removeEventListener('transitionend', onEnd); };
+    const onEnd = (e) => { if (e.target === f && e.propertyName === 'height') clear(); };
+    f.addEventListener('transitionend', onEnd);
+    setTimeout(clear, 700);
+  }, []);
+
+  const openCfg = useCallback((which) => {
+    const wasOpen = !!openSettingsTuner;
+    setOpenSettingsTuner(which);
+    if (!wasOpen) requestAnimationFrame(() => animateFaces(true));
+  }, [openSettingsTuner, animateFaces]);
+
+  const closeCfg = useCallback(() => {
+    if (!openSettingsTuner) return;
+    setCfgClosing(true);
+    setOpenSettingsTuner(null);
+    requestAnimationFrame(() => {
+      animateFaces(false);
+      setTimeout(() => setCfgClosing(false), 460);
+    });
+  }, [openSettingsTuner, animateFaces]);
+
+  useEffect(() => {
+    if (!openSettingsTuner) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeCfg(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openSettingsTuner, closeCfg]);
+
+  // ── Toolbar icon buttons (in TitleBar.extras) ─────────────────────
+  const [showRigPicker, setShowRigPicker] = useState(null); // 'crew' | 'command' | null
+  const toolbarExtras = (
     <>
-      <div className="tabs" style={{ padding: '8px 10px 4px' }}>
-        {['missions', 'crew', 'ships'].map(t => (
-          <button
-            key={t}
-            className={`tab${activeTab === t ? ' on' : ''}`}
-            onClick={() => setActiveTab(t)}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <div className="feed" style={{ padding: '0 2px' }}>
-        {activeTab === 'missions' && (
-          openMissions.length === 0 ? (
-            <div className="empty" style={{ padding: 10, fontSize: 11 }}>No open missions.</div>
-          ) : openMissions.map((m, i) => (
-            <MissionRow
-              key={m._id ?? `dm-${i}`}
-              mission={m}
-              onJoin={() => joinMission(m)}
-              joining={joiningId === m._id}
-            />
-          ))
-        )}
-
-        {activeTab === 'crew' && (
-          crewRoster.length === 0 ? (
-            <div className="empty" style={{ padding: 10, fontSize: 11 }}>No active mission crew.</div>
-          ) : crewRoster.map((c, i) => <CrewRow key={i} crew={c} />)
-        )}
-
-        {activeTab === 'ships' && (
-          myShipList.length === 0 ? (
-            <div className="empty" style={{ padding: 10, fontSize: 11 }}>No ships registered.</div>
-          ) : myShipList.map((s, i) => <ShipRow key={s._id ?? `ds-${i}`} ship={s} />)
-        )}
-      </div>
+      <IconBtn title={pinned ? 'Unpin' : 'Pin on top'}
+        onClick={async () => { if (!electron) return; const next = await electron.togglePin(); setPinned(next); }}
+        pressed={pinned}>⌖</IconBtn>
+      <IconBtn title="Full dashboard" onClick={() => electron?.setMode?.('full')}>▦</IconBtn>
+      <IconBtn title="Radio-only" onClick={() => electron?.setMode?.('radio')}>▬</IconBtn>
     </>
   );
 
-  // ── Radio strip (pinned at bottom) ──────────────────────────────────────
-  const radioStrip = (
-    <div style={{
-      flexShrink: 0, borderTop: '1px solid var(--rim0)',
-      padding: '8px 10px', background: 'linear-gradient(180deg, var(--bg2), var(--bg1))',
-      display: 'flex', flexDirection: 'column', gap: 6,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <FreqTuneInput
-          value={freqInput}
-          onChange={setFreqInput}
-          onCommit={applyFreq}
-          onCancel={() => setFreqInput(tunedFrequency || '')}
-          transmitting={isPTTActive}
-          lcdFontSize={16}
-          playTune={playTune}
-        />
-        <button
-          className={`btn${isMuted ? ' warn' : ''}`}
-          onClick={toggleMute}
-          title={isMuted ? 'Unmute' : 'Mute'}
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
-          aria-pressed={isMuted}
-          style={{ fontSize: 11, padding: '5px 9px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', WebkitAppRegion: 'no-drag' }}
-        >
-          <HeadphonesIcon muted={isMuted} />
-        </button>
-      </div>
-      <button
-        className={`btn${isPTTActive ? ' tx on' : ''}`}
-        onMouseDown={onPTTDown}
-        onMouseUp={onPTTUp}
-        onMouseLeave={onPTTUp}
-        disabled={isMuted || !tunedFrequency}
-        style={{ fontSize: 11, padding: '7px 0', userSelect: 'none' }}
-      >
-        {isMuted ? '● Mic muted' :
-         !tunedFrequency ? 'Not tuned' :
-         isPTTActive ? `● Transmitting` : `● Transmit (${(pttKey || 'V').toUpperCase()})`}
-      </button>
-      <div style={{
-        fontSize: 10, color: speakingPeer
-          ? (speakingPeer.self ? 'var(--cyan)' : 'var(--lime)')
-          : 'var(--fg3)',
-        textAlign: 'center',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-      }}>
-        {speakingPeer && <span className="live-dot" style={{
-          background: speakingPeer.self ? 'var(--cyan)' : 'var(--lime)',
-          boxShadow: `0 0 6px ${speakingPeer.self ? 'var(--cyan)' : 'var(--lime)'}`,
-        }} />}
-        {speakingPeer ? `${speakingPeer.label} speaking` :
-          tunedFrequency ? `${peers?.length || 0} on frequency` : 'Standby'}
-      </div>
-    </div>
-  );
+  // ── Radio action plumbing ────────────────────────────────────────
+  const onCrewCommitFreq = useCallback((raw) => {
+    const n = Number(String(raw).trim());
+    if (!Number.isFinite(n) || n < 50 || n > 350) return;
+    try { crew.joinFrequency?.(n.toFixed(1), null); } catch {}
+  }, [crew.joinFrequency]);
+  const onCommandCommitFreq = useCallback((raw) => {
+    const n = Number(String(raw).trim());
+    if (!Number.isFinite(n) || n < 50 || n > 350) return;
+    try { command.joinFrequency?.(n.toFixed(1), null); } catch {}
+  }, [command.joinFrequency]);
 
+  // ── Render ──────────────────────────────────────────────────────
   return (
     <div style={{
       width: '100%', height: '100%',
       display: 'flex', flexDirection: 'column',
       fontFamily: 'var(--font)', color: 'var(--fg1)',
-      background: 'var(--bg0)',
+      background: 'var(--bg0)', overflow: 'hidden',
     }}>
-      <TitleBar title="NEXUS" subtitle="Companion" />
-      {chassis}
-      {header}
-      {missionBar}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {tabs}
+      <TitleBar subtitle="Companion" compact />
+
+      {/* Dedicated toolbar band below the titlebar — the 324px window
+          can't fit mode switchers + version chips + window controls on
+          one 30px row without clipping. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '0 8px', height: 32, flex: 'none',
+        borderBottom: '1px solid var(--rim0)',
+        background: 'var(--bg1)',
+      }}>
+        <span style={{ flex: 1 }} />
+        {toolbarExtras}
       </div>
-      {radioStrip}
+
+      <ProfileBand user={user} />
+
+      <TabsBand activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      <div style={{
+        flex: '1 1 auto', minHeight: 72, overflowY: 'auto',
+        padding: 8, display: 'flex', flexDirection: 'column', gap: 6,
+      }}>
+        {activeTab === 'missions' && (
+          openMissions.length === 0
+            ? <div style={emptyStyle}>No open missions.</div>
+            : openMissions.map(m => (
+                <MissionItem key={m._id} m={m}
+                  onJoin={() => joinMission(m)}
+                  joining={joiningId === m._id} />
+              ))
+        )}
+        {activeTab === 'crew' && (
+          crewRoster.length === 0
+            ? <div style={emptyStyle}>No active mission crew.</div>
+            : crewRoster.map((c, i) => (
+                <div key={i} style={{
+                  ...itemStyle,
+                  // Open-slot rows get a dashed border + muted palette so they
+                  // read as "need to be filled" without stealing focus.
+                  ...(c.open ? {
+                    borderStyle: 'dashed',
+                    borderColor: 'color-mix(in srgb, var(--amber, #FFBB33) 40%, var(--rim0))',
+                    background: 'color-mix(in srgb, var(--amber, #FFBB33) 6%, var(--bg2))',
+                  } : null),
+                }}>
+                  <b style={{
+                    ...itemTitleStyle,
+                    ...(c.open ? {
+                      color: 'color-mix(in srgb, var(--amber, #FFBB33) 55%, #fff)',
+                      letterSpacing: '0.14em',
+                      fontSize: 10,
+                    } : null),
+                  }}>{c.open ? 'SLOT OPEN' : (c.name || 'Operator')}</b>
+                  <span style={itemSubStyle}>{c.status}</span>
+                </div>
+              ))
+        )}
+        {activeTab === 'ships' && (
+          myShips.length === 0
+            ? <div style={emptyStyle}>No ships registered.</div>
+            : myShips.map(s => {
+                // Status logic:
+                //   - On mission (claimed but not yet launched): "On mission"
+                //   - On a mission currently IN PROGRESS: "Active"
+                //   - Otherwise: the ship's model/type
+                const mid = s.current_mission_id;
+                let statusText = formatModel(s.type || s.ship_model) || 'Idle';
+                if (mid) {
+                  const assigned = missions.find(mx => String(mx._id) === String(mid));
+                  const running = String(assigned?.status || '').toUpperCase() === 'IN PROGRESS';
+                  statusText = running ? 'Active' : 'On mission';
+                }
+                return (
+                  <div key={s._id} style={itemStyle}>
+                    <b style={itemTitleStyle}>{s.ship_name || 'Unnamed ship'}</b>
+                    <span style={itemSubStyle}>{statusText}</span>
+                  </div>
+                );
+              })
+        )}
+      </div>
+
+      {/* Dock */}
+      <div
+        className={
+          'rm-mod' +
+          (openSettingsTuner ? ' rm-cfg' : '') +
+          (cfgClosing ? ' rm-closing' : '')
+        }
+        style={{
+          flex: 'none',
+          borderTop: '1px solid var(--rim1)',
+          background: 'var(--bg1)',
+          boxShadow: '0 -6px 14px rgba(0,0,0,.35)',
+          borderRadius: 0,
+        }}
+      >
+        <div className="rm-faces" ref={facesRef}>
+          <div className="rm-face rm-front" ref={frontRef} style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <RadioTile
+                role="Crew"
+                rigShort={shortOfLabel(myRadio?.label)}
+                rigLabel={myRadio ? `${myRadio.band} · ${myRadio.label}` : ''}
+                freq={crew.tunedFrequency || ''}
+                pttKey={pttKey}
+                isTx={!!crew.isPTTActive}
+                isLive={(crew.peers || []).length > 0}
+                locked={crewLocked}
+                powered={crewPowered}
+                onCommitFreq={onCrewCommitFreq}
+                onPowerToggle={() => setCrewPowered(p => !p)}
+                onLockToggle={() => setCrewLocked(l => !l)}
+                onPttDown={() => { if (!isMuted && crewPowered) crew.startPTT?.(); }}
+                onPttUp={() => crew.stopPTT?.()}
+                onOpenSettings={() => openCfg('crew')}
+                settingsOpen={openSettingsTuner === 'crew'}
+              />
+              <RadioTile
+                role="Command"
+                rigShort={shortOfLabel(myCommandRadio?.label)}
+                rigLabel={myCommandRadio ? `${myCommandRadio.band} · ${myCommandRadio.label}` : '(inherits primary)'}
+                freq={command.tunedFrequency || ''}
+                pttKey={command.pttKey || 'CAPSLOCK'}
+                isTx={!!command.isPTTActive}
+                isLive={(command.peers || []).length > 0}
+                locked={commandLocked}
+                powered={commandPowered}
+                onCommitFreq={onCommandCommitFreq}
+                onPowerToggle={() => setCommandPowered(p => !p)}
+                onLockToggle={() => setCommandLocked(l => !l)}
+                onPttDown={() => { if (!isMuted && commandPowered) command.startPTT?.(); }}
+                onPttUp={() => command.stopPTT?.()}
+                onOpenSettings={() => openCfg('command')}
+                settingsOpen={openSettingsTuner === 'command'}
+              />
+            </div>
+
+            <SharedMicStrip
+              getLevel={crew.getInputLevel}
+              sensitivity={micSensitivity}
+              setSensitivity={setMicSensitivity}
+              rxVolume={null}
+              setRxVolume={null}
+              isActive={!isMuted}
+            />
+
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              color: 'var(--fg3)', fontSize: 11,
+            }}>
+              <button
+                onClick={() => { /* TODO Volume · Pan advanced */ }}
+                style={{
+                  background: 'none', border: 0, padding: 0, cursor: 'pointer',
+                  color: 'var(--fg2)',
+                  font: '700 10px Inter', letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                }}
+              >Volume · Pan</button>
+              <span style={{ flex: 1 }} />
+              <span style={{
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
+              }}>
+                SELCAL on my transmit · hold a key to TX
+              </span>
+            </div>
+
+            {crew.micPermission === 'denied' && (
+              <div style={{ fontSize: 10, color: 'var(--red)', textAlign: 'center' }}>
+                Mic blocked — grant access in system settings.
+              </div>
+            )}
+            {crew.micPermission === 'prompt' && (
+              <button
+                onClick={() => crew.requestMicPermission?.()}
+                style={{
+                  background: 'none', border: '1px solid var(--rim1)', borderRadius: 4,
+                  padding: '4px 8px', color: 'var(--cyan)', fontSize: 10, cursor: 'pointer',
+                }}
+              >Grant mic access</button>
+            )}
+          </div>
+
+          <div className="rm-face rm-back" ref={backRef} aria-hidden={!openSettingsTuner}
+               style={{ padding: 8, display: 'flex', flexDirection: 'column' }}>
+            <SettingsFace
+              which={openSettingsTuner || 'crew'}
+              onPick={(w) => openCfg(w)}
+              crewState={{
+                rig: myRadio, pttKey, setPttKey,
+                locked: crewLocked, setLocked: setCrewLocked,
+                openRigPicker: () => setShowRigPicker('crew'),
+              }}
+              commandState={{
+                rig: myCommandRadio,
+                pttKey: command.pttKey || 'CAPSLOCK',
+                setPttKey: (k) => command.setPttKey?.(k),
+                locked: commandLocked, setLocked: setCommandLocked,
+                openRigPicker: () => setShowRigPicker('command'),
+              }}
+              otherPttKey={openSettingsTuner === 'crew' ? (command.pttKey || 'CAPSLOCK') : pttKey}
+              onDone={closeCfg}
+            />
+          </div>
+        </div>
+      </div>
+
+      <RadioPickerModal
+        open={!!showRigPicker}
+        onClose={() => setShowRigPicker(null)}
+        tunerId={showRigPicker === 'command' ? 'left' : 'right'}
+      />
     </div>
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
-function formatHMS(s) {
-  s = Math.max(0, Math.floor(s));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const r = s % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
-}
-
-function formatRelative(ts) {
-  const t = new Date(ts).getTime();
-  if (!t) return '';
-  const delta = Date.now() - t;
-  const m = Math.floor(delta / 60000);
-  if (m < 1) return 'now';
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
-
-function formatFeedLine(ev) {
-  switch (ev.event_type) {
-    case 'mission_created':   return `${ev.citizen_name} created ${ev.mission_name}`;
-    case 'mission_launched':  return `${ev.mission_name} launched`;
-    case 'mission_complete':  return `${ev.mission_name} complete`;
-    case 'mission_aborted':   return `${ev.mission_name} aborted`;
-    case 'slot_filled':       return `${ev.citizen_name} joined ${ev.ship_name}`;
-    case 'slot_withdrawn':    return `${ev.citizen_name} left ${ev.ship_name}`;
-    case 'rank_advancement':
-    case 'rank_advanced':     return `${ev.citizen_name} → ${ev.new_rank || ev.rank_name}`;
-    case 'player_connected':  return `${ev.citizen_name} online`;
-    case 'player_disconnected': return `${ev.citizen_name} offline`;
-    case 'ship_borrowed':     return `${ev.citizen_name} borrowed ${ev.ship_name}`;
-    case 'ship_fill_bonus':   return `${ev.ship_name} earned +${ev.rp_earned} RP`;
-    case 'post_mission_log':  return `${ev.citizen_name} logged ${ev.mission_name}`;
-    default: return ev.event_type || 'event';
-  }
-}
-
-// Headphones icon — clear when live, with a diagonal red slash when muted.
-// Inline SVG so it inherits currentColor from the button's styling.
-function HeadphonesIcon({ muted }) {
+// ─── Toolbar icon button ────────────────────────────────────────────
+function IconBtn({ title, onClick, pressed, children }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-         aria-hidden="true">
-      {/* Headband + two earcups */}
-      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
-      <path d="M4 14h3v6H5a1 1 0 0 1-1-1v-5z" />
-      <path d="M20 14h-3v6h2a1 1 0 0 0 1-1v-5z" />
-      {muted && (
-        <line x1="3" y1="3" x2="21" y2="21"
-              stroke="#FF5544" strokeWidth="2.2" />
-      )}
-    </svg>
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      aria-pressed={pressed ? 'true' : undefined}
+      style={{
+        WebkitAppRegion: 'no-drag',
+        width: 28, height: 22, padding: 0,
+        display: 'grid', placeItems: 'center',
+        borderRadius: 5, border: '1px solid var(--rim1)',
+        background: pressed
+          ? 'linear-gradient(180deg, color-mix(in srgb, var(--cyan) 34%, var(--bg0)), color-mix(in srgb, var(--cyan) 18%, var(--bg0)))'
+          : 'linear-gradient(180deg, var(--bg3, #183230), var(--bg2))',
+        color: pressed ? 'var(--cyan)' : 'var(--fg1)',
+        cursor: 'pointer', fontSize: 11,
+      }}
+    >{children}</button>
   );
 }
 
-// ─── Dummy data — displayed when the backend returns an empty list, so
-// the companion tabs always show something to try. Each entry is shaped
-// like the live API response so one swap works without row changes. ───
+// ─── Profile band ───────────────────────────────────────────────────
+function ProfileBand({ user }) {
+  const name = user?.citizen_name || user?.username || '—';
+  const rank = user?.rp_rank?.title || 'Drifter';
+  const initials = initialsOf(name);
+  const avatarSrc = resolveAvatar(user);
+  const rp = user?.total_rp ?? '—';
+  const mc = user?.missions_completed ?? '—';
+  return (
+    <div style={{
+      flex: 'none', height: 56,
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '0 10px',
+      borderBottom: '1px solid var(--edge, var(--rim0))',
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: '50%',
+        display: 'grid', placeItems: 'center',
+        background: 'var(--bg3)', border: '1px solid var(--rim1)',
+        color: 'var(--cyan)', font: '700 12px Inter',
+        flex: 'none', overflow: 'hidden',
+      }}>
+        {avatarSrc
+          ? <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          : initials}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{
+          display: 'block', font: '700 14px/1.2 Inter',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          color: 'var(--fg0, var(--t1))',
+        }}>{name}</b>
+        <span style={{
+          font: '700 10px Inter', letterSpacing: '0.14em',
+          textTransform: 'uppercase', color: 'var(--cyan)',
+        }}>{rank}</span>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <b style={{ display: 'block', font: '700 15px/1.1 Inter',
+          color: 'color-mix(in srgb, var(--lime) 55%, #fff)',
+          fontVariantNumeric: 'tabular-nums' }}>
+          {rp}<small style={{ fontSize: 10, color: 'var(--fg3)', marginLeft: 3, fontWeight: 600 }}>RP</small>
+        </b>
+        <span style={{ fontSize: 11, color: 'var(--fg3)', fontVariantNumeric: 'tabular-nums' }}>
+          {mc} missions
+        </span>
+      </div>
+    </div>
+  );
+}
 
-const DUMMY_MISSIONS = [
-  {
-    _id: 'dm1', name: 'Jumptown Haul', mission_type: 'cargo', status: 'waiting',
-    created_by: { citizen_name: 'MERC_HARPER' },
-    ships: [{
-      ship: { name: 'HCS JOMLET' },
-      crew_slots: {
-        Pilot:    { capacity: 1, filled: [{ citizen_name: 'MERC_HARPER' }] },
-        Turret:   { capacity: 2, filled: [] },
-        Engineer: { capacity: 1, filled: [] },
-      },
-    }],
-  },
-  {
-    _id: 'dm2', name: 'Nyx Shadow Patrol', mission_type: 'combat', status: 'waiting',
-    created_by: { citizen_name: 'VEX_RELAY' },
-    ships: [{
-      ship: { name: 'IRON VEIL' },
-      crew_slots: {
-        Pilot:  { capacity: 1, filled: [{ citizen_name: 'VEX_RELAY' }] },
-        Turret: { capacity: 2, filled: [{ citizen_name: 'SKEG_7' }] },
-      },
-    }],
-  },
-  {
-    _id: 'dm3', name: 'Grim Hex Resupply', mission_type: 'logistics', status: 'waiting',
-    created_by: { citizen_name: 'DOC_KALM' },
-    ships: [{
-      ship: { name: 'STEADFAST' },
-      crew_slots: {
-        Pilot:  { capacity: 1, filled: [{ citizen_name: 'DOC_KALM' }] },
-        Medic:  { capacity: 1, filled: [] },
-        Cargo:  { capacity: 2, filled: [] },
-      },
-    }],
-  },
-  {
-    _id: 'dm4', name: 'Pryze Beacon Sweep', mission_type: 'scout', status: 'waiting',
-    created_by: { citizen_name: 'ORB_NAV' },
-    ships: [{
-      ship: { name: 'STRIPLINER' },
-      crew_slots: {
-        Pilot:    { capacity: 1, filled: [{ citizen_name: 'ORB_NAV' }] },
-        Engineer: { capacity: 1, filled: [] },
-      },
-    }],
-  },
-];
+// ─── Tabs band ──────────────────────────────────────────────────────
+function TabsBand({ activeTab, setActiveTab }) {
+  const tabs = [
+    { k: 'missions', label: 'Missions' },
+    { k: 'crew',     label: 'Crew' },
+    { k: 'ships',    label: 'Ships' },
+  ];
+  return (
+    <div style={{
+      flex: 'none', height: 36,
+      display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
+      padding: '0 8px', alignItems: 'center',
+      borderBottom: '1px solid var(--edge, var(--rim0))',
+    }}>
+      {tabs.map(t => {
+        const on = activeTab === t.k;
+        return (
+          <button
+            key={t.k}
+            onClick={() => setActiveTab(t.k)}
+            aria-selected={on}
+            style={{
+              height: 26, borderRadius: 5,
+              border: on
+                ? '1px solid color-mix(in srgb, var(--cyan) 58%, var(--bg0))'
+                : '1px solid var(--rim0)',
+              background: on
+                ? 'linear-gradient(180deg, color-mix(in srgb, var(--cyan) 34%, var(--bg0)), color-mix(in srgb, var(--cyan) 18%, var(--bg0)))'
+                : 'var(--bg2)',
+              color: on ? 'var(--cyan)' : 'var(--fg2)',
+              font: '700 11px Inter', letterSpacing: '0.12em',
+              textTransform: 'uppercase', cursor: 'pointer',
+            }}
+          >{t.label}</button>
+        );
+      })}
+    </div>
+  );
+}
 
-const DUMMY_CREW = [
-  { citizen_name: 'MERC_HARPER', role: 'Pilot',    ship: 'HCS JOMLET', filled: true },
-  { citizen_name: 'VEX_RELAY',   role: 'Turret',   ship: 'HCS JOMLET', filled: true },
-  { citizen_name: 'SKEG_7',      role: 'Turret',   ship: 'HCS JOMLET', filled: true },
-  {                              role: 'Engineer', ship: 'HCS JOMLET', filled: false },
-];
+// ─── Mission list item ──────────────────────────────────────────────
+const itemStyle = {
+  display: 'flex', gap: 8, alignItems: 'center',
+  padding: '7px 9px', border: '1px solid var(--rim0)',
+  borderRadius: 6, background: 'var(--bg2)',
+};
+const itemTitleStyle = {
+  font: '600 12px Inter', flex: 1, minWidth: 0,
+  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  color: 'var(--fg0, var(--t1))',
+};
+const itemSubStyle = { color: 'var(--fg3, var(--t2))', fontSize: 11 };
+const emptyStyle = { margin: 'auto', color: 'var(--fg3, var(--t2))', textAlign: 'center' };
 
-const DUMMY_SHIPS = [
-  { _id: 'ds1', name: 'HCS JOMLET',   ship_class: 'Hauler',   capacity: 4, assigned_mission: 'Jumptown Haul' },
-  { _id: 'ds2', name: 'IRON VEIL',    ship_class: 'Fighter',  capacity: 3, assigned_mission: null },
-  { _id: 'ds3', name: 'LITTLE WANDER', ship_class: 'Scout',   capacity: 1, assigned_mission: null },
-  { _id: 'ds4', name: 'STEADFAST',    ship_class: 'Medical',  capacity: 4, assigned_mission: null },
-];
-
-function MissionRow({ mission, onJoin, joining }) {
-  const ship = (mission.ships || [])[0];
+function MissionItem({ m, onJoin, joining }) {
+  // Real data: m.primary_ship + m.supporting_ships, each with crew_roles
+  // (not crew_slots) — and role entries key `slots`, not `capacity`.
+  // Previously this read nothing and always showed "0/0 FULL."
+  const allShips = [m.primary_ship, ...(m.supporting_ships || [])].filter(Boolean);
   let filled = 0, cap = 0;
-  if (ship) {
-    for (const r of Object.keys(ship.crew_slots || {})) {
-      const s = ship.crew_slots[r];
-      cap += s.capacity || 0;
-      filled += (s.filled || []).length;
+  for (const ship of allShips) {
+    for (const r of Object.values(ship.crew_roles || {})) {
+      cap    += r.slots || r.capacity || 0;
+      filled += (r.filled || []).length;
     }
   }
   const openSlots = Math.max(0, cap - filled);
   return (
-    <div className="fi" style={{ padding: '7px 10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fg0)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {mission.name}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.04em', marginTop: 2 }}>
-            {(mission.mission_type || '').toUpperCase()} · Cmdr {mission.created_by?.citizen_name || '—'} · {filled}/{cap}
-          </div>
-        </div>
+    <div style={itemStyle}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ ...itemTitleStyle, display: 'block' }}>{m.name}</b>
+        <span style={itemSubStyle}>
+          {(m.mission_type || '').toUpperCase()} · {filled}/{cap}
+        </span>
+      </div>
+      <button
+        disabled={openSlots === 0 || joining}
+        onClick={onJoin}
+        style={{
+          font: '700 10px Inter', letterSpacing: '0.06em',
+          padding: '4px 10px', borderRadius: 4,
+          border: '1px solid color-mix(in srgb, var(--cyan) 58%, var(--bg0))',
+          background: 'linear-gradient(180deg, color-mix(in srgb, var(--cyan) 34%, var(--bg0)), color-mix(in srgb, var(--cyan) 18%, var(--bg0)))',
+          color: 'var(--cyan)', cursor: openSlots === 0 ? 'default' : 'pointer',
+          opacity: openSlots === 0 ? 0.55 : 1,
+        }}
+      >{joining ? '…' : openSlots === 0 ? 'FULL' : 'JOIN'}</button>
+    </div>
+  );
+}
+
+// ─── Radio tile (inside dock) ───────────────────────────────────────
+function RadioTile({
+  role, rigShort, rigLabel, freq, pttKey, isTx, isLive,
+  locked, powered,
+  onCommitFreq, onPowerToggle, onLockToggle, onPttDown, onPttUp,
+  onOpenSettings, settingsOpen,
+}) {
+  const [freqInput, setFreqInput] = useState(freq || '');
+  useEffect(() => { setFreqInput(freq || ''); }, [freq]);
+
+  const statusLabel = !powered ? 'OFF' : (isTx ? 'TX' : (isLive ? 'LIVE' : 'IDLE'));
+  const statusColor = !powered
+    ? 'var(--fg3)'
+    : (isTx ? 'color-mix(in srgb, var(--red) 55%, #fff)'
+            : (isLive ? 'color-mix(in srgb, var(--lime) 55%, #fff)' : 'var(--fg3)'));
+
+  const commit = () => {
+    if (locked || !powered) return;
+    const raw = (freqInput || '').trim();
+    if (!raw) { setFreqInput(freq || ''); return; }
+    onCommitFreq?.(raw);
+  };
+
+  return (
+    <div style={{
+      minWidth: 0,
+      border: `1px solid ${isTx ? 'color-mix(in srgb, var(--red) 58%, var(--bg0))' : 'var(--rim0)'}`,
+      borderRadius: 8, background: 'var(--bg2)',
+      boxShadow: isTx
+        ? '0 0 0 1px color-mix(in srgb, var(--red) 58%, var(--bg0)), 0 0 16px color-mix(in srgb, var(--red) 28%, transparent)'
+        : '0 1px 0 var(--hl) inset',
+      display: 'flex', flexDirection: 'column',
+      opacity: powered ? 1 : 0.65,
+    }}>
+      {/* header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        padding: '4px 5px 4px 8px', minHeight: 30,
+        background: 'linear-gradient(180deg, var(--bg3, #183230), var(--bg1))',
+        borderBottom: '1px solid var(--edge, var(--rim0))',
+        borderRadius: '7px 7px 0 0',
+      }}>
+        <span style={{
+          font: '700 11px Inter', letterSpacing: '0.08em',
+          textTransform: 'uppercase', color: 'var(--cyan)',
+          flex: 1, minWidth: 0,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{role}</span>
+        <span style={{
+          font: '700 9px Inter', letterSpacing: '0.08em',
+          color: statusColor, flex: 'none',
+        }}>{statusLabel}</span>
         <button
-          className="btn go"
-          disabled={openSlots === 0 || joining}
-          onClick={onJoin}
-          style={{ fontSize: 10, padding: '5px 10px', letterSpacing: '0.06em' }}
+          onClick={onPowerToggle}
+          aria-label={powered ? `Disconnect ${role}` : `Connect ${role}`}
+          title={powered ? 'Power off' : 'Power on'}
+          style={{
+            width: 22, height: 22, display: 'grid', placeItems: 'center',
+            borderRadius: 4, padding: 0, cursor: 'pointer',
+            border: '1px solid color-mix(in srgb, var(--red) 58%, var(--bg0))',
+            background: 'linear-gradient(180deg, color-mix(in srgb, var(--red) 22%, var(--bg1)), color-mix(in srgb, var(--red) 10%, var(--bg0)))',
+            color: 'color-mix(in srgb, var(--red) 55%, #fff)', fontSize: 12,
+          }}
+        >⏻</button>
+        <button
+          onClick={onOpenSettings}
+          aria-expanded={settingsOpen}
+          aria-label={`${role} settings`}
+          title="Settings"
+          style={{
+            width: 22, height: 22, display: 'grid', placeItems: 'center',
+            borderRadius: 4, padding: 0, cursor: 'pointer',
+            border: '1px solid var(--rim1)',
+            background: 'linear-gradient(180deg, var(--bg3, #183230), var(--bg2))',
+            color: 'var(--fg1)', fontSize: 12,
+          }}
+        >⚙</button>
+      </div>
+
+      {/* body */}
+      <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <FreqTuneInput
+          value={freqInput}
+          onChange={(locked || !powered) ? () => {} : setFreqInput}
+          onCommit={commit}
+          onCancel={() => setFreqInput(freq || '')}
+          transmitting={isTx}
+          lcdFontSize={16}
+          playTune={(locked || !powered) ? undefined : playTune}
+        />
+
+        <div style={{ display: 'flex', gap: 5 }}>
+          <button
+            onClick={onLockToggle}
+            disabled={!powered}
+            aria-pressed={locked}
+            title={locked ? 'Unlock tuner' : 'Lock tuner'}
+            style={{
+              flex: 1, height: 26, borderRadius: 5,
+              border: locked
+                ? '1px solid color-mix(in srgb, var(--amber) 55%, var(--bg0))'
+                : '1px solid var(--rim1)',
+              background: locked
+                ? 'linear-gradient(180deg, color-mix(in srgb, var(--amber) 16%, var(--bg0)), color-mix(in srgb, var(--amber) 8%, var(--bg0)))'
+                : 'linear-gradient(180deg, var(--bg3, #183230), var(--bg2))',
+              color: locked ? 'var(--amber)' : 'var(--fg1)',
+              font: '600 11px Inter', cursor: powered ? 'pointer' : 'not-allowed',
+            }}
+          >{locked ? '🔒 Locked' : '🔓 Unlocked'}</button>
+        </div>
+
+        <button
+          onMouseDown={e => { e.preventDefault(); if (powered) onPttDown?.(); }}
+          onMouseUp={onPttUp}
+          onMouseLeave={onPttUp}
+          onTouchStart={e => { e.preventDefault(); if (powered) onPttDown?.(); }}
+          onTouchEnd={onPttUp}
+          disabled={!powered || !freq}
+          title={!powered ? 'Radio is off' : (!freq ? 'Tune a frequency first' : 'Hold to transmit')}
+          style={{
+            height: 34, width: '100%',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            padding: '0 5px', borderRadius: 5,
+            border: isTx
+              ? '1px solid color-mix(in srgb, var(--red) 58%, var(--bg0))'
+              : '1px solid color-mix(in srgb, var(--cyan) 58%, var(--bg0))',
+            background: isTx
+              ? 'linear-gradient(180deg, color-mix(in srgb, var(--red) 46%, var(--bg0)), color-mix(in srgb, var(--red) 28%, var(--bg0)))'
+              : 'linear-gradient(180deg, color-mix(in srgb, var(--cyan) 34%, var(--bg0)), color-mix(in srgb, var(--cyan) 18%, var(--bg0)))',
+            color: isTx ? '#fff' : 'var(--cyan)',
+            font: '700 12px Inter', letterSpacing: '0.04em',
+            userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none',
+            cursor: (!powered || !freq) ? 'not-allowed' : 'pointer',
+            opacity: (!powered || !freq) ? 0.55 : 1,
+          }}
         >
-          {joining ? '…' : openSlots === 0 ? 'FULL' : 'JOIN'}
+          TX
+          {pttKey && (
+            <span style={{
+              display: 'inline-grid', placeItems: 'center',
+              minWidth: 18, height: 18, padding: '0 4px',
+              borderRadius: 4, border: '1px solid var(--rim1)',
+              background: isTx ? '#fff' : 'var(--bg0)',
+              color: isTx ? '#8a1d10' : 'var(--cyan)',
+              font: '700 9px Inter', letterSpacing: '0.02em',
+            }}>{String(pttKey).toUpperCase()}</span>
+          )}
         </button>
+
+        <div title={rigLabel} style={{
+          textAlign: 'center', color: 'var(--fg3)',
+          font: '600 10px Inter', letterSpacing: '0.04em',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{rigShort || rigLabel || '(no rig)'}</div>
       </div>
     </div>
   );
 }
 
-function CrewRow({ crew }) {
-  const initials = (crew.citizen_name || '—').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+// ─── Settings face ──────────────────────────────────────────────────
+function SettingsFace({ which, onPick, crewState, commandState, otherPttKey, onDone }) {
+  const state = which === 'command' ? commandState : crewState;
+  const [capturing, setCapturing] = useState(false);
+  const [capLabel, setCapLabel]   = useState(null);
+
+  useEffect(() => { setCapturing(false); setCapLabel(null); }, [which]);
+
+  useEffect(() => {
+    if (!capturing) return;
+    const onKey = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.key === 'Escape') { setCapturing(false); setCapLabel(null); return; }
+      const raw = e.key;
+      const label = raw.length === 1
+        ? raw.toUpperCase()
+        : (raw === 'CapsLock' ? 'CAPSLOCK' : raw.toUpperCase());
+      if (['SHIFT','CONTROL','ALT','META'].includes(label)) return;
+      if (otherPttKey && label.toUpperCase() === String(otherPttKey).toUpperCase()) {
+        setCapLabel(label + ' in use');
+        setTimeout(() => setCapLabel(null), 900);
+        return;
+      }
+      state.setPttKey?.(label);
+      setCapturing(false); setCapLabel(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [capturing, otherPttKey, state]);
+
   return (
-    <div className="fi" style={{ padding: '6px 10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 22, height: 22, borderRadius: '50%',
-          background: crew.filled
-            ? 'radial-gradient(circle at 35% 30%, #24557a, #0c2437)'
-            : 'repeating-linear-gradient(45deg, var(--bg2) 0 3px, var(--bg1) 3px 6px)',
-          border: '1px solid var(--rim1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 9, fontWeight: 700, color: 'var(--fg0)',
-          flexShrink: 0,
-        }}>
-          {crew.filled ? initials : '?'}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: crew.filled ? 'var(--fg0)' : 'var(--fg3)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {crew.filled ? crew.citizen_name : <em style={{ fontStyle: 'italic' }}>Open slot</em>}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.04em' }}>
-            {crew.role} · {crew.ship}
-          </div>
+    <>
+      {/* Segmented picker */}
+      <div style={{
+        display: 'flex', border: '1px solid var(--rim1)', borderRadius: 6,
+        overflow: 'hidden', marginBottom: 4,
+      }}>
+        {['crew','command'].map(k => {
+          const on = which === k;
+          return (
+            <button key={k}
+              onClick={() => onPick(k)}
+              aria-pressed={on}
+              style={{
+                flex: 1, height: 26, border: 0,
+                background: on
+                  ? 'linear-gradient(180deg, color-mix(in srgb, var(--cyan) 34%, var(--bg0)), color-mix(in srgb, var(--cyan) 18%, var(--bg0)))'
+                  : 'var(--bg0)',
+                color: on ? 'var(--cyan)' : 'var(--fg3)',
+                font: '700 10px Inter', letterSpacing: '0.12em',
+                textTransform: 'uppercase', cursor: 'pointer',
+              }}
+            >{k === 'crew' ? 'Crew' : 'Command'}</button>
+          );
+        })}
+      </div>
+
+      {/* Row 0: Radio */}
+      <div className="rm-row" style={{ '--i': 0, ...rowStyle }}>
+        <span style={rowLabelStyle}>Radio</span>
+        <div style={rowCtlStyle}>
+          <button
+            onClick={state.openRigPicker}
+            disabled={state.locked}
+            style={{
+              ...btnStyle, width: '100%',
+              textAlign: 'left', justifyContent: 'flex-start',
+              opacity: state.locked ? 0.55 : 1,
+            }}
+            title={state.rig?.label ? `${state.rig.band} · ${state.rig.label}` : 'Change radio preset'}
+          >{shortOfLabel(state.rig?.label) || '(no rig)'}</button>
         </div>
       </div>
-    </div>
+
+      {/* Row 1: PTT key */}
+      <div className="rm-row" style={{ '--i': 1, ...rowStyle }}>
+        <span style={rowLabelStyle}>PTT key</span>
+        <div style={rowCtlStyle}>
+          <div className={`rm-cap${capturing ? ' rm-armed' : ''}`}>
+            {capturing && !capLabel
+              ? <span style={{ color: 'var(--cyan)', fontWeight: 600 }}>Press a key…</span>
+              : <span style={{
+                  display: 'inline-grid', placeItems: 'center',
+                  minWidth: 22, height: 20, padding: '0 6px',
+                  borderRadius: 4, border: '1px solid var(--rim1)',
+                  background: 'var(--bg0)', color: 'var(--cyan)',
+                  font: '700 11px Inter',
+                }}>{capLabel || String(state.pttKey || '—').toUpperCase()}</span>
+            }
+          </div>
+          <button
+            onClick={() => setCapturing(c => !c)}
+            style={btnStyle}
+          >{capturing ? 'Cancel' : 'Change'}</button>
+        </div>
+      </div>
+
+      {/* Row 2: Lock tuner */}
+      <div className="rm-row" style={{ '--i': 2, ...rowStyle }}>
+        <span style={rowLabelStyle}>Lock tuner</span>
+        <div style={rowCtlStyle}>
+          <span style={{ color: 'var(--fg2)', minWidth: 62, textAlign: 'right' }}>
+            {state.locked ? 'Locked' : 'Unlocked'}
+          </span>
+          <button
+            className="rm-sw"
+            role="switch"
+            aria-checked={state.locked}
+            aria-label="Lock tuner"
+            onClick={() => state.setLocked(l => !l)}
+          />
+        </div>
+      </div>
+
+      {/* Row 3: Receive cue */}
+      <div className="rm-row" style={{ '--i': 3, ...rowStyle }}>
+        <span style={rowLabelStyle}>Receive</span>
+        <div style={rowCtlStyle}>
+          <select
+            style={{
+              height: 26, width: '100%', padding: '0 8px',
+              borderRadius: 5, border: '1px solid var(--rim1)',
+              background: 'var(--bg0)', color: 'var(--fg1)',
+            }}
+            defaultValue={which === 'command' ? 'command' : 'crew'}
+          >
+            <option value="crew">Crew click</option>
+            <option value="command">Command click</option>
+            <option value="silent">Silent</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Footer row */}
+      <div className="rm-row rm-foot" style={{ '--i': 4, ...rowFootStyle }}>
+        <span style={{ flex: 1 }} />
+        <button onClick={onDone} style={{
+          ...btnStyle,
+          background: 'linear-gradient(180deg, color-mix(in srgb, var(--cyan) 34%, var(--bg0)), color-mix(in srgb, var(--cyan) 18%, var(--bg0)))',
+          borderColor: 'color-mix(in srgb, var(--cyan) 58%, var(--bg0))',
+          color: 'var(--cyan)', fontWeight: 700,
+        }}>Done</button>
+      </div>
+    </>
   );
 }
 
-function ShipRow({ ship }) {
-  const assigned = ship.assigned_mission;
-  return (
-    <div className="fi" style={{ padding: '6px 10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 22, height: 22, borderRadius: 4,
-          background: 'linear-gradient(180deg, var(--card-hi), var(--card-lo))',
-          border: '1px solid var(--rim1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, color: 'var(--blue)', flexShrink: 0,
-        }}>⬢</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: 'var(--fg0)', fontWeight: 700,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {ship.name}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.04em' }}>
-            {(ship.ship_class || 'Vessel')} · {ship.capacity ?? '—'} slots
-          </div>
-        </div>
-        {assigned
-          ? <span style={{ fontSize: 9, color: 'var(--lime)', letterSpacing: '0.08em' }}>ACTIVE</span>
-          : <span style={{ fontSize: 9, color: 'var(--fg3)', letterSpacing: '0.08em' }}>IDLE</span>}
-      </div>
-    </div>
-  );
-}
+const rowStyle = {
+  display: 'flex', alignItems: 'center', gap: 10, minHeight: 36,
+  padding: '2px 2px', borderBottom: '1px solid var(--edge, var(--rim0))',
+};
+const rowFootStyle = {
+  display: 'flex', alignItems: 'center', gap: 6,
+  paddingTop: 6, marginTop: 2,
+  borderTop: '1px solid var(--rim0)',
+};
+const rowLabelStyle = {
+  flex: '0 0 76px',
+  font: '700 10px Inter', letterSpacing: '0.14em',
+  textTransform: 'uppercase', color: 'var(--fg2)',
+  whiteSpace: 'nowrap',
+};
+const rowCtlStyle = {
+  flex: 1, minWidth: 0,
+  display: 'flex', alignItems: 'center', gap: 8,
+  justifyContent: 'flex-end',
+};
+const btnStyle = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+  height: 26, padding: '0 10px', borderRadius: 5,
+  border: '1px solid var(--rim1)',
+  background: 'linear-gradient(180deg, var(--bg3, #183230), var(--bg2))',
+  color: 'var(--fg1)', font: '600 11px Inter',
+  whiteSpace: 'nowrap', cursor: 'pointer',
+};

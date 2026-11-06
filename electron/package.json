@@ -1,6 +1,6 @@
 {
   "name": "nexus-companion",
-  "version": "0.8.0",
+  "version": "0.9.18",
   "description": "Nexus Interstellar Traffic System — Electron companion with global push-to-talk for in-game play alongside Star Citizen.",
   "private": true,
   "main": "src/main.js",
@@ -10,9 +10,12 @@
     "start:linux": "electron . --no-sandbox",
     "start:linux:dev": "cross-env NEXUS_URL=http://localhost:5173 electron . --no-sandbox",
     "build": "electron-builder --win",
+    "build:udp": "cross-env NEXUS_UDP_ONLY=1 electron-builder --win --config electron-builder.udp.yml",
     "build:all": "electron-builder -mwl"
   },
   "dependencies": {
+    "@discordjs/opus": "^0.10.0",
+    "electron-updater": "^6.8.11",
     "node-global-key-listener": "^0.3.0",
     "uiohook-napi": "^1.5.5"
   },
@@ -32,6 +35,13 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://nexus-missions.space/api/releases/",
+        "channel": "latest"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico",

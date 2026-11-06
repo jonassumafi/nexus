@@ -4,23 +4,44 @@ import { useSocketContext } from '../context/SocketContext';
 import api from '../services/api';
 import { formatTimestamp, formatFeedTimestamp } from '../utils/time';
 import ShipSchematic from '../components/ShipSchematic';
+import MissionShipsStrip from '../components/MissionShipsStrip';
 import ShipRegistration from '../components/ShipRegistration';
 import MyShips from '../components/MyShips';
 import CreateMission from '../components/CreateMission';
 import ColumnResizeHandle from '../components/ColumnResizeHandle';
 import RadioPanel from '../components/RadioPanel';
+import CommandTunerRx from '../components/CommandTunerRx';
+import CrewRadioCard from '../components/CrewRadioCard';
+import CommandRadioCard from '../components/CommandRadioCard';
+import SharedMicStrip from '../components/SharedMicStrip';
 import RegistryBoot from '../components/RegistryBoot';
 import ThemePicker from '../components/ThemePicker';
+import SettingsPopover from '../components/SettingsPopover';
+import SkinPopover from '../components/SkinPopover';
 import TitleBar from '../components/TitleBar';
 import OnlineCount from '../components/OnlineCount';
 import FeedIcon from '../components/FeedIcon';
+import ActivityFeed from '../components/ActivityFeed';
 import useMyRadio from '../hooks/useMyRadio';
 import RadioRigBadge from '../components/RadioRigBadge';
 import RadioPickerModal from '../components/RadioPickerModal';
 import BugReportModal from '../components/BugReportModal';
 import WhatsNewSplash from '../components/WhatsNewSplash';
+import UpdateBanner from '../components/UpdateBanner';
 import GlobalChat, { useChatUnread } from '../components/GlobalChat';
+import MissionBoardV2 from '../components/MissionBoardV2';
+import Banner, { AnchoredPopover } from '../components/Banner';
+import FriendsDrawer from '../components/FriendsDrawer';
+import FriendAcceptedBanner from '../components/FriendAcceptedBanner';
+import IdCardPopover from '../components/IdCardPopover';
+import { useFriends } from '../hooks/useFriends';
+import { useDMs } from '../hooks/useDMs';
+import DMPane from '../components/DMPane';
+import MessagesPopover from '../components/MessagesPopover';
+import { toast } from '../components/Toaster';
+import { resolveAvatar } from '../utils/avatar';
 import { useRadioConnection } from '../hooks/useRadioConnection';
+import { useRadioConnectionUDP } from '../hooks/useRadioConnectionUDP';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
 
 // Voice profile fields fetched from /users/voice-profile — mirrored from
@@ -310,22 +331,6 @@ function computeDocNo(me) {
   return `NTS-${s.slice(-4).toUpperCase()}-${s.slice(-8, -4).toUpperCase()}`;
 }
 
-// Resolves whatever's stored on user.avatar into a valid <img> src. Two cases:
-//   1) full URL (http/https/data)     — an onboarding-generated portrait; use directly
-//   2) raw Discord hash               — construct the Discord CDN URL from discord_id
-// Returns null when neither can be produced, so the caller falls through to the
-// coloured placeholder background instead of rendering a broken image.
-function resolveAvatar(me) {
-  const a = me?.avatar;
-  if (!a) return null;
-  if (/^(https?:|data:|\/)/i.test(a)) return a;
-  if (me?.discord_id) {
-    const ext = a.startsWith('a_') ? 'gif' : 'png';
-    return `https://cdn.discordapp.com/avatars/${me.discord_id}/${a}.${ext}?size=256`;
-  }
-  return null;
-}
-
 function IdCardWidget({ me, rpPct, rpLabel, onClick }) {
   const avatarSrc = resolveAvatar(me);
   // Dark banner-matching operator chip. No paper surface, no boxed border —
@@ -479,7 +484,7 @@ function IdCardModal({ me, onClose, onRefresh }) {
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,7,16,0.82)',
+        background: 'color-mix(in srgb, var(--bg0) 85%, transparent)',
         backdropFilter: 'blur(2px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 9500,
@@ -723,7 +728,7 @@ function IdCardModal({ me, onClose, onRefresh }) {
   );
 }
 
-function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onRegisterShip, onMyShips, onCreateMission, onShipRegistry, onRefresh, myShipsMode, registerMode, createMissionMode, shipRegistryMode, navigate, chatBtnRef, chatOpen, setChatOpen, chatUnread, setShowBugReport, setShowRadioPicker }) {
+function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onRegisterShip, onMyShips, onCreateMission, onShipRegistry, onRefresh, myShipsMode, registerMode, createMissionMode, shipRegistryMode, navigate, chatBtnRef, chatOpen, setChatOpen, chatUnread, setShowBugReport, setShowRadioPicker, hideNav }) {
   const [hoverBtn, setHoverBtn] = useState(null);
 
   // Electron companion state. `electronAPI` is only present when the app is
@@ -856,8 +861,8 @@ function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onReg
             was removed in v0.6.3. */}
       </div>
 
-      {/* Row 2 — nav. Extra top-padding to make room for the OnlineCount
-          chip now tucked under the brand text. */}
+      {/* Row 2 — nav. Hidden when the new <Banner /> is in use. */}
+      {!hideNav && (
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -978,6 +983,7 @@ function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onReg
           Disconnect
         </button>
       </div>
+      )}
 
       {/* Operator chip — absolutely positioned to sit on the brand row only
           so it stays on one gradient (no banner-seam exposure). Transparent
@@ -1159,17 +1165,16 @@ function MissionCard({ mission, selected, onClick, missionTypes = {}, shipThumbs
   );
 }
 
-function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missionTypes = {} }) {
+function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missionTypes = {}, preselectBorrowFriendId, onBorrowFriendConsumed }) {
   const [working, setWorking]           = useState(false);
   const [postLogOpen, setPostLogOpen]   = useState(false);
   const [logText, setLogText]           = useState('');
-  const [shipIndex, setShipIndex]       = useState(0);
+  const [selectedShipId, setSelectedShipId] = useState(null);
   const [flashMySlots, setFlashMySlots] = useState(false);
   const [crewNote, setCrewNote]         = useState('');
   const [freqReveal, setFreqReveal]     = useState(null);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [hoverComplete, setHoverComplete]     = useState(false);
-  const [addShipOpen, setAddShipOpen]         = useState(false);
   // Post-mission log button state: 'hidden' (mission not complete / wasn't on
   // crew / still loading), 'pending' (eligible, not yet submitted), 'submitted'
   // (eligible, already logged). Server-derived — see /:id/my-participation.
@@ -1464,41 +1469,47 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
             onClick={() => setPostLogOpen(p => !p)}
           />
         )}
+        {/* Ships area — tab strip + picker + selected ship schematic. The
+            MissionShipsStrip owns tabs/add/picker; ShipSchematic renders the
+            selected ship's map + manifest below. */}
         <div style={{ marginBottom: 16 }}>
-          <ShipSchematic
-            ships={ships}
-            shipIndex={shipIndex}
-            onShipIndexChange={setShipIndex}
-            currentUserId={myId}
-            onSlotClick={handleSlotClick}
-            missionStatus={s}
-            me={me}
-            flashMySlots={flashMySlots}
+          <MissionShipsStrip
+            mission={mission}
+            selectedShipId={selectedShipId || (ships[0] ? String(ships[0]._id) : null)}
+            onSelectShip={setSelectedShipId}
+            missionId={mission._id}
+            canAdd={isCreator && s === 'WAITING FOR CREW'}
+            onMissionRefresh={onRefresh}
+            preselectFriendId={preselectBorrowFriendId}
+            onPreselectConsumed={onBorrowFriendConsumed}
           />
+          {(() => {
+            const sid = selectedShipId || (ships[0] ? String(ships[0]._id) : null);
+            const idx = ships.findIndex(sh => String(sh._id) === sid);
+            if (idx < 0) return null;
+            const sel = ships[idx];
+            const myMongo = myMongoId;
+            const ownerId = sel?.owner_id?._id ? String(sel.owner_id._id) : null;
+            const isBorrowed = ownerId && myMongo && ownerId !== myMongo;
+            const borrowedFrom = isBorrowed ? (sel?.owner_id?.citizen_name || null) : null;
+            return (
+              <div className="ms2-swap" key={sid} style={{ marginTop: 12 }}>
+                <ShipSchematic
+                  ships={[sel]}
+                  shipIndex={0}
+                  currentUserId={myId}
+                  onSlotClick={handleSlotClick}
+                  missionStatus={s}
+                  me={me}
+                  flashMySlots={flashMySlots}
+                  hideNav={true}
+                  borrowedFrom={borrowedFrom}
+                />
+              </div>
+            );
+          })()}
         </div>
 
-        {/* Add-ship control — commander-only, only while WAITING FOR CREW.
-            Toggles a two-section panel: YOUR SHIPS (add immediately) and
-            OTHER SHIPS (request access, wait for owner approval). */}
-        {isCreator && s === 'WAITING FOR CREW' && (
-          <div style={{ marginBottom: 16 }}>
-            {addShipOpen ? (
-              <AddShipPanel
-                mission={mission}
-                onMissionRefresh={onRefresh}
-                onClose={() => setAddShipOpen(false)}
-              />
-            ) : (
-              <button
-                className="btn"
-                onClick={() => { playClick(); setAddShipOpen(true); }}
-                style={{ fontSize: 12, padding: '8px 16px' }}
-              >
-                + Add ship to fleet
-              </button>
-            )}
-          </div>
-        )}
 
         {(mission.mission_time || mission.start_time) && (
           <div className="raised" style={{ padding: '10px 14px', marginBottom: 12, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
@@ -1553,198 +1564,6 @@ function MissionDetail({ mission, me, timezone, onRefresh, onFeedRefresh, missio
         )}
       </div>
 
-    </div>
-  );
-}
-
-// Commander-only fleet-expansion panel for missions still in WAITING FOR
-// CREW. Two sections: YOUR SHIPS (owned or on active loan, not currently
-// deployed) that can be added directly; OTHER SHIPS (registry vessels not
-// yet accessible) that route through the existing ShipAccessRequest flow —
-// owner receives the popup, approves/denies, and once approved the ship
-// moves into YOUR SHIPS on the next panel refresh.
-function AddShipPanel({ mission, onMissionRefresh, onClose }) {
-  const [myShips, setMyShips]                 = useState([]);
-  const [allShips, setAllShips]               = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [loading, setLoading]                 = useState(true);
-  const [busyShipId, setBusyShipId]           = useState(null);
-  const [error, setError]                     = useState('');
-
-  const missionShipIds = useMemo(() => {
-    const ids = new Set();
-    if (mission.primary_ship?._id) ids.add(String(mission.primary_ship._id));
-    (mission.supporting_ships || []).forEach(sh => {
-      if (sh?._id) ids.add(String(sh._id));
-    });
-    return ids;
-  }, [mission]);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [mine, all, reqs] = await Promise.all([
-        api.get('/ships/all'),
-        api.get('/ships'),
-        api.get('/ships/access-requests/mine'),
-      ]);
-      setMyShips(mine.data || []);
-      setAllShips(all.data || []);
-      setPendingRequests((reqs.data?.as_requester || []).filter(r => r.status === 'pending'));
-    } catch (e) {
-      setError('FLEET SCAN FAILED');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
-
-  const myShipIds = useMemo(
-    () => new Set(myShips.map(sh => String(sh._id))),
-    [myShips]
-  );
-  const pendingShipIds = useMemo(
-    () => new Set(pendingRequests.map(r => String(r.ship_id))),
-    [pendingRequests]
-  );
-
-  const yourAvailable = myShips.filter(sh =>
-    !sh.is_mission && !missionShipIds.has(String(sh._id))
-  );
-  const otherAvailable = allShips.filter(sh =>
-    !myShipIds.has(String(sh._id)) &&
-    !sh.is_mission &&
-    !missionShipIds.has(String(sh._id))
-  );
-
-  const addToMission = async (shipId) => {
-    setBusyShipId(shipId);
-    setError('');
-    try {
-      await api.post(`/missions/${mission._id}/add-ship`, { ship_id: shipId });
-      await refresh();
-      onMissionRefresh?.();
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.response?.data?.error || 'FAILED TO ADD SHIP');
-    } finally {
-      setBusyShipId(null);
-    }
-  };
-
-  const requestAccess = async (shipId) => {
-    setBusyShipId(shipId);
-    setError('');
-    try {
-      await api.post(`/ships/${shipId}/request-access`);
-      const { data } = await api.get('/ships/access-requests/mine');
-      setPendingRequests((data?.as_requester || []).filter(r => r.status === 'pending'));
-    } catch (err) {
-      setError(err?.response?.data?.error || 'REQUEST FAILED');
-    } finally {
-      setBusyShipId(null);
-    }
-  };
-
-  const rowStyle = {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '7px 10px',
-    border: '1px solid var(--rim0)',
-    borderRadius: 4,
-    marginBottom: 4,
-    background: 'var(--bg1)',
-    gap: 12,
-    transition: 'background .12s',
-  };
-  const empty = (
-    <div className="empty" style={{ padding: '6px 10px', fontSize: 11 }}>
-      None available
-    </div>
-  );
-
-  const ShipRow = ({ ship, action }) => (
-    <div style={rowStyle}>
-      <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-        <span style={{ fontSize: 13, color: 'var(--fg0)', fontWeight: 600 }}>{ship.ship_name}</span>
-        <span style={{ fontSize: 11, color: 'var(--fg2)', marginLeft: 8 }}>
-          {formatModel(ship.ship_model || ship.type) || '—'}
-        </span>
-        {ship.owner_id?.citizen_name && (
-          <span style={{ fontSize: 11, color: 'var(--fg3)', marginLeft: 8 }}>
-            · {ship.owner_id.citizen_name}
-          </span>
-        )}
-      </div>
-      <div style={{ flexShrink: 0 }}>{action}</div>
-    </div>
-  );
-
-  const addBtn = (shipId) => (
-    <button
-      className="btn go"
-      onClick={() => addToMission(shipId)}
-      disabled={busyShipId === shipId}
-      style={{ fontSize: 11, padding: '5px 12px' }}
-    >
-      {busyShipId === shipId ? <><span className="spinner" />Adding…</> : <>+ Add</>}
-    </button>
-  );
-
-  const requestBtn = (shipId) => (
-    <button
-      className="btn"
-      onClick={() => requestAccess(shipId)}
-      disabled={busyShipId === shipId}
-      style={{ fontSize: 11, padding: '5px 12px' }}
-    >
-      {busyShipId === shipId ? <><span className="spinner" />Requesting…</> : <>Request access →</>}
-    </button>
-  );
-
-  const pendingLabel = (
-    <span className="badge b-amber">⏳ Request pending</span>
-  );
-
-  return (
-    <div className="raised" style={{ padding: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="h3" style={{ margin: 0 }}>Add ship to fleet</div>
-        <button
-          className="btn"
-          onClick={() => { playClick(); onClose?.(); }}
-          style={{ fontSize: 11, padding: '5px 12px' }}
-        >
-          Close
-        </button>
-      </div>
-
-      {error && <div className="err" style={{ marginTop: 8 }}>{error}</div>}
-
-      {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg2)', padding: '12px 0', fontSize: 12 }}>
-          <span className="spinner" />Scanning fleet…
-        </div>
-      ) : (
-        <>
-          <div className="h3" style={{ margin: '12px 0 6px' }}>Your ships</div>
-          {yourAvailable.length === 0
-            ? empty
-            : yourAvailable.map(sh => (
-                <ShipRow key={sh._id} ship={sh} action={addBtn(sh._id)} />
-              ))}
-
-          <div className="h3" style={{ margin: '12px 0 6px' }}>Other ships</div>
-          {otherAvailable.length === 0
-            ? empty
-            : otherAvailable.map(sh => (
-                <ShipRow
-                  key={sh._id}
-                  ship={sh}
-                  action={pendingShipIds.has(String(sh._id)) ? pendingLabel : requestBtn(sh._id)}
-                />
-              ))}
-        </>
-      )}
     </div>
   );
 }
@@ -2263,8 +2082,7 @@ function FeedItem({ item, timezone }) {
 // Ship Registry
 // ───────────────────────────────────────────────────────────────────────────
 
-const formatModel = (model) =>
-  model.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+import formatModel from '../utils/formatShipModel';
 
 function ShipRegistryCard({ ship, shipThumbs, isOpen, onToggle, me, myRequest, onRequestSent, onRequestCancelled }) {
   const thumbUrl = findShipThumb(ship, shipThumbs);
@@ -2701,8 +2519,44 @@ export default function Dashboard() {
   });
   const [showBugReport, setShowBugReport]   = useState(false);
   const [showRadioPicker, setShowRadioPicker] = useState(false);
+  // Mirror of the Electron shell's window state so the Pin / Radio-only
+  // Banner buttons reflect reality (user may toggle via keyboard or via
+  // another window's control).
+  const [winPinned, setWinPinned]           = useState(false);
+  const [winMode, setWinMode]               = useState('full');
+  useEffect(() => {
+    const electron = typeof window !== 'undefined' ? window.electronAPI : null;
+    if (!electron?.onWindowState) return;
+    return electron.onWindowState((s) => {
+      if (s && typeof s.pinned === 'boolean') setWinPinned(s.pinned);
+      if (s && typeof s.mode === 'string')   setWinMode(s.mode);
+    });
+  }, []);
   const [chatOpen, setChatOpen]             = useState(false);
   const chatBtnRef                          = useRef(null);
+  // v1.2 — friends system (drawer + id card + accepted banner). Anchored
+  // popovers for bug report / disconnect confirmation moved into the
+  // nav row (Banner.jsx) so the old TopBar modal path above is only a
+  // fallback.
+  const [friendsOpen, setFriendsOpen]       = useState(false);
+  const [idCard, setIdCard]                 = useState(null); // {userId, rect}
+  const [bugPopoverOpen, setBugPopoverOpen] = useState(false);
+  const [discPopoverOpen, setDiscPopoverOpen] = useState(false);
+  const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
+  const [skinPopoverOpen, setSkinPopoverOpen] = useState(false);
+  const [bugText, setBugText]               = useState('');
+  const [bugSending, setBugSending]         = useState(false);
+  const [preselectBorrowFriendId, setPreselectBorrowFriendId] = useState(null);
+  const friendsBtnRef                       = useRef(null);
+  const settingsBtnRef                      = useRef(null);
+  const skinBtnRef                          = useRef(null);
+  const messagesBtnRef                      = useRef(null);
+  const [messagesPopoverOpen, setMessagesPopoverOpen] = useState(false);
+  const bugBtnRef                           = useRef(null);
+  const powerBtnRef                         = useRef(null);
+  const friends                             = useFriends();
+  const dms                                 = useDMs(me?._id);
+  const [dmPeer, setDmPeer]                 = useState(null);
   const { count: chatUnread, markSeen: markChatSeen } = useChatUnread();
   const [missionListCollapsed, setMissionListCollapsed] = useState(() => {
     try { return localStorage.getItem('nexus_missionlist_collapsed') === '1'; } catch { return false; }
@@ -2739,8 +2593,36 @@ export default function Dashboard() {
   const [profileVersion, setProfileVersion] = useState(0);
   const [pttKey, setPttKey]                 = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
   const [radioState, setRadioState]         = useState('standby');
+  // Which tuner (if any) has its settings face open. Used to dim the
+  // sibling and enforce the single-open invariant.
+  const [openSettingsTuner, setOpenSettingsTuner] = useState(null); // 'crew' | 'command' | null
   const [isMuted, setIsMuted]               = useState(false);
   const [micSensitivity, setMicSensitivity] = useState(100);
+  // Transport selection — no longer user-toggleable. The UDP sibling build
+  // is detected via the UDP Electron shell appending ?udp=1 to the URL, or
+  // (in a pure-UDP Vite bundle, if we ever ship one) via VITE_NEXUS_UDP_ONLY.
+  // The main app is always WebRTC. Frozen at mount; hooks can't be chosen
+  // conditionally mid-render.
+  const initialTransportRef = useRef((() => {
+    try {
+      if (import.meta.env.VITE_NEXUS_UDP_ONLY === '1') return 'udp';
+      if (typeof window !== 'undefined' &&
+          new URLSearchParams(window.location.search).get('udp') === '1') return 'udp';
+    } catch {}
+    return 'webrtc';
+  })());
+  // Global receive-volume (percent 0..150). Governs loudness of every peer's
+  // incoming voice on both the Crew and Command tuners — does not touch
+  // outgoing audio. Persisted so operators don't retune it per session.
+  const [rxVolume, setRxVolume] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem('nexus_rx_volume'));
+      return Number.isFinite(v) && v >= 0 && v <= 150 ? v : 100;
+    } catch { return 100; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('nexus_rx_volume', String(rxVolume)); } catch {}
+  }, [rxVolume]);
   // Device selection — persisted per-browser so the operator's mic/output
   // choice sticks across sessions. `null` means "use OS default".
   const [micDeviceId, setMicDeviceIdInternal]       = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
@@ -2774,14 +2656,17 @@ export default function Dashboard() {
     stopPTT,
     setMicSensitivity: setHookMicSensitivity,
     setMuted: setHookMuted,
+    setRxVolume: setHookRxVolume,
     setSrsRadioSpec,
     setSrsRadioBand,
-  } = useRadioConnection({
+  } = (initialTransportRef.current === 'udp' ? useRadioConnectionUDP : useRadioConnection)({
     voiceProfile,
     voiceProfileVersion: profileVersion,
     pttKey,
     micDeviceId,
     outputDeviceId,
+    // Only consumed by the UDP hook; harmless for the WebRTC one.
+    me,
   });
 
   // Player's assigned SRS radio-model DSP preset + squelch band.
@@ -2791,6 +2676,7 @@ export default function Dashboard() {
 
   useEffect(() => { setHookMuted(isMuted); }, [isMuted, setHookMuted]);
   useEffect(() => { setHookMicSensitivity(micSensitivity); }, [micSensitivity, setHookMicSensitivity]);
+  useEffect(() => { setHookRxVolume(rxVolume / 100); }, [rxVolume, setHookRxVolume]);
 
   // Auto-tune state machine: transitions standby→tuned when the hook lands
   // on a frequency, and reverts to standby if the underlying connection drops
@@ -3023,11 +2909,16 @@ export default function Dashboard() {
       <BugReportModal open={showBugReport} onClose={() => setShowBugReport(false)} />
       <RadioPickerModal open={showRadioPicker} onClose={() => setShowRadioPicker(false)} />
       <WhatsNewSplash />
+      <UpdateBanner />
       <GlobalChat
         open={chatOpen}
         onOpenChange={setChatOpen}
         anchorRef={chatBtnRef}
         markSeen={markChatSeen}
+        friendIds={new Set(friends.friends.map(f => String(f.userId)))}
+        onAvatarClick={(userId, ref) => {
+          setIdCard({ userId, rect: ref?.current ? ref.current.getBoundingClientRect() : null });
+        }}
       />
 
       {/* Owner access-request popups — fixed bottom-right, stacked */}
@@ -3111,7 +3002,190 @@ export default function Dashboard() {
         chatUnread={chatUnread}
         setShowBugReport={setShowBugReport}
         setShowRadioPicker={setShowRadioPicker}
+        hideNav
       />
+
+      {/* New nav row (Layout A). Everything that used to live in TopBar's
+          nav row now lives here. */}
+      <Banner
+        page={
+          createMissionMode ? 'missions' :
+          myShipsMode       ? 'myships'  :
+          registerMode      ? 'register' :
+          shipRegistryMode  ? 'registry' :
+          selectedMission   ? 'mymission' :
+                              'missions'
+        }
+        canMyMission={!!myMission}
+        onMissions={() => enterMode('dashboard')}
+        onMyMission={() => myMission && selectMission(myMission._id)}
+        onMyShips={() => enterMode('myShips')}
+        onRegistry={() => enterMode('registry')}
+        onRegister={() => enterMode('register')}
+        chatOpen={chatOpen}
+        onToggleChat={() => setChatOpen(o => !o)}
+        chatUnread={chatUnread}
+        friendsOpen={friendsOpen}
+        onToggleFriends={() => setFriendsOpen(o => !o)}
+        friendsUnread={friends.incomingCount}
+        friendsOnline={friends.friends.filter(f => f.online).length}
+        friendsBtnRef={friendsBtnRef}
+        hasElectron={!!(typeof window !== 'undefined' && window.electronAPI)}
+        pinned={winPinned}
+        onTogglePin={async () => { try { await window.electronAPI?.togglePin?.(); } catch {} }}
+        onCompanion={() => window.electronAPI?.setMode?.('companion')}
+        radioOnly={winMode === 'radio'}
+        onToggleRadio={() => window.electronAPI?.setMode?.('radio')}
+        settingsBtnRef={settingsBtnRef}
+        skinBtnRef={skinBtnRef}
+        bugBtnRef={bugBtnRef}
+        powerBtnRef={powerBtnRef}
+        messagesBtnRef={messagesBtnRef}
+        onOpenMessages={() => { dms.refresh(); setMessagesPopoverOpen(o => !o); }}
+        onOpenSkin={() => setSkinPopoverOpen(o => !o)}
+        onOpenSettings={() => setSettingsPopoverOpen(o => !o)}
+        onOpenBug={() => setBugPopoverOpen(true)}
+        onOpenDisconnect={() => setDiscPopoverOpen(true)}
+      />
+
+      {messagesPopoverOpen && (
+        <MessagesPopover
+          anchorRef={messagesBtnRef}
+          threads={dms.threads}
+          meId={me?._id}
+          onClose={() => setMessagesPopoverOpen(false)}
+          onPick={(t) => {
+            const peer = { userId: String(t.peerId), name: t.name, avatar: t.avatar };
+            setDmPeer(peer);
+            dms.fetchMessages(peer.userId);
+          }}
+        />
+      )}
+
+      {skinPopoverOpen && (
+        <SkinPopover
+          anchorRef={skinBtnRef}
+          onClose={() => setSkinPopoverOpen(false)}
+        />
+      )}
+
+      {settingsPopoverOpen && (
+        <SettingsPopover
+          anchorRef={settingsBtnRef}
+          onClose={() => setSettingsPopoverOpen(false)}
+          onOpenRadioPicker={() => setShowRadioPicker(true)}
+        />
+      )}
+
+      {bugPopoverOpen && (
+        <AnchoredPopover anchorRef={bugBtnRef} width={300} onClose={() => setBugPopoverOpen(false)} label="Report a bug">
+          <h4>Report a bug</h4>
+          <div className="nxp-body">
+            <textarea
+              autoFocus
+              placeholder="What went wrong?"
+              value={bugText}
+              onChange={e => setBugText(e.target.value)}
+              aria-label="Bug description"
+              maxLength={600}
+            />
+          </div>
+          <div className="nxp-acts">
+            <button className="nxp-link" onClick={() => { setBugPopoverOpen(false); setBugText(''); }}>Cancel</button>
+            <button className="nxp-btn" disabled={bugSending || !bugText.trim()}
+              onClick={async () => {
+                setBugSending(true);
+                let ok = false;
+                try {
+                  await api.post('/bug-report', { description: bugText.trim(), screenshots: [] });
+                  ok = true;
+                } catch {}
+                setBugSending(false);
+                setBugText('');
+                setBugPopoverOpen(false);
+                if (ok) toast.success('Bug report sent. Thanks.');
+                else    toast.error('Bug report failed to send.');
+              }}
+            >{bugSending ? 'Sending…' : 'Send'}</button>
+          </div>
+        </AnchoredPopover>
+      )}
+
+      {discPopoverOpen && (
+        <AnchoredPopover anchorRef={powerBtnRef} width={280} onClose={() => setDiscPopoverOpen(false)} label="Disconnect">
+          <h4>Disconnect?</h4>
+          <div className="nxp-body">
+            <p>You will leave your radio frequencies and stop receiving mission updates.</p>
+          </div>
+          <div className="nxp-acts">
+            <button className="nxp-link" onClick={() => setDiscPopoverOpen(false)}>Stay connected</button>
+            <button className="nxp-btn danger" onClick={() => { setDiscPopoverOpen(false); navigate('/disconnect'); }}>Disconnect</button>
+          </div>
+        </AnchoredPopover>
+      )}
+
+      <FriendsDrawer
+        open={friendsOpen}
+        onClose={() => setFriendsOpen(false)}
+        friends={friends.friends}
+        received={friends.received}
+        sent={friends.sent}
+        onSend={friends.sendRequest}
+        onAccept={friends.accept}
+        onDecline={friends.decline}
+        onCancel={friends.cancel}
+        onRemove={friends.remove}
+        onBorrow={(f) => {
+          setFriendsOpen(false);
+          setIdCard(null);
+          // If we're not already viewing a mission, bounce to the dashboard
+          // so MissionShipsStrip has a mission to mount against.
+          if (!selectedMission && myMission) selectMission(myMission._id);
+          setPreselectBorrowFriendId(String(f.userId || f.id));
+        }}
+        onMessage={(f) => {
+          setDmPeer(f);
+          dms.fetchMessages(f.userId);
+        }}
+        onOpenCard={(userId, ref) => {
+          setIdCard({ userId, rect: ref?.current ? ref.current.getBoundingClientRect() : null });
+        }}
+        returnFocusRef={friendsBtnRef}
+      />
+
+      {dmPeer && (
+        <DMPane
+          meId={me?._id}
+          peer={dmPeer}
+          messages={dms.messagesByPeer[String(dmPeer.userId)] || []}
+          onOpen={(p) => dms.setOpenPeer(p.userId)}
+          onClose={() => { dms.setOpenPeer(null); setDmPeer(null); }}
+          onSend={(peerId, body) => dms.send(peerId, body)}
+        />
+      )}
+
+      {idCard?.userId && (
+        <IdCardPopover
+          anchorRect={idCard.rect}
+          userId={idCard.userId}
+          friends={friends.friends}
+          onClose={() => setIdCard(null)}
+          onBorrow={(card) => {
+            setIdCard(null);
+            setFriendsOpen(false);
+            if (!selectedMission && myMission) selectMission(myMission._id);
+            setPreselectBorrowFriendId(String(card.id));
+          }}
+          onMessage={(card) => {
+            const peer = { userId: String(card.id), name: card.name, avatar: card.avatar, online: card.online, on_mission: card.on_mission };
+            setDmPeer(peer);
+            dms.fetchMessages(peer.userId);
+            setIdCard(null);
+          }}
+        />
+      )}
+
+      <FriendAcceptedBanner event={friends.lastAccepted} onDismiss={friends.clearLastAccepted} />
 
       {/* 3-panel grid (or MY SHIPS panel when myShipsMode) */}
       <div style={{
@@ -3225,16 +3299,14 @@ export default function Dashboard() {
               ) : missions.length === 0 ? (
                 <div className="empty">No active missions</div>
               ) : (
-                missions.map(m => (
-                  <MissionCard
-                    key={m._id}
-                    mission={m}
-                    selected={selectedMission?._id === m._id}
-                    onClick={() => selectMission(m._id)}
-                    missionTypes={missionTypes}
-                    shipThumbs={shipThumbs}
-                  />
-                ))
+                <MissionBoardV2
+                  missions={missions}
+                  selectedMissionId={selectedMission?._id ?? null}
+                  onSelect={selectMission}
+                  missionTypes={missionTypes}
+                  shipThumbs={shipThumbs}
+                  onNewMission={() => enterMode('create')}
+                />
               )}
             </div>
           )}
@@ -3275,6 +3347,8 @@ export default function Dashboard() {
                 onRefresh={fetchMissions}
                 onFeedRefresh={fetchFeed}
                 missionTypes={missionTypes}
+                preselectBorrowFriendId={preselectBorrowFriendId}
+                onBorrowFriendConsumed={() => setPreselectBorrowFriendId(null)}
               />
             )
           ) : !loadingMissions ? (
@@ -3393,50 +3467,86 @@ export default function Dashboard() {
               </button>
             </div>
             {!feedCollapsed && (
-              loadingFeed ? (
-                <div className="empty">Scanning{feedDots}</div>
-              ) : feedEvents.length === 0 ? (
-                <div className="empty">No activity</div>
-              ) : (
-                <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-                  {feedEvents.map((item, i) => (
-                    <FeedItem key={item._id ?? `${item.event_type}-${item.timestamp}-${i}`} item={item} timezone={timezone} />
-                  ))}
-                </div>
-              )
+              <ActivityFeed
+                events={feedEvents}
+                loading={loadingFeed}
+                loadingHint={feedDots}
+              />
             )}
           </div>
-          <RadioPanel
-            missionFrequency={myMissionFrequency}
-            missionId={myMissionId}
-            voiceProfile={voiceProfile}
-            setVoiceProfile={setVoiceProfile}
-            profileVersion={profileVersion}
-            setProfileVersion={setProfileVersion}
-            pttKey={pttKey}
-            setPttKey={setPttKey}
-            radioState={radioState}
-            setRadioState={setRadioState}
-            isMuted={isMuted}
-            setIsMuted={setIsMuted}
-            micSensitivity={micSensitivity}
-            setMicSensitivity={setMicSensitivity}
-            tunedFrequency={tunedFrequency}
-            peers={radioPeers}
-            transmittingPeerIds={transmittingPeerIds}
-            isPTTActive={isPTTActive}
-            joinFrequency={joinFrequency}
-            leaveFrequency={leaveFrequency}
-            getInputLevel={getInputLevel}
-            startPTT={startPTT}
-            stopPTT={stopPTT}
-            micDeviceId={micDeviceId}
-            setMicDeviceId={setMicDeviceId}
-            outputDeviceId={outputDeviceId}
-            setOutputDeviceId={setOutputDeviceId}
-            micPermission={micPermission}
-            requestMicPermission={requestMicPermission}
-          />
+          {/* v0.9.8 — Mirrored radio layout per the Radio Mirror Layouts
+              spec. One shared mic strip, two identical modules below. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <SharedMicStrip
+              getLevel={getInputLevel}
+              sensitivity={micSensitivity}
+              setSensitivity={setMicSensitivity}
+              rxVolume={rxVolume}
+              setRxVolume={setRxVolume}
+              isActive={micPermission === 'granted'}
+            />
+            <CrewRadioCard
+              tunedFrequency={tunedFrequency}
+              peers={radioPeers}
+              transmittingPeerIds={transmittingPeerIds}
+              isPTTActive={isPTTActive}
+              joinFrequency={joinFrequency}
+              leaveFrequency={leaveFrequency}
+              startPTT={startPTT}
+              stopPTT={stopPTT}
+              pttKey={pttKey}
+              setPttKey={setPttKey}
+              onOpenSettings={() => setRadioState('settings')}
+              siblingSettingsOpen={openSettingsTuner === 'command'}
+              onSettingsOpenChange={(open) => setOpenSettingsTuner(open ? 'crew' : (prev => prev === 'crew' ? null : prev)(openSettingsTuner))}
+            />
+            <CommandRadioCard
+              voiceProfile={voiceProfile}
+              srsSpec={myRadio?.spec || null}
+              micDeviceId={micDeviceId}
+              outputDeviceId={outputDeviceId}
+              otherPttKey={pttKey}
+              rxVolume={rxVolume}
+              onOpenSettings={() => setRadioState('settings')}
+              siblingSettingsOpen={openSettingsTuner === 'crew'}
+              onSettingsOpenChange={(open) => setOpenSettingsTuner(open ? 'command' : (prev => prev === 'command' ? null : prev)(openSettingsTuner))}
+            />
+          </div>
+          {radioState === 'settings' && (
+            <div style={{ marginTop: 8 }}>
+              <RadioPanel
+                missionFrequency={myMissionFrequency}
+                missionId={myMissionId}
+                voiceProfile={voiceProfile}
+                setVoiceProfile={setVoiceProfile}
+                profileVersion={profileVersion}
+                setProfileVersion={setProfileVersion}
+                pttKey={pttKey}
+                setPttKey={setPttKey}
+                radioState={radioState}
+                setRadioState={setRadioState}
+                isMuted={isMuted}
+                setIsMuted={setIsMuted}
+                micSensitivity={micSensitivity}
+                setMicSensitivity={setMicSensitivity}
+                tunedFrequency={tunedFrequency}
+                peers={radioPeers}
+                transmittingPeerIds={transmittingPeerIds}
+                isPTTActive={isPTTActive}
+                joinFrequency={joinFrequency}
+                leaveFrequency={leaveFrequency}
+                getInputLevel={getInputLevel}
+                startPTT={startPTT}
+                stopPTT={stopPTT}
+                micDeviceId={micDeviceId}
+                setMicDeviceId={setMicDeviceId}
+                outputDeviceId={outputDeviceId}
+                setOutputDeviceId={setOutputDeviceId}
+                micPermission={micPermission}
+                requestMicPermission={requestMicPermission}
+              />
+            </div>
+          )}
             </>
           )}
         </div>

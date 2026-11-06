@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Themed Registry Terminal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{color-scheme:dark;--bg0:#090b06;--bg1:#0f120a;--bg2:#171b0f;--bg3:#212714;--rim0:#333b1f;--rim1:#5c6b34;--blue:#aec86f;--cyan:#dff48f;--lime:#44FF88;--red:#FF5544;--amber:#FFBB33}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0)}
+body{background:var(--bg0);color:color-mix(in srgb,var(--blue) 28%,#fff);font:13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));transition:background .28s}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{font:700 18px Inter;margin-bottom:4px}
+h2{font:700 11px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+.lead{color:color-mix(in srgb,var(--blue) 62%,#fff);max-width:82ch;font-size:13px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.skin{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px 0 8px;border:1px solid var(--rim0);background:var(--bg1);font:600 11px Inter;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb,var(--blue) 62%,#fff);transition:border-color .16s,background .16s}
+.skin:hover{border-color:var(--rim1)}
+.skin[aria-pressed=true]{border-color:var(--cyan);background:var(--bg2);color:#fff}
+.skin i{width:14px;height:14px;border:1px solid #000;background:linear-gradient(135deg,var(--a) 50%,var(--b) 50%)}
+.btn{display:inline-flex;align-items:center;height:30px;padding:0 12px;border:1px solid var(--rim1);background:linear-gradient(180deg,color-mix(in srgb,var(--blue) 30%,var(--bg1)),color-mix(in srgb,var(--blue) 17%,var(--bg0)));font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;transition:filter .16s,transform .09s}
+.btn:hover{filter:brightness(1.15)}.btn:active{transform:translateY(1px)}
+.row3{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:6px;min-width:0}
+.col p{color:color-mix(in srgb,var(--blue) 62%,#fff);font-size:12px;max-width:44ch;min-height:54px}
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(392px,1fr));gap:14px}
+.sheet .cell{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sheet .cell b{font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--tc,#fff)}
+.seg{display:inline-flex;border:1px solid var(--rim1)}
+.seg button{height:28px;padding:0 12px;font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb,var(--blue) 62%,#fff);background:var(--bg1)}
+.seg button[aria-pressed=true]{background:linear-gradient(180deg,color-mix(in srgb,var(--blue) 40%,var(--bg1)),color-mix(in srgb,var(--blue) 24%,var(--bg0)));color:#fff}
+.box{border:1px solid var(--rim0);background:var(--bg1);padding:12px 14px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;text-align:left;padding:3px 10px 5px 0;color:color-mix(in srgb,var(--blue) 62%,#fff)}
+td{padding:5px 10px 5px 0;border-top:1px solid var(--bg3);vertical-align:top;color:color-mix(in srgb,var(--blue) 62%,#fff)}
+td:first-child{font-weight:600;color:var(--cyan);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:11px}
+.sw{display:inline-block;width:11px;height:11px;border:1px solid #000;vertical-align:-1px;margin-right:6px}
+pre{font:11px/1.55 'JetBrains Mono',ui-monospace,monospace;background:color-mix(in srgb,var(--bg0) 80%,#000);border:1px solid var(--bg3);padding:10px 12px;overflow-x:auto;white-space:pre;color:color-mix(in srgb,var(--blue) 28%,#fff)}
+/* ===== terminal, driven only by the skin tokens on the element ===== */
+.term{
+  --t-bg:color-mix(in srgb,var(--bg0) 72%,#000);
+  --t-text:var(--blue);
+  --t-dim:color-mix(in srgb,var(--blue) 55%,var(--bg0));
+  --t-faint:color-mix(in srgb,var(--blue) 28%,var(--bg0));
+  --t-bright:var(--cyan);
+  --t-glow:color-mix(in srgb,var(--blue) 34%,transparent);
+  --t-ready:color-mix(in srgb,var(--lime) 62%,var(--blue));
+  position:relative;width:392px;max-width:100%;padding:20px 18px 18px;background:var(--t-bg);border:1px solid var(--rim0);
+  font:500 11px/1.9 'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;letter-spacing:.02em;color:var(--t-text);overflow:hidden;text-transform:uppercase}
+.term::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,transparent 0 2px,color-mix(in srgb,#000 22%,transparent) 2px 3px);opacity:.5}
+.term .ln{display:block;white-space:nowrap;opacity:0;transform:translateX(-4px)}
+.term.on .ln{animation:lnin 220ms var(--o,cubic-bezier(.2,.8,.2,1)) forwards;animation-delay:calc(var(--i) * 110ms)}
+@keyframes lnin{to{opacity:1;transform:none}}
+.term .hd{color:var(--t-bright);font-weight:700;letter-spacing:.06em}
+.term .rule{color:var(--t-faint);overflow:hidden}
+.term .op{color:var(--t-text)}.term .op b{color:var(--t-bright);font-weight:700}
+.term .st{display:grid;grid-template-columns:25ch 22ch auto;column-gap:1ch;align-items:center}
+.term .lb{color:var(--t-dim)}
+.term .dots{display:inline-block;overflow:hidden;vertical-align:bottom;width:0;white-space:nowrap}
+.term.on .dots{animation:fillb 380ms steps(20) forwards;animation-delay:calc(var(--i) * 110ms + 120ms)}
+@keyframes fillb{to{width:20ch}}
+.term .br{color:var(--t-dim)}
+.term .ok{color:var(--t-text)}
+.term .pr{color:var(--t-bright);font-weight:700}
+.term .cur{display:inline-block;width:.6em;height:1.05em;background:var(--t-bright);vertical-align:-2px;margin-left:.3ch;animation:blink 1.06s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* list screen with highlighted row */
+.term .rw{display:grid;grid-template-columns:2ch 15ch 18ch 1fr;column-gap:1ch;align-items:center;padding:0 1ch;margin:0 -1ch;color:var(--t-dim)}
+.term .rw .c2{color:var(--t-text)}
+.term .rw.sel{background:color-mix(in srgb,var(--t-text) 24%,var(--t-bg));color:var(--t-bright);box-shadow:inset 3px 0 0 var(--t-bright)}
+.term .rw.sel .c2{color:var(--t-bright)}
+.term .rw .s{text-align:right}
+.term.B .rw.sel{background:var(--t-text);color:var(--t-bg);box-shadow:none}
+.term.B .rw.sel .c2{color:var(--t-bg)}
+.term.A .rw.sel{text-shadow:0 0 8px var(--t-glow)}
+.term .keys{color:var(--t-dim);font-size:10px}.term .keys b{color:var(--t-bright);font-weight:700}
+.term.C .rw{margin:0 -14px;padding:0 14px}
+.term.C .rw.sel{box-shadow:inset 3px 0 0 var(--t-bright)}
+.term.C .rw .s span{border:1px solid color-mix(in srgb,var(--blue) 42%,var(--bg0));background:color-mix(in srgb,var(--blue) 16%,var(--bg0));color:var(--t-bright);padding:0 .6ch;font-size:10px}
+/* A tinted phosphor */
+.term.A{text-shadow:0 0 8px var(--t-glow)}
+.term.A .rdy{color:var(--t-bright);font-weight:700;text-shadow:0 0 10px var(--t-glow)}
+.term.A .led{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px color-mix(in srgb,var(--lime) 70%,transparent);margin-right:.8ch;vertical-align:1px}
+/* B inverse chips */
+.term.B .ok,.term.B .rdy{display:inline-block;padding:0 .8ch;background:var(--t-text);color:var(--t-bg);font-weight:700}
+.term.B .rdy{background:var(--t-bright)}
+.term.B .lb{color:var(--t-text)}
+.term.B .hd{background:var(--t-bright);color:var(--t-bg);display:inline-block;padding:0 1ch}
+/* C framed panel with segmented bars */
+.term.C{padding:0;text-shadow:none;font-weight:500}
+.term.C .bn{display:flex;align-items:center;gap:8px;padding:9px 12px;background:linear-gradient(180deg,color-mix(in srgb,var(--bg3) 78%,var(--bg2)),color-mix(in srgb,var(--bg1) 85%,var(--bg2)));border-bottom:1px solid var(--rim0);box-shadow:0 1px 0 color-mix(in srgb,var(--blue) 20%,transparent) inset}
+.term.C .bn b{font:700 10px Inter;letter-spacing:.16em;color:#fff}
+.term.C .bn span.v{margin-left:auto;font:700 10px Inter;letter-spacing:.08em;color:var(--t-bright);border:1px solid color-mix(in srgb,var(--blue) 42%,var(--bg0));background:color-mix(in srgb,var(--blue) 16%,var(--bg0));padding:1px 6px}
+.term.C .bd{padding:14px 14px 14px}
+.term.C .st{grid-template-columns:25ch 1fr 7ch;column-gap:10px}
+.term.C .seg2{display:flex;gap:2px;height:8px}
+.term.C .seg2 i{flex:1;background:color-mix(in srgb,var(--blue) 16%,var(--bg0));transition:background 160ms}
+.term.C.on .seg2 i{animation:segon 120ms linear forwards;animation-delay:calc(var(--i) * 110ms + 120ms + var(--s) * 20ms)}
+@keyframes segon{to{background:var(--t-text)}}
+.term.C .ok{border:1px solid color-mix(in srgb,var(--blue) 42%,var(--bg0));background:color-mix(in srgb,var(--blue) 16%,var(--bg0));color:var(--t-bright);padding:0 .6ch;text-align:center;font-size:10px;line-height:1.5}
+.term.C .rdy{border:1px solid color-mix(in srgb,var(--lime) 62%,var(--bg0));background:color-mix(in srgb,var(--lime) 24%,var(--bg0));color:color-mix(in srgb,var(--lime) 55%,#fff);padding:0 .6ch;text-align:center;font-size:10px;line-height:1.5}
+.term.C .rule{display:none}
+.term.C .ln.hd2{color:var(--t-bright);font-weight:700;letter-spacing:.06em;white-space:normal}
+.rm .term .ln{opacity:1;transform:none;animation:none!important}.rm .term .dots{width:20ch;animation:none!important}.rm .term.C .seg2 i{background:var(--t-text);animation:none!important}.rm .cur{animation:none}
+@media (prefers-reduced-motion:reduce){.term .ln{opacity:1;transform:none;animation:none!important}.term .dots{width:20ch;animation:none!important}.term.C .seg2 i{background:var(--t-text);animation:none!important}.cur{animation:none}}
+</style></head><body>
+<div class="wrap" id="root">
+<div><h1>Registry terminal, themed</h1>
+<p class="lead">The terminal now draws only from the active skin's tokens, so it follows whatever theme the player chose. Pick a skin to see all three treatments retint, then compare every skin in the contact sheet. Press Replay to watch the boot sequence run the way it does on a tab click. The Screen switch shows a second screen with a highlighted row, to show the same tokens carry across every terminal screen.</p></div>
+<div class="bar" id="skins"></div>
+<div class="bar"><span style="color:color-mix(in srgb,var(--blue) 62%,#fff)">Screen</span><div class="seg" id="ssel"><button data-s="boot" aria-pressed="true">Boot</button><button data-s="list" aria-pressed="false">List with highlighted row</button></div><button class="btn" id="replay">Replay</button><label style="display:flex;gap:6px;align-items:center;color:color-mix(in srgb,var(--blue) 62%,#fff);cursor:pointer"><input type="checkbox" id="rmc" style="accent-color:var(--cyan)"> Preview reduced motion</label></div>
+<div class="row3" id="three"></div>
+<div><h2 style="margin-bottom:8px">All nine skins</h2><div class="bar" style="margin-bottom:12px"><span style="color:color-mix(in srgb,var(--blue) 62%,#fff)">Treatment</span><div class="seg" id="vsel"><button data-v="A" aria-pressed="true">A Phosphor</button><button data-v="B" aria-pressed="false">B Inverse</button><button data-v="C" aria-pressed="false">C Panel</button></div></div><div class="sheet" id="sheet"></div></div>
+<div class="box"><h2 style="margin-bottom:8px">Terminal tokens, derived from the skin</h2><table><thead><tr><th>Token</th><th>Recipe</th><th>Used for</th></tr></thead><tbody>
+<tr><td>--t-bg</td><td>color-mix(bg0 72%, #000)</td><td>Terminal background</td></tr>
+<tr><td>--t-text</td><td>var(--blue), the skin accent</td><td>Body text, OK status</td></tr>
+<tr><td>--t-dim</td><td>color-mix(accent 55%, bg0)</td><td>Row labels, bar brackets</td></tr>
+<tr><td>--t-faint</td><td>color-mix(accent 28%, bg0)</td><td>Rules, empty bar segments</td></tr>
+<tr><td>--t-bright</td><td>var(--cyan), the skin's bright accent</td><td>Title, operator, READY, ONLINE, prompt, cursor</td></tr>
+<tr><td>--t-glow</td><td>color-mix(accent 34%, transparent)</td><td>Phosphor glow on treatment A</td></tr>
+<tr><td>--t-ready</td><td>color-mix(lime 62%, accent)</td><td>Optional green, pulled toward the theme (not used in A or B)</td></tr></tbody></table></div>
+</div>
+<script>
+(function(){
+var SK=[["deepblue","Deep Blue","#020C14","#061018","#0A1828","#12263A","#1A3A50","#2A5A7A","#66AADD","#00EEFF"],
+["obsidian","Obsidian","#0a0a0c","#101012","#17171a","#202024","#2c2c31","#4a4a52","#b4c2d3","#e4f2ff"],
+["ember","Ember","#0c0806","#130d09","#1c130d","#281a11","#3a2616","#6a4524","#e3a655","#ffc766"],
+["oxide","Oxide","#0e0607","#160a0b","#20100f","#2e1715","#44201c","#7a3a2e","#e2806a","#ffae92"],
+["olive","Olive Drab","#090b06","#0f120a","#171b0f","#212714","#333b1f","#5c6b34","#aec86f","#dff48f"],
+["violet","Violet Void","#0a0612","#100a1a","#181026","#231738","#34224f","#5b3d8c","#ae92ee","#e6ceff"],
+["abyss","Abyss","#04100f","#081817","#0e2321","#16322f","#1d4642","#2f7a72","#52c6b3","#80f6e8"],
+["dune","Dune","#100e0c","#181512","#221e19","#2f2922","#403830","#6e6254","#d8bd90","#f3deb4"],
+["carbon","Carbon","#030304","#08080a","#0f0f12","#18181c","#25252b","#3e3e47","#ff5fae","#ff8cc6"]].map(function(a){return {id:a[0],name:a[1],bg0:a[2],bg1:a[3],bg2:a[4],bg3:a[5],rim0:a[6],rim1:a[7],blue:a[8],cyan:a[9]}});
+var cur=SK[4],view="A",scr="boot";
+function vars(s){return "--bg0:"+s.bg0+";--bg1:"+s.bg1+";--bg2:"+s.bg2+";--bg3:"+s.bg3+";--rim0:"+s.rim0+";--rim1:"+s.rim1+";--blue:"+s.blue+";--cyan:"+s.cyan}
+function apply(s){var r=document.documentElement;vars(s).split(";").forEach(function(p){var i=p.indexOf(":");r.style.setProperty(p.slice(0,i),p.slice(i+1))})}
+var ROWS=[["AUTHENTICATING OPERATOR","OK"],["ACCESSING FLEET REGISTRY","OK"],["VERIFYING CLEARANCE","OK"],["LOADING CONFIG SUITE","OK"],["INITIALIZING CREW EDITOR","OK"],["ESTABLISHING CONNECTION","READY"],["REGISTRY TERMINAL","ONLINE"]];
+var FL=[["HCS GEMBA","AEGIS HAMMERHEAD","ON MISSION"],["ROOK","ANVIL CARRACK","AVAILABLE"],["KESTREL TWO","DRAKE CUTLASS","AVAILABLE"],["LONG HAUL","MISC HULL C","AVAILABLE"]];
+function listTerm(v,s){
+ var i=0,h="",L=function(c,inner){return '<span class="ln '+(c||'')+'" style="--i:'+(i++)+'">'+inner+'</span>'};
+ var rule='<span class="rule">'+Array(46).join("\u2500")+'</span>';
+ var rows=function(){return FL.map(function(r,k){return L("rw"+(k===0?" sel":""),'<span>'+(k===0?'&gt;':'&nbsp;')+'</span><span class="c2">'+r[0]+'</span><span>'+r[1]+'</span><span class="s">'+(v==="C"?'<span>'+r[2]+'</span>':r[2])+'</span>')}).join("")};
+ var keys=L("keys","<b>[ENTER]</b> OPEN &nbsp;<b>[E]</b> EDIT NODES &nbsp;<b>[L]</b> LIVE &nbsp;<b>[DEL]</b> DELETE");
+ if(v==="C"){h='<div class="bn"><b>FLEET REGISTRY</b><span class="v">4 VESSELS</span></div><div class="bd">'+L("op","OPERATOR: <b>Jonas Sumafi</b>")+L("","&nbsp;")+rows()+L("","&nbsp;")+keys+'</div>'}
+ else{h=L("hd",(v==="B"?'<span class="hd">NEXUS FLEET REGISTRY</span> &mdash; YOUR FLEET':'NEXUS FLEET REGISTRY &mdash; YOUR FLEET'))+L("",rule)+rows()+L("",rule)+keys+L("pr","&gt; SELECT VESSEL<span class=\"cur\"></span>")}
+ return '<div class="term '+v+' on" style="'+(s?vars(s):'')+'">'+h+'</div>';
+}
+function term(v,s,name){
+ if(scr==="list")return listTerm(v,s);
+ var i=0,h="";
+ var L=function(c,inner,extra){return '<span class="ln '+(c||'')+'" style="--i:'+(i++)+'">'+inner+'</span>'};
+ var rule='<span class="rule">'+Array(46).join("─")+'</span>';
+ if(v==="C"){
+  h='<div class="bn"><b>FLEET REGISTRY</b><span class="v">TERMINAL v2.1</span></div><div class="bd">';
+  h+=L("op",'OPERATOR: <b>Jonas Sumafi</b> &nbsp;//&nbsp; AUTH: <b>VERIFIED</b>');h+=L('','&nbsp;');
+  ROWS.forEach(function(r){var segs="";for(var k=0;k<20;k++)segs+='<i style="--s:'+k+'"></i>';
+   h+=L("st",'<span class="lb">'+r[0]+'</span><span class="seg2">'+segs+'</span><span class="'+(r[1]==="OK"?"ok":"rdy")+'">'+r[1]+'</span>')});
+  h+=L('','&nbsp;');h+=L("pr","&gt; REGISTRY TERMINAL READY");h+=L("pr","&gt; AWAITING VESSEL DATA INPUT...<span class=\"cur\"></span>");h+='</div>';
+ } else {
+  h+=L("hd",(v==="B"?'<span class="hd">NEXUS FLEET REGISTRY</span> &mdash; TERMINAL ACCESS v2.1':'NEXUS FLEET REGISTRY &mdash; TERMINAL ACCESS v2.1'));
+  h+=L("",rule);
+  h+=L("op",'OPERATOR: <b>Jonas Sumafi</b> &nbsp;//&nbsp; AUTH: <b>VERIFIED</b>');
+  h+=L('','&nbsp;');
+  ROWS.forEach(function(r){h+=L("st",'<span class="lb">'+r[0]+'</span><span><span class="br">[</span><span class="dots">'+Array(21).join(".")+'</span><span class="br">]</span></span><span class="'+(r[1]==="OK"?"ok":"rdy")+'">'+(v==="A"&&r[1]!=="OK"?'<span class="led"></span>':'')+r[1]+'</span>')});
+  h+=L("",rule);
+  h+=L("pr","&gt; REGISTRY TERMINAL READY");h+=L("pr","&gt; AWAITING VESSEL DATA INPUT...<span class=\"cur\"></span>");
+ }
+ return '<div class="term '+v+' on" style="'+(s?vars(s):'')+'">'+h+'</div>';
+}
+function render(){
+ apply(cur);
+ var d={A:["A. Tinted phosphor","Everything takes the skin's accent. The title and the final lines use the bright accent, with a soft glow. READY and ONLINE brighten instead of turning green, and a small green status light is the only fixed color."],
+  B:["B. Inverse chips","A flat, single-hue terminal in the style of old consoles. The title and the status words become inverse blocks, so state reads at a glance, and no glow or green appears at all."],
+  C:["C. Framed panel","The terminal sits in the same banner and chip language as the rest of the app. Bars become segmented fills, and the final READY and ONLINE chips keep a green tint pulled from the theme."]};
+ document.getElementById("three").innerHTML=["A","B","C"].map(function(v){return '<div class="col"><h2>'+d[v][0]+'</h2><p>'+d[v][1]+'</p>'+term(v,null)+'</div>'}).join("");
+ document.getElementById("sheet").innerHTML=SK.map(function(s){return '<div class="cell" style="'+vars(s)+';--tc:'+s.blue+'"><b>'+s.name+'</b>'+term(view,s)+'</div>'}).join("");
+ $$(".sheet .term").forEach(function(t){t.style.width="100%"});
+}
+function $$(s){return Array.prototype.slice.call(document.querySelectorAll(s))}
+document.getElementById("skins").innerHTML=SK.map(function(s,i){return '<button class="skin" data-i="'+i+'" style="--a:'+s.blue+';--b:'+s.bg3+'" aria-pressed="'+(s===cur)+'"><i></i>'+s.name+'</button>'}).join("");
+document.getElementById("skins").onclick=function(e){var b=e.target.closest(".skin");if(!b)return;cur=SK[+b.dataset.i];$$(".skin").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});render()};
+document.getElementById("vsel").onclick=function(e){var b=e.target.closest("button");if(!b)return;view=b.dataset.v;$$("#vsel button").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});document.getElementById("sheet").innerHTML=SK.map(function(s){return '<div class="cell" style="'+vars(s)+';--tc:'+s.blue+'"><b>'+s.name+'</b>'+term(view,s)+'</div>'}).join("");$$(".sheet .term").forEach(function(t){t.style.width="100%"})};
+document.getElementById("ssel").onclick=function(e){var b=e.target.closest("button");if(!b)return;scr=b.dataset.s;$$("#ssel button").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});render()};
+document.getElementById("replay").onclick=function(){$$(".term").forEach(function(t){t.classList.remove("on");void t.offsetWidth;t.classList.add("on")})};
+document.getElementById("rmc").onchange=function(){document.documentElement.classList.toggle("rm",this.checked)};
+render();
+})();
+</script></body></html>

@@ -9,8 +9,8 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import useMyRadio from '../hooks/useMyRadio';
 
-export default function RadioPickerModal({ open, onClose }) {
-  const { radio, refetch } = useMyRadio();
+export default function RadioPickerModal({ open, onClose, tunerId = 'right' }) {
+  const { radio, refetch } = useMyRadio({ tunerId });
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -32,7 +32,7 @@ export default function RadioPickerModal({ open, onClose }) {
     setSwitching(true);
     setError(null);
     try {
-      await api.put('/radio/my-radio', { radio_type: id });
+      await api.put('/radio/my-radio', { radio_type: id, tunerId });
       await refetch();
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || 'Switch failed');
@@ -46,10 +46,23 @@ export default function RadioPickerModal({ open, onClose }) {
     setSwitching(true);
     setError(null);
     try {
-      await api.put('/radio/my-radio', { reroll: true });
+      await api.put('/radio/my-radio', { reroll: true, tunerId });
       await refetch();
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || 'Reroll failed');
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const clearCommandInherit = async () => {
+    if (switching) return;
+    setSwitching(true);
+    try {
+      await api.put('/radio/my-radio', { radio_type: null, tunerId: 'left' });
+      await refetch();
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || 'Clear failed');
     } finally {
       setSwitching(false);
     }
@@ -96,7 +109,16 @@ export default function RadioPickerModal({ open, onClose }) {
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: 'var(--fg0)',
             flex: 1,
-          }}>Switch radio</span>
+          }}>{tunerId === 'left' ? 'Switch Command radio' : 'Switch radio'}</span>
+          {tunerId === 'left' && radio && (
+            <button
+              className="btn"
+              onClick={clearCommandInherit}
+              disabled={switching}
+              title="Clear and inherit the primary radio"
+              style={{ fontSize: 11, padding: '5px 10px' }}
+            >Inherit primary</button>
+          )}
           <button
             className="btn"
             onClick={reroll}

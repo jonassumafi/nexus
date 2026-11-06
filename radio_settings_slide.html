@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio Settings Slide Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Idea: the tile never leaves its place. Its body swaps to a settings face while the height eases to fit. */
+:root{
+  color-scheme:dark;
+  --bg0:#050f0e; --bg1:#0a1918; --bg2:#102322; --bg3:#183230;
+  --rim0:#234441; --rim1:#3d726d;
+  --acc:#7ef0dc; --acc2:#c4faf0;
+  --t1:#e3faf6; --t2:#8db8b2;
+  --lime:#44FF88; --red:#FF5544; --amber:#FFBB33;
+  --inset:color-mix(in srgb,var(--bg0) 78%,#000);
+  --edge:color-mix(in srgb,var(--bg0) 55%,#000);
+  --hl:color-mix(in srgb,var(--acc) 16%,transparent);
+  --key-hi:color-mix(in srgb,var(--acc) 22%,var(--bg1));
+  --key-lo:color-mix(in srgb,var(--acc) 10%,var(--bg0));
+  --go-hi:color-mix(in srgb,var(--acc) 34%,var(--bg0));
+  --go-lo:color-mix(in srgb,var(--acc) 18%,var(--bg0));
+  --go-rim:color-mix(in srgb,var(--acc) 58%,var(--bg0));
+  --no-txt:color-mix(in srgb,var(--red) 45%,#fff);
+  --no-rim:color-mix(in srgb,var(--red) 58%,var(--bg0));
+  --am-bg:color-mix(in srgb,var(--amber) 16%,var(--bg0));
+  --am-rim:color-mix(in srgb,var(--amber) 58%,var(--bg0));
+  --am-txt:color-mix(in srgb,var(--amber) 50%,#fff);
+  --banner:linear-gradient(180deg,color-mix(in srgb,var(--bg3) 80%,var(--bg2)),color-mix(in srgb,var(--bg1) 85%,var(--bg2)));
+  --d1:90ms; --d2:160ms; --d3:280ms; --d4:420ms;
+  /* SETTINGS SLIDE PARAMETERS (used by .faces, .face, .titles, .gear, .row) */
+  --cfg-height-dur:420ms;      /* tile height easing between faces */
+  --cfg-height-ease:cubic-bezier(.45,0,.2,1);
+  --cfg-swap-dur:420ms;        /* face translate duration */
+  --cfg-fade-dur:280ms;        /* face opacity and blur duration */
+  --cfg-swap-ease:cubic-bezier(.2,.8,.2,1);
+  --cfg-front-out:-26px;       /* front face exits to the left by this much */
+  --cfg-back-in:26px;          /* settings face enters from the right by this much */
+  --cfg-blur:2px;              /* blur on the face that is leaving or arriving */
+  --cfg-title-shift:14px;      /* title slide distance */
+  --cfg-title-dur:280ms;
+  --cfg-icon-dur:420ms;        /* gear to X spin */
+  --cfg-icon-ease:cubic-bezier(.34,1.56,.64,1);
+  --cfg-row-stagger:38ms;      /* delay between settings rows */
+  --cfg-row-offset:120ms;      /* delay before the first row starts */
+  --cfg-row-rise:8px;          /* rows rise from this far below */
+  --cfg-dim:.7;                /* brightness of the other radio while one is open */
+  --cfg-rim-glow:22px;         /* open tile glow radius */
+  --out:cubic-bezier(.2,.8,.2,1); --snap:cubic-bezier(.34,1.56,.64,1); --inout:cubic-bezier(.45,0,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0)}
+body{background:var(--bg0);color:var(--t1);font:12px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
+.tn{font-variant-numeric:tabular-nums}
+.wrap{max-width:900px;margin:0 auto}
+h1{font:700 18px Inter;margin-bottom:6px;text-wrap:balance}
+.lead{color:var(--t2);max-width:76ch;font-size:13px;margin-bottom:18px}
+.layout{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.stage{flex:0 0 340px;max-width:100%}
+.side{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.card{border:1px solid var(--rim0);border-radius:8px;background:var(--bg1);padding:12px;display:flex;flex-direction:column;gap:9px}
+.card h2{font:700 11px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--acc)}
+.now{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:6px;background:var(--inset);border:1px solid var(--edge);min-height:44px}
+.now b{font:700 13px Inter;color:var(--acc2)}
+.now span{color:var(--t2)}
+.now.pop{animation:pop var(--d2) var(--out)}
+@keyframes pop{from{transform:translateY(3px);opacity:.4}to{transform:none;opacity:1}}
+.seg{display:flex;border:1px solid var(--rim1);border-radius:6px;overflow:hidden}
+.seg button{flex:1;height:28px;border:0;background:var(--inset);color:var(--t2);font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;transition:background var(--d2) var(--out),color var(--d2) var(--out)}
+.seg button[aria-pressed=true]{background:linear-gradient(180deg,var(--go-hi),var(--go-lo));color:var(--acc2)}
+.ctl{display:flex;flex-direction:column;gap:8px}
+.ctl label{display:flex;align-items:center;gap:7px;color:var(--t2);cursor:pointer}
+.ctl input{accent-color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);text-align:left;padding:4px 8px 6px 0}
+td{padding:6px 8px 6px 0;border-top:1px solid var(--edge);vertical-align:top}
+td:first-child{font-weight:600;color:var(--acc2);white-space:nowrap}
+td.d{white-space:nowrap}
+.tw{overflow-x:auto}
+
+/* ===== window ===== */
+.win{border:1px solid var(--rim1);border-radius:10px;background:var(--bg1);box-shadow:0 1px 0 var(--hl) inset,0 0 0 1px #000,0 12px 30px rgba(0,0,0,.55)}
+.pad{padding:8px;display:flex;flex-direction:column;gap:8px}
+
+/* ===== buttons ===== */
+.btn,.ib{position:relative;overflow:hidden;transition:transform var(--d1) var(--out),box-shadow var(--d2) var(--out),border-color var(--d2) var(--out),filter var(--d2) var(--out),opacity var(--d3) var(--out)}
+.btn:hover,.ib:hover{transform:translateY(-1px);border-color:var(--acc);filter:brightness(1.12);box-shadow:0 1px 0 var(--hl) inset,0 3px 0 var(--edge),0 0 14px color-mix(in srgb,var(--acc) 28%,transparent)}
+.btn:active,.ib:active{transform:translateY(2px);filter:brightness(.92);box-shadow:0 0 0 var(--edge),inset 0 2px 4px rgba(0,0,0,.45)}
+.ib{width:32px;height:28px;display:grid;place-items:center;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--key-hi),var(--key-lo));box-shadow:0 1px 0 var(--hl) inset,0 2px 0 var(--edge);padding:0;flex:none;color:var(--t1)}
+.ib svg{width:14px;height:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 10px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--key-hi),var(--key-lo));box-shadow:0 1px 0 var(--hl) inset,0 2px 0 var(--edge);font:600 12px Inter;color:var(--t1);white-space:nowrap}
+.btn svg{width:13px;height:13px}
+.btn.go{background:linear-gradient(180deg,var(--go-hi),var(--go-lo));border-color:var(--go-rim);color:var(--acc2)}
+.pw{color:var(--no-txt);border-color:var(--no-rim);background:linear-gradient(180deg,color-mix(in srgb,var(--red) 22%,var(--bg1)),color-mix(in srgb,var(--red) 10%,var(--bg0)))}
+.rip{position:absolute;border-radius:50%;pointer-events:none;background:color-mix(in srgb,var(--acc2) 55%,transparent);transform:translate(-50%,-50%) scale(0);animation:rip 360ms var(--out) forwards}
+@keyframes rip{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+.key{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:4px;border:1px solid var(--rim1);background:var(--inset);font:700 11px Inter;color:var(--acc2)}
+
+/* ===== tile ===== */
+.mod{position:relative;border:1px solid var(--rim0);border-radius:8px;background:var(--bg2);box-shadow:0 1px 0 var(--hl) inset;transition:border-color var(--d3) var(--out),box-shadow var(--d3) var(--out)}
+.mod.cfg{border-color:var(--go-rim);box-shadow:0 1px 0 var(--hl) inset,0 0 0 1px var(--go-rim),0 0 var(--cfg-rim-glow) color-mix(in srgb,var(--acc) 18%,transparent)}
+.mh{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 10px;background:var(--banner);border-bottom:1px solid var(--edge);border-radius:7px 7px 0 0;min-height:40px}
+.titles{position:relative;flex:1;min-width:0;height:20px}
+.titles>span{position:absolute;left:0;top:0;right:0;display:flex;align-items:baseline;gap:8px;white-space:nowrap;transition:opacity var(--cfg-title-dur) var(--cfg-swap-ease),transform var(--cfg-title-dur) var(--cfg-swap-ease)}
+.role{font:700 13px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--acc2)}
+.rig{color:var(--t2);font-size:11px;overflow:hidden;text-overflow:ellipsis}
+.t-cfg{opacity:0;transform:translateX(var(--cfg-title-shift));pointer-events:none}
+.mod.cfg .t-main{opacity:0;transform:translateX(calc(var(--cfg-title-shift) * -1));pointer-events:none}
+.mod.cfg .t-cfg{opacity:1;transform:none;pointer-events:auto}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:4px;border:1px solid var(--rim1);font:700 10px Inter;letter-spacing:.1em;color:var(--t2);background:var(--inset);flex:none;transition:opacity var(--d2) var(--out)}
+.mod.cfg .chip{opacity:0;width:0;padding:0;border-width:0;margin-left:-8px;overflow:hidden}
+.gear{transition:transform var(--cfg-icon-dur) var(--cfg-icon-ease)}
+.gear .i-gear,.gear .i-close{position:absolute;inset:0;display:grid;place-items:center;transition:opacity var(--d2) var(--out),transform var(--cfg-icon-dur) var(--cfg-icon-ease)}
+.gear .i-close{opacity:0;transform:rotate(-90deg) scale(.6)}
+.mod.cfg .gear .i-gear{opacity:0;transform:rotate(90deg) scale(.6)}
+.mod.cfg .gear .i-close{opacity:1;transform:none}
+.gear[aria-expanded=true]{border-color:var(--go-rim);color:var(--acc2)}
+
+/* faces: height eases between them, content slides */
+.faces{position:relative;overflow:hidden;border-radius:0 0 7px 7px;transition:height var(--cfg-height-dur) var(--cfg-height-ease)}
+.face{transition:transform var(--cfg-swap-dur) var(--cfg-swap-ease),opacity var(--cfg-fade-dur) var(--cfg-swap-ease),filter var(--cfg-fade-dur) var(--cfg-swap-ease)}
+.face.front{padding:8px;display:flex;flex-direction:column;gap:7px}
+.face.back{position:absolute;left:0;right:0;top:0;padding:8px;display:flex;flex-direction:column;gap:2px;opacity:0;transform:translateX(var(--cfg-back-in));pointer-events:none;visibility:hidden;filter:blur(var(--cfg-blur))}
+.mod.cfg .face.front{opacity:0;transform:translateX(var(--cfg-front-out));pointer-events:none;filter:blur(var(--cfg-blur))}
+.mod.cfg .face.back{opacity:1;transform:none;pointer-events:auto;visibility:visible;filter:none}
+.mod.cfg .face.back{position:relative}
+.mod.cfg .face.front{position:absolute;left:0;right:0;top:0}
+.mod.cfg .face.back .row{animation:rowin var(--cfg-swap-dur) var(--cfg-swap-ease) both;animation-delay:calc(var(--i) * var(--cfg-row-stagger) + var(--cfg-row-offset))}
+@keyframes rowin{from{opacity:0;transform:translateY(var(--cfg-row-rise))}to{opacity:1;transform:none}}
+.mod.closing .face.back{visibility:visible}
+
+/* front content */
+.fr{display:flex;gap:6px;align-items:stretch}
+.disp{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;height:36px;border-radius:6px;background:var(--inset);border:1px solid var(--edge);box-shadow:0 1px 0 var(--hl);font:700 20px Inter;letter-spacing:.2em;color:var(--t2)}
+.tune{height:auto;width:64px}
+.tx{height:40px;width:100%;gap:8px;font-size:13px}
+.hint{color:var(--t2);font-size:10px;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+.ofq{border-top:1px solid var(--rim0);margin:0 -8px;padding:6px 10px 0;display:flex;justify-content:space-between;color:var(--t2)}
+.ofq b{font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase}
+
+/* settings rows */
+.row{display:flex;align-items:center;gap:10px;min-height:40px;padding:4px 2px;border-bottom:1px solid var(--edge)}
+.row:last-of-type{border-bottom:0}
+.row label,.row .lb{flex:0 0 88px;white-space:nowrap;font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.row .ctl2{flex:1;min-width:0;display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.sel,.inp{height:28px;min-width:0;width:100%;padding:0 8px;border-radius:5px;border:1px solid var(--rim1);background:var(--inset);color:var(--t1);transition:border-color var(--d2) var(--out),box-shadow var(--d2) var(--out)}
+.sel:focus,.inp:focus{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 22%,transparent);outline:0}
+.cap{position:relative;display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;min-width:112px;justify-content:center;border-radius:5px;border:1px dashed var(--rim1);background:var(--inset);transition:border-color var(--d2) var(--out),background var(--d2) var(--out)}
+.cap.armed{border-style:solid;border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,var(--bg0));animation:armed 1s var(--inout) infinite;color:var(--acc2)}
+@keyframes armed{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 40%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+.cap.got .key{animation:snapk var(--d3) var(--snap)}
+@keyframes snapk{0%{transform:scale(.5);opacity:0}100%{transform:none;opacity:1}}
+.cap.bad{animation:shake 300ms linear;border-color:var(--amber)}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+.sw{position:relative;width:42px;height:24px;border-radius:12px;border:1px solid var(--rim1);background:var(--inset);padding:0;flex:none;transition:background var(--d3) var(--out),border-color var(--d3) var(--out)}
+.sw::after{content:"";position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:var(--t2);transition:transform var(--d3) var(--snap),background var(--d2) var(--out)}
+.sw[aria-checked=true]{background:var(--am-bg);border-color:var(--am-rim)}
+.sw[aria-checked=true]::after{transform:translateX(18px);background:var(--amber)}
+.sw.go[aria-checked=true]{background:color-mix(in srgb,var(--acc) 22%,var(--bg0));border-color:var(--go-rim)}
+.sw.go[aria-checked=true]::after{background:var(--acc2)}
+.val{color:var(--t2);min-width:62px;text-align:right}
+.rg{flex:1;min-width:40px;accent-color:var(--acc)}
+.saved{margin-left:auto;display:inline-flex;align-items:center;gap:4px;color:var(--live);opacity:0;font-size:11px;color:color-mix(in srgb,var(--lime) 55%,#fff);transition:opacity var(--d3) var(--out)}
+.saved.show{opacity:1}
+.saved svg{width:12px;height:12px}
+.foot{display:flex;gap:6px;align-items:center;padding-top:6px;margin-top:2px;border-top:1px solid var(--rim0)}
+.foot .btn{height:28px}
+.ghost{background:none;border-color:var(--rim0);box-shadow:none;color:var(--t2)}
+
+/* stacked neighbour reacts */
+.stack{display:flex;flex-direction:column;gap:8px}
+.mod.dim{filter:brightness(var(--cfg-dim)) saturate(.7);transition:filter var(--d3) var(--out)}
+.mod:not(.dim){transition:filter var(--d3) var(--out),border-color var(--d3) var(--out),box-shadow var(--d3) var(--out)}
+
+
+.rm *,.rm *::before,.rm *::after{animation-duration:.001ms!important;animation-delay:0ms!important;transition-duration:.001ms!important;transition-delay:0ms!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-delay:0ms!important;transition-duration:.001ms!important;transition-delay:0ms!important}}
+</style>
+</head>
+<body>
+<!--
+SETTINGS SLIDE SPEC FOR CLAUDE CODE
+Behavior
+1. Gear button toggles settings on its own tile. Gear icon spins into an X (aria-expanded true).
+2. The tile body has two faces in one container (.faces). Front is the radio controls, back is settings.
+3. On open, measure the back face height, set .faces height from current to that value, let it transition,
+   then clear the inline height so content drives it. Do the reverse on close. Never use position:fixed
+   or an overlay, so the other radio is pushed down and nothing is clipped.
+4. While open, the in-flow face swaps (.mod.cfg: back is position:relative, front is absolute). This is
+   safe because the explicit height holds layout during the swap.
+5. Title crossfades from ROLE to ROLE - SETTINGS. The status chip folds away.
+6. Settings rows rise in with a stagger. Other radio dims. One tile open at a time.
+7. Escape, the X, or Done closes. Focus moves to the first control on open and back to the gear on close.
+8. Rebind: PTT capture box pulses until a key arrives, snaps the key in, shows Saved. A key already used by
+   the other radio shakes the box and shows "in use".
+9. Reduced motion: honor prefers-reduced-motion by setting all durations to about 0 (see end of style block).
+Parameters: every timing, distance and easing is a --cfg-* variable at the top of :root. Keep names.
+-->
+
+<div class="wrap">
+  <h1>Radio settings, slide transition</h1>
+  <p class="lead">Reference implementation for Claude Code. Press the gear on a radio. The tile stays in place, its body swaps to a settings face, and its height eases to fit. Nothing floats over the other radio. X, Done or Escape closes. Every timing and distance below is a CSS variable in the :root block, so copy those values.</p>
+  <div class="layout">
+    <div class="stage"><div class="win"><div class="pad"><div class="stack" id="stack"></div></div></div></div>
+    <div class="side">
+      <div class="card">
+        <h2>Now playing</h2>
+        <div class="now" id="now"><b>Ready</b><span>Press a gear to open settings</span></div>
+                <div class="ctl"><label><input type="checkbox" id="rmchk"> Preview reduced motion (faces swap with no movement)</label></div>
+      </div>
+      <div class="card">
+        <h2>Motion spec</h2>
+        <div class="tw"><table>
+          <thead><tr><th>Motion</th><th>Time</th><th>What you see</th></tr></thead>
+          <tbody id="spec"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+  var I={
+    gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v8M6.5 6.5a8 8 0 1 0 11 0"/></svg>',
+    lo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.8"/></svg>',
+    kb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 11h.01M11 11h.01M15 11h.01M8 15h8"/></svg>',
+    ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>',
+    tune:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>'
+  };
+  var R=[
+    {id:"crew",role:"Crew",rig:"Transit",key:"V",lock:false},
+    {id:"cmd",role:"Command",rig:"Transit",key:"CAPSLOCK",lock:false}
+  ];
+  var rigs=["Transit","Fieldmaster","Jadro","Shortwave"];
+  var cues=["Crew click","Command click","Silent"];
+  var stack=$("#stack"),state={},savedT={};
+
+  function say(n,m,e){var o=$("#now");o.innerHTML="<b>"+n+"</b><span>"+m+" &middot; "+e+"</span>";o.classList.remove("pop");void o.offsetWidth;o.classList.add("pop")}
+
+  function build(r,i){
+    var m=document.createElement("div");m.className="mod";m.id="m-"+r.id;
+    m.innerHTML=
+    '<div class="mh"><div class="titles"><span class="t-main"><span class="role">'+r.role+'</span><span class="rig" id="rg-'+r.id+'">'+r.rig+'</span></span>'+
+      '<span class="t-cfg"><span class="role">'+r.role+' &middot; Settings</span></span></div>'+
+      '<span class="chip">IDLE</span>'+
+      '<button class="ib gear" data-g="'+r.id+'" aria-expanded="false" aria-label="'+r.role+' settings" title="Settings"><span class="i-gear">'+I.gear+'</span><span class="i-close">'+I.x+'</span></button></div>'+
+    '<div class="faces" id="f-'+r.id+'">'+
+      '<div class="face front"><div class="fr"><div class="disp tn">- - -.-</div><button class="btn go tune">'+I.tune+'Tune</button><button class="ib" aria-label="Lock" id="lkf-'+r.id+'">'+I.lo+'</button><button class="ib pw" aria-label="Disconnect">'+I.off+'</button></div>'+
+      '<button class="btn go tx">Transmit <span class="key" id="kf-'+r.id+'">'+r.key+'</span></button><div class="hint">Press and hold</div>'+
+      '<div class="ofq"><b>On frequency</b><span class="tn">0</span></div></div>'+
+      '<div class="face back" aria-hidden="true">'+
+        '<div class="row" style="--i:0"><label for="rs-'+r.id+'">Radio</label><div class="ctl2"><select class="sel" id="rs-'+r.id+'" data-s="rig" data-id="'+r.id+'">'+rigs.map(function(g){return '<option'+(g===r.rig?' selected':'')+'>'+g+'</option>'}).join("")+'</select></div></div>'+
+        '<div class="row" style="--i:1"><span class="lb">PTT key</span><div class="ctl2"><div class="cap" id="cap-'+r.id+'"><span class="key" id="kb-'+r.id+'">'+r.key+'</span></div><button class="btn" data-s="rebind" data-id="'+r.id+'">'+I.kb+'Change</button></div></div>'+
+        '<div class="row" style="--i:2"><span class="lb">Lock tuner</span><div class="ctl2"><span class="val" id="lv-'+r.id+'">Unlocked</span><button class="sw" role="switch" aria-checked="false" aria-label="Lock tuner" data-s="lock" data-id="'+r.id+'"></button></div></div>'+
+        '<div class="row" style="--i:3"><label for="cs-'+r.id+'">Receive</label><div class="ctl2"><select class="sel" id="cs-'+r.id+'" data-s="cue" data-id="'+r.id+'">'+cues.map(function(g,j){return '<option'+(j===(i===0?0:1)?' selected':'')+'>'+g+'</option>'}).join("")+'</select></div></div>'+
+        '<div class="row" style="--i:4"><label for="pn-'+r.id+'">Pan</label><div class="ctl2"><input class="rg" id="pn-'+r.id+'" type="range" min="-60" max="60" value="0" data-s="pan" data-id="'+r.id+'"><span class="val tn" id="pv-'+r.id+'">Center</span></div></div>'+
+        '<div class="foot" style="--i:5"><button class="btn ghost" data-s="voice" data-id="'+r.id+'">Voice profile&hellip;</button><span class="saved" id="sv-'+r.id+'">'+I.ok+'Saved</span><button class="btn go" data-done="'+r.id+'">Done</button></div>'+
+      '</div></div>';
+    stack.appendChild(m);state[r.id]={open:false,cap:null};
+  }
+  R.forEach(build);
+
+  /* ripple */
+  document.addEventListener("pointerdown",function(e){
+    var b=e.target.closest(".btn,.ib");if(!b)return;
+    var rc=b.getBoundingClientRect(),s=document.createElement("span"),sz=Math.max(rc.width,rc.height)*2.2;
+    s.className="rip";s.style.cssText="left:"+(e.clientX-rc.left)+"px;top:"+(e.clientY-rc.top)+"px;width:"+sz+"px;height:"+sz+"px";
+    b.appendChild(s);setTimeout(function(){s.remove()},380);
+  });
+
+  /* faces: measured height */
+  function frontH(id){var f=$("#f-"+id);return $(".face.front",f).offsetHeight}
+  function backH(id){var f=$("#f-"+id),b=$(".face.back",f);return b.offsetHeight}
+  function setH(id,open){
+    var f=$("#f-"+id),m=$("#m-"+id);
+    var from=f.getBoundingClientRect().height;
+    var b=$(".face.back",f);
+    b.style.visibility="visible";var to=open?b.offsetHeight:frontH(id);b.style.visibility="";
+    f.style.height=from+"px";void f.offsetHeight;f.style.height=to+"px";
+    var done=function(){f.style.height="";f.removeEventListener("transitionend",h)};
+    var h=function(e){if(e.target===f&&e.propertyName==="height")done()};
+    f.addEventListener("transitionend",h);setTimeout(done,700);
+  }
+  function openCfg(id){
+    var s=state[id];if(s.open)return;
+    R.forEach(function(r){if(r.id!==id&&state[r.id].open)closeCfg(r.id,true)});
+    s.open=true;var m=$("#m-"+id),g=$('[data-g="'+id+'"]');
+    setH(id,true);m.classList.add("cfg");g.setAttribute("aria-expanded","true");$(".face.back",m).setAttribute("aria-hidden","false");
+    R.forEach(function(r){if(r.id!==id)$("#m-"+r.id).classList.add("dim")});
+    say("Settings open","420 ms height, 280 ms swap, rows stagger 38 ms","ease in-out, ease-out");
+    setTimeout(function(){var f=$("select,button.btn",$(".face.back",m));if(f)f.focus({preventScroll:true})},460);
+  }
+  function closeCfg(id,quiet){
+    var s=state[id];if(!s.open)return;
+    if(s.cap)stopCap(id,true);
+    s.open=false;var m=$("#m-"+id),g=$('[data-g="'+id+'"]');
+    setH(id,false);m.classList.add("closing");m.classList.remove("cfg");g.setAttribute("aria-expanded","false");$(".face.back",m).setAttribute("aria-hidden","true");
+    setTimeout(function(){m.classList.remove("closing")},460);
+    R.forEach(function(r){$("#m-"+r.id).classList.remove("dim")});
+    if(!quiet){g.focus({preventScroll:true});say("Settings close","420 ms height, 280 ms swap","ease in-out")}
+  }
+  document.addEventListener("click",function(e){
+    var g=e.target.closest("[data-g]");
+    if(g){var id=g.dataset.g;state[id].open?closeCfg(id):openCfg(id);return}
+    var d=e.target.closest("[data-done]");if(d){closeCfg(d.dataset.done)}
+  });
+  document.addEventListener("keydown",function(e){
+    var capId=R.filter(function(r){return state[r.id].cap})[0];
+    if(capId){e.preventDefault();e.stopPropagation();capKey(capId.id,e);return}
+    if(e.key==="Escape"){R.forEach(function(r){if(state[r.id].open)closeCfg(r.id)})}
+  },true);
+
+  /* saved tick */
+  function saved(id){
+    var el=$("#sv-"+id);el.classList.add("show");clearTimeout(savedT[id]);savedT[id]=setTimeout(function(){el.classList.remove("show")},1300);
+  }
+
+  /* controls */
+  function startCap(id){
+    var c=$("#cap-"+id);state[id].cap=true;c.classList.remove("bad","got");c.classList.add("armed");
+    $("#kb-"+id).textContent="Press a key or button";$("#kb-"+id).style.cssText="border:0;background:none;color:inherit;font-weight:600;padding:0";
+    say("Listening for a key","1 s pulse loop","ease in-out");
+  }
+  function stopCap(id,cancel){
+    var c=$("#cap-"+id),k=$("#kb-"+id),r=R.filter(function(x){return x.id===id})[0];
+    state[id].cap=null;c.classList.remove("armed");k.removeAttribute("style");k.textContent=r.key;
+  }
+  function capKey(id,e){
+    var r=R.filter(function(x){return x.id===id})[0],other=R.filter(function(x){return x.id!==id})[0];
+    if(e.key==="Escape"){stopCap(id,true);say("Rebind cancelled","instant","none");return}
+    var label=e.key.length===1?e.key.toUpperCase():(e.key==="CapsLock"?"CAPSLOCK":e.key.toUpperCase());
+    if(label===other.key){
+      var c=$("#cap-"+id);c.classList.remove("bad");void c.offsetWidth;c.classList.add("bad");
+      $("#kb-"+id).textContent=label+" in use";say("Key already used by "+other.role,"300 ms","linear shake");
+      setTimeout(function(){if(state[id].cap){$("#kb-"+id).textContent="Press a key or button"}},900);return;
+    }
+    r.key=label;stopCap(id);
+    var c2=$("#cap-"+id);c2.classList.remove("got");void c2.offsetWidth;c2.classList.add("got");
+    $("#kf-"+id).textContent=label;saved(id);say("Key bound, "+label,"280 ms","overshoot");
+  }
+  document.addEventListener("click",function(e){
+    var b=e.target.closest("[data-s]");if(!b)return;
+    var id=b.dataset.id,t=b.dataset.s;
+    if(t==="rebind"){state[id].cap?stopCap(id,true):startCap(id)}
+    if(t==="lock"){
+      var on=b.getAttribute("aria-checked")!=="true";b.setAttribute("aria-checked",String(on));
+      $("#lv-"+id).textContent=on?"Locked":"Unlocked";
+      $("#lkf-"+id).innerHTML=on?I.lo.replace('7.5-1.8"','8 0v3"').replace('V8a4 4 0 0 1 8 0v3','V8a4 4 0 0 1 8 0v3'):I.lo;
+      saved(id);say(on?"Lock switch on":"Lock switch off","280 ms","overshoot");
+    }
+    if(t==="voice"){say("Voice profile opens a second page","not shown here","")}
+  });
+  document.addEventListener("change",function(e){
+    var t=e.target.dataset&&e.target.dataset.s,id=e.target.dataset&&e.target.dataset.id;if(!t)return;
+    if(t==="rig"){$("#rg-"+id).textContent=e.target.value;saved(id);say("Radio changed","saved tick 160 ms","ease-out")}
+    if(t==="cue"){saved(id);say("Receive sound changed","saved tick 160 ms","ease-out")}
+  });
+  document.addEventListener("input",function(e){
+    if(e.target.dataset&&e.target.dataset.s==="pan"){
+      var v=+e.target.value,id=e.target.dataset.id;$("#pv-"+id).textContent=v===0?"Center":(v<0?"L ":"R ")+Math.abs(v)+"%";saved(id);
+    }
+  });
+
+  $("#rmchk").addEventListener("change",function(){document.documentElement.classList.toggle("rm",this.checked)});
+
+  var spec=[
+    ["Open","420 ms","The gear spins into an X, the title slides from CREW to CREW SETTINGS, the idle chip folds away, the tile gains a bright rim"],
+    ["Face swap","280 ms, ease-out","Radio controls slide left and blur out, settings slide in from the right"],
+    ["Height","420 ms, ease in-out","The tile grows or shrinks to fit, pushing the other radio down instead of covering it"],
+    ["Row stagger","38 ms apart","Setting rows rise into place one after another"],
+    ["Other radio","280 ms","Dims slightly while one is open, so focus stays on the open tile"],
+    ["Rebind","1 s pulse","Capture box pulses until a key arrives, then the key snaps in with an overshoot"],
+    ["Key conflict","300 ms, linear","Capture box shakes and turns amber, naming the radio that owns the key"],
+    ["Switch","280 ms, overshoot","Lock knob slides across and turns amber"],
+    ["Saved","160 ms in, 1.3 s hold","A small check appears in the footer after any change"],
+    ["Close","420 ms","X, Done or Escape reverse the open motion exactly"]
+  ];
+  $("#spec").innerHTML=spec.map(function(r){return '<tr><td>'+r[0]+'</td><td class="d">'+r[1]+'</td><td>'+r[2]+'</td></tr>'}).join("");
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext.jsx';
+import NexusMark from '../components/NexusMark';
 
 export default function Gate() {
   const navigate = useNavigate();
@@ -119,7 +120,7 @@ export default function Gate() {
           ✕
         </button>
       )}
-      {/* Logo mark — largest raised surface in the app */}
+      {/* Prompt mark (logo_e_spec). Boot draw-on plays once on mount. */}
       <div style={{
         width: 120,
         height: 120,
@@ -131,11 +132,7 @@ export default function Gate() {
         justifyContent: 'center',
         boxShadow: '0 1px 0 rgba(150,210,255,.25) inset, 0 4px 0 #04101a, 0 6px 0 #030c14, 0 22px 36px rgba(0,0,0,.6)',
       }}>
-        <svg width="72" height="72" viewBox="0 0 30 30" fill="none" stroke="#66AADD" strokeWidth="1">
-          <circle cx="15" cy="15" r="11" />
-          <circle cx="15" cy="15" r="5" />
-          <path d="M15 1v6M15 23v6M1 15h6M23 15h6" />
-        </svg>
+        <NexusMark size={76} animate />
       </div>
 
       <div>

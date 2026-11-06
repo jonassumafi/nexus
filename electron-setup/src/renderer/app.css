@@ -1,0 +1,217 @@
+/* Direct port of installer_mockup.html. Every color comes from skin
+   tokens except the three semantic colors (lime / red / amber), which
+   are intentionally constant across all nine skins. Tokens are
+   injected inline at launch by app.js from window.setupAPI.getSkin()
+   so there is no flash of the wrong palette. */
+
+:root {
+  --lime: #44dd88;
+  --red:  #ff5544;
+  --amber: #ffbb33;
+  /* motion */
+  --d1: 90ms; --d2: 160ms; --d3: 280ms; --d4: 420ms;
+  --out:  cubic-bezier(.2, .8, .2, 1);
+  --snap: cubic-bezier(.34, 1.56, .64, 1);
+  /* derived: readable text layered on the skin */
+  --t1: color-mix(in srgb, var(--acc2) 12%, #f4f4f4);
+  --t2: color-mix(in srgb, var(--acc)  42%, #8c8c8c);
+  --inset: color-mix(in srgb, var(--bg0) 60%, #000);
+  color-scheme: dark;
+}
+
+*            { box-sizing: border-box; margin: 0; padding: 0; }
+html, body   { height: 100%; }
+body         { background: var(--bg0); color: var(--t1); font: 13px/1.5 Inter, system-ui, sans-serif;
+               -webkit-font-smoothing: antialiased; overflow: hidden; user-select: none; }
+button       { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; text-align: inherit; }
+:focus-visible { outline: 2px solid var(--acc2); outline-offset: 2px; }
+
+/* ─── Title bar ───────────────────────────────────────────────── */
+.tb {
+  height: 32px; display: flex; align-items: center; gap: 8px; padding-left: 12px;
+  border-bottom: 1px solid var(--rim0); background: var(--bg1);
+  -webkit-app-region: drag;
+}
+.tbmark { width: 13px; height: 13px; }
+.tb b   { font: 800 10px Inter; letter-spacing: .2em; }
+.tb span{ font: 500 10px Inter; letter-spacing: .14em; color: var(--t2); }
+.tb .c  { margin-left: auto; display: flex; -webkit-app-region: no-drag; }
+.tb .c button {
+  width: 38px; height: 32px; display: grid; place-items: center; color: var(--t2);
+  font-size: 12px; transition: background var(--d2), color var(--d2);
+}
+.tb .c button:hover { background: var(--bg3); color: var(--acc2); }
+.tb .c button.x:hover { background: var(--red); color: #fff; }
+
+/* ─── Body (scrollable screen area) ───────────────────────────── */
+.body { position: relative; height: calc(100% - 62px); overflow: hidden; }
+.scr  { position: absolute; inset: 0; padding: 22px 30px 10px; display: flex; }
+.scr > * { animation: rise var(--d3) var(--out) both; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ─── Footer ──────────────────────────────────────────────────── */
+.ft { height: 30px; border-top: 1px solid var(--rim0); background: var(--bg1);
+      display: flex; align-items: center; gap: 14px; padding: 0 14px;
+      font: 600 10px Inter; letter-spacing: .08em; color: var(--t2); }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 18px; height: 3px; background: var(--rim0); transition: background var(--d3); }
+.dots i.on   { background: var(--acc2); }
+.dots i.done { background: var(--acc);  }
+.ft .sp { flex: 1; }
+
+/* ─── Logo draw-on ────────────────────────────────────────────── */
+.lg path {
+  fill: none; stroke-width: 5; stroke-linecap: square;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: draw 380ms var(--out) forwards;
+  animation-delay: var(--dl, 0ms);
+}
+.lg .ink { stroke: var(--acc);  }
+.lg .hot { stroke: var(--acc2); }
+.lg .cur { fill: var(--acc2); opacity: 0; animation: blink 1050ms steps(1) infinite; animation-delay: 640ms; }
+@keyframes draw  { to { stroke-dashoffset: 0; } }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } }
+.lg.still path   { animation: none; stroke-dashoffset: 0; }
+.lg.still .cur   { animation: blink 1050ms steps(1) infinite; animation-delay: 0s; }
+
+/* ─── Welcome ─────────────────────────────────────────────────── */
+.wl { width: 100%; align-items: center; gap: 30px; }
+.wl .logo { width: 170px; flex: none; display: grid; place-items: center;
+            border-right: 1px solid var(--rim0); align-self: stretch; }
+.wl .logo svg { width: 104px; height: 104px; overflow: visible; }
+.wr { flex: 1; min-width: 0; }
+.ttl { font: 800 38px/1 Inter; letter-spacing: .14em; color: var(--acc2); display: flex; }
+.ttl span { opacity: 0; animation: tp 1ms steps(1) forwards; animation-delay: calc(700ms + var(--k) * 55ms); }
+@keyframes tp { to { opacity: 1; } }
+.sub { font: 700 11px Inter; letter-spacing: .3em; color: var(--acc); margin: 8px 0 12px; }
+.ver { color: var(--t2); font-size: 12px; }
+.ver b { color: var(--t1); font-weight: 600; }
+.stat { margin-top: 8px; color: var(--t1); font-size: 12px; }
+.acts { display: flex; align-items: center; gap: 16px; margin-top: 18px; flex-wrap: wrap; }
+
+/* ─── Buttons ────────────────────────────────────────────────── */
+.pb1 {
+  height: 38px; padding: 0 26px;
+  background: linear-gradient(180deg, var(--acc2), var(--acc)); color: var(--bg0);
+  font: 800 12px Inter; letter-spacing: .14em; text-transform: uppercase; text-align: center;
+  transition: filter var(--d2), transform var(--d2) var(--out);
+}
+.pb1:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+.pb1:active { transform: none; }
+.pb1.red    { background: linear-gradient(180deg, #ff7766, var(--red)); color: #220804; }
+.lk { font: 600 12px Inter; color: var(--t2); text-decoration: underline; text-underline-offset: 3px;
+     transition: color var(--d2); background: none; }
+.lk:hover     { color: var(--acc2); }
+.lk.dg:hover  { color: var(--red);  }
+.sec {
+  height: 38px; padding: 0 18px; border: 1px solid var(--rim1); background: var(--bg2);
+  font: 700 11px Inter; letter-spacing: .12em; text-transform: uppercase; color: var(--acc2);
+}
+.sec:hover { background: var(--bg3); }
+
+/* ─── Options panel (animate height) ─────────────────────────── */
+.opt    { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--d3) var(--out); }
+.opt.open { grid-template-rows: 1fr; }
+.opt > div { overflow: hidden; min-height: 0; }
+.optb {
+  margin-top: 14px; border: 1px solid var(--rim0); background: var(--bg1); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.fld { display: flex; gap: 8px; align-items: center; }
+.fld .p {
+  flex: 1; min-width: 0; background: var(--inset); border: 1px solid var(--rim0);
+  padding: 6px 9px; font: 12px ui-monospace, Menlo, monospace; color: var(--t1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fld button {
+  padding: 6px 12px; border: 1px solid var(--rim1); background: var(--bg2);
+  font: 700 10px Inter; letter-spacing: .1em; text-transform: uppercase; color: var(--acc2);
+}
+.cb { display: flex; gap: 9px; align-items: center; font-size: 12px; cursor: pointer; color: var(--t1); }
+.cb input {
+  appearance: none; width: 15px; height: 15px; border: 1px solid var(--rim1);
+  background: var(--inset); display: grid; place-items: center; cursor: pointer;
+  transition: background var(--d2), border-color var(--d2);
+}
+.cb input:checked         { background: var(--acc); border-color: var(--acc2); }
+.cb input:checked::after  { content: ""; width: 8px; height: 4px;
+  border-left: 2px solid var(--bg0); border-bottom: 2px solid var(--bg0);
+  transform: rotate(-45deg) translate(1px, -1px); }
+
+/* ─── Progress ───────────────────────────────────────────────── */
+.pg { flex-direction: column; width: 100%; gap: 0; }
+.ph { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.ph svg { width: 34px; height: 34px; overflow: visible; }
+.ph h2 { font: 800 18px Inter; letter-spacing: .06em; color: var(--acc2);
+          text-transform: uppercase; line-height: 1.1; }
+.ph p  { color: var(--t2); font-size: 12px; }
+
+.bar { --pc: var(--acc2); position: relative; height: 12px; background: var(--inset);
+       border: 1px solid var(--rim0); overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--pc);
+         transition: width var(--d2) linear, background var(--d3); }
+.bar i::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+  transform: translateX(-100%); animation: shine 1500ms linear infinite;
+}
+.bar.rb { --pc: var(--red); }
+.bar.rb i::after { display: none; }
+.bar::after {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 19px, rgba(0,0,0,.5) 19px 20px);
+  pointer-events: none;
+}
+@keyframes shine { to { transform: translateX(100%); } }
+
+.pr { display: flex; justify-content: space-between; margin: 6px 0 10px;
+      font: 600 11px Inter; letter-spacing: .06em; color: var(--t2); }
+.pr b { color: var(--acc2); font-variant-numeric: tabular-nums; }
+
+.log { flex: 1; min-height: 0; overflow: hidden;
+       background: var(--inset); border: 1px solid var(--rim0); padding: 8px 10px;
+       font: 11.5px/1.55 ui-monospace, Menlo, Consolas, monospace;
+       display: flex; flex-direction: column; justify-content: flex-end; }
+.ln  { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--t1);
+       animation: lnin var(--d2) var(--out); }
+.ln time { color: color-mix(in srgb, var(--t2) 55%, var(--bg0)); margin-right: 9px; }
+.ln.dim { color: var(--t2); }
+.ln.err { color: var(--red); }
+.ln .okm { color: var(--lime); margin-left: 8px; }
+.ln.okl { color: var(--lime); }
+.ln.cur::after {
+  content: ""; display: inline-block; width: 7px; height: 12px; background: var(--acc2);
+  margin-left: 5px; vertical-align: -2px; animation: blink 1050ms steps(1) infinite;
+}
+@keyframes lnin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.pa { display: flex; justify-content: flex-end; margin-top: 8px; height: 18px; }
+
+/* ─── Result (Finished / Canceled / Failed) ──────────────────── */
+.rs { width: 100%; align-items: center; gap: 26px; }
+.rs .ic { width: 120px; flex: none; display: grid; place-items: center; }
+.rs .ic svg { width: 84px; height: 84px; overflow: visible; }
+.ic circle, .ic path {
+  fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 460ms var(--out) forwards;
+}
+.ic path { animation-delay: 340ms; animation-duration: 300ms; }
+.ic.ok  * { stroke: var(--lime); }
+.ic.bad * { stroke: var(--red);  }
+.ic.neu * { stroke: var(--t2);   }
+.rs h2 { font: 800 24px Inter; color: var(--acc2); letter-spacing: .03em; }
+.rs .d { color: var(--t2); margin-top: 4px; max-width: 44ch; }
+.rs .mono { font: 11.5px ui-monospace, Menlo, monospace; color: var(--t1); margin-top: 8px; }
+.mini {
+  margin-top: 10px; background: var(--inset); border: 1px solid var(--rim0);
+  padding: 7px 10px; font: 11px/1.5 ui-monospace, Menlo, monospace; color: var(--t2);
+  max-height: 104px; overflow: hidden; white-space: pre;
+}
+.mini .e { color: var(--red); }
+
+/* Reduced motion — animations off, states still change. */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+  .lg path, .ic circle, .ic path { stroke-dashoffset: 0 !important; }
+  .ttl span, .lg .cur { opacity: 1 !important; }
+}

@@ -7,6 +7,14 @@ backend/uploads/
 # Build output — regenerable, never commit
 frontend/dist/
 electron/dist/
+electron-setup/dist/
+electron-setup/payload/nexus-companion.zip
+electron-setup/payload/manifest.json
+
+# Published installer binaries live on the server, not in git
+backend/releases/*.exe
+backend/releases/*.blockmap
+backend/releases/latest*.yml
 
 # Study / reference material — SRS samples here are GPL v3 and
 # MUST NOT ship in the public repo until Nexus itself commits to GPL.

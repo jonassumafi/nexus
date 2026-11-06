@@ -42,3 +42,39 @@ export function playUnmute()   { _play('/sounds/unmute_mic.mp3'); }
  *  it if desired. */
 export function playFreqConnect()    { _play('/sounds/freq_connect.mp3'); }
 export function playFreqDisconnect() { _play('/sounds/freq_disconnect.mp3'); }
+
+// ─── DM cues (synthesized; no asset files) ────────────────────────────
+// Short two-tone blips so sending feels different from receiving
+// without introducing new audio dependencies. Send is a quiet
+// ascending blip; receive is a slightly louder descending chime.
+let _actx = null;
+function _getCtx() {
+  if (typeof window === 'undefined') return null;
+  try {
+    if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_actx.state === 'suspended') _actx.resume().catch(() => {});
+    return _actx;
+  } catch { return null; }
+}
+function _blip(freqs, { gain = 0.08, dur = 0.09, gap = 0.07, type = 'sine' } = {}) {
+  const ctx = _getCtx();
+  if (!ctx) return;
+  const t0 = ctx.currentTime;
+  freqs.forEach((f, i) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = f;
+    const start = t0 + i * gap;
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(gain, start + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(start);
+    o.stop(start + dur + 0.02);
+  });
+}
+/** Short ascending blip for DM send. */
+export function playDmSend()    { _blip([660, 990],  { gain: 0.06, dur: 0.08, gap: 0.06 }); }
+/** Softer descending chime for DM receive. */
+export function playDmReceive() { _blip([1180, 820], { gain: 0.09, dur: 0.11, gap: 0.08, type: 'triangle' }); }

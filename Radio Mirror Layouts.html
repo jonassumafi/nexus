@@ -1,0 +1,279 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio Mirror Layouts</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Idea: one radio module, rendered twice. Only the label differs. Mic is a single shared strip. */
+:root{
+  color-scheme:dark;
+  --bg0:#050f0e; --bg1:#0a1918; --bg2:#102322; --bg3:#183230;
+  --rim0:#234441; --rim1:#3d726d;
+  --acc:#7ef0dc; --acc2:#c4faf0;
+  --t1:#e3faf6; --t2:#8db8b2;
+  --lime:#44FF88; --red:#FF5544; --amber:#FFBB33;
+  --inset:color-mix(in srgb,var(--bg0) 78%,#000);
+  --edge:color-mix(in srgb,var(--bg0) 55%,#000);
+  --hl:color-mix(in srgb,var(--acc) 16%,transparent);
+  --key-hi:color-mix(in srgb,var(--acc) 22%,var(--bg1));
+  --key-lo:color-mix(in srgb,var(--acc) 10%,var(--bg0));
+  --go-hi:color-mix(in srgb,var(--acc) 34%,var(--bg0));
+  --go-lo:color-mix(in srgb,var(--acc) 18%,var(--bg0));
+  --go-rim:color-mix(in srgb,var(--acc) 58%,var(--bg0));
+  --no-txt:color-mix(in srgb,var(--red) 45%,#fff);
+  --no-bg:color-mix(in srgb,var(--red) 20%,var(--bg0));
+  --no-rim:color-mix(in srgb,var(--red) 58%,var(--bg0));
+  --live-bg:color-mix(in srgb,var(--lime) 16%,var(--bg0));
+  --live-rim:color-mix(in srgb,var(--lime) 55%,var(--bg0));
+  --live-txt:color-mix(in srgb,var(--lime) 55%,#fff);
+  --am-txt:color-mix(in srgb,var(--amber) 55%,#fff);
+  --banner:linear-gradient(180deg,color-mix(in srgb,var(--bg3) 80%,var(--bg2)),color-mix(in srgb,var(--bg1) 85%,var(--bg2)));
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0)}
+body{background:var(--bg0);color:var(--t1);font:12px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
+.tn{font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font:700 18px Inter;margin-bottom:6px;text-wrap:balance}
+.lead{color:var(--t2);max-width:78ch;font-size:13px;margin-bottom:16px}
+.rules{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.rules span{padding:5px 10px;border:1px solid var(--rim0);border-radius:14px;background:var(--bg1);color:var(--t2);font-size:12px}
+.rules b{color:var(--acc2);font-weight:600}
+.grid{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start;justify-content:center}
+.col{width:360px;max-width:100%;display:flex;flex-direction:column;gap:10px}
+.col h2{font:700 11px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--acc)}
+.col p{color:var(--t2);font-size:12px;min-height:54px}
+
+/* ===== window shell ===== */
+.win{border:1px solid var(--rim1);border-radius:10px;background:var(--bg1);overflow:hidden;box-shadow:0 1px 0 var(--hl) inset,0 0 0 1px #000,0 12px 30px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.win>.pad{padding:8px;display:flex;flex-direction:column;gap:8px}
+
+/* ===== radio module (identical for every radio) ===== */
+.mod{border:1px solid var(--rim0);border-radius:8px;background:var(--bg2);box-shadow:0 1px 0 var(--hl) inset;overflow:hidden;transition:box-shadow .12s,border-color .12s}
+.mod.tx{border-color:var(--no-rim);box-shadow:0 0 0 1px var(--no-rim),0 0 18px color-mix(in srgb,var(--red) 30%,transparent)}
+.mh{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 10px;background:var(--banner);border-bottom:1px solid var(--edge)}
+.role{font:700 12px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--acc2)}
+.rig{color:var(--t2);font-size:11px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp{flex:1;min-width:6px}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:4px;border:1px solid var(--rim1);font:700 10px Inter;letter-spacing:.1em;color:var(--t2);background:var(--inset);flex:none}
+.chip.live{border-color:var(--live-rim);background:var(--live-bg);color:var(--live-txt)}
+.chip.txc{border-color:var(--no-rim);background:var(--no-bg);color:var(--no-txt)}
+.ib{width:26px;height:24px;display:grid;place-items:center;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--key-hi),var(--key-lo));box-shadow:0 1px 0 var(--hl) inset,0 2px 0 var(--edge);padding:0;flex:none;color:var(--t1)}
+.ib svg{width:14px;height:14px}
+.ib:active{transform:translateY(1px)}
+.ib[aria-pressed=true]{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 55%,var(--bg0))}
+.mb{padding:8px;display:flex;flex-direction:column;gap:7px}
+.fr{display:flex;align-items:stretch;gap:6px}
+.disp{flex:1;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:6px;padding:6px 10px;border-radius:6px;background:var(--inset);border:1px solid var(--edge);box-shadow:0 1px 0 var(--hl)}
+.disp b{font:700 30px/1.1 Inter;letter-spacing:.02em;color:var(--acc2)}
+.disp small{font-size:10px;letter-spacing:.12em;color:var(--t2);text-transform:uppercase}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 10px;border-radius:5px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--key-hi),var(--key-lo));box-shadow:0 1px 0 var(--hl) inset,0 2px 0 var(--edge);font:600 12px Inter;color:var(--t1);white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:13px;height:13px}
+.btn.go{background:linear-gradient(180deg,var(--go-hi),var(--go-lo));border-color:var(--go-rim);color:var(--acc2)}
+.btn.no{color:var(--no-txt)}
+.key{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 6px;border-radius:4px;border:1px solid var(--rim1);background:var(--inset);font:700 11px Inter;color:var(--acc2)}
+.tx-btn{height:40px;flex:1;font-size:13px;letter-spacing:.04em;gap:8px;user-select:none;-webkit-user-select:none;touch-action:none}
+.tx-btn.on{background:linear-gradient(180deg,color-mix(in srgb,var(--red) 45%,var(--bg0)),color-mix(in srgb,var(--red) 28%,var(--bg0)));border-color:var(--no-rim);color:#fff}
+.ptt{display:flex;gap:6px;align-items:center}
+.hint{color:var(--t2);font-size:10px;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+.ofq{border-top:1px solid var(--rim0);margin:0 -8px;padding:6px 10px 0;display:flex;flex-direction:column;gap:4px}
+.ofh{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;background:none;border:0;padding:0;text-align:left;width:100%}
+.ofh .l{font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.ofh .n{margin-left:auto;color:var(--t2)}
+.ofh svg{width:11px;height:11px;color:var(--t2);transition:transform .15s}
+.ofh[aria-expanded=false] svg{transform:rotate(-90deg)}
+.ol{display:flex;flex-direction:column;gap:3px;padding-bottom:6px}
+.ol div{display:flex;align-items:center;gap:7px;padding:3px 7px;border-radius:4px;background:var(--inset)}
+.ol i{width:7px;height:7px;border-radius:50%;background:var(--lime)}
+.ol em{margin-left:auto;font-style:normal;color:var(--t2);font-size:11px}
+.vp{display:flex;align-items:center;gap:6px;color:var(--t2);font-size:11px;background:none;border:0;padding:0;margin-top:1px}
+.vp svg{width:10px;height:10px}
+
+/* ===== shared mic strip ===== */
+.mic{border:1px solid var(--rim0);border-radius:8px;background:var(--bg2);padding:7px 9px;display:flex;flex-direction:column;gap:6px}
+.mr{display:flex;align-items:center;gap:8px}
+.dotm{width:9px;height:9px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px color-mix(in srgb,var(--lime) 65%,transparent);flex:none}
+.mr .t{font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.mr .v{color:var(--live-txt);font-weight:600}
+.bar{flex:1;height:8px;border-radius:4px;background:var(--inset);border:1px solid var(--edge);overflow:hidden;min-width:40px}
+.bar i{display:block;height:100%;width:3%;background:linear-gradient(90deg,var(--lime),color-mix(in srgb,var(--lime) 60%,var(--acc)));transition:width .08s}
+.sl{flex:1;min-width:40px;accent-color:var(--acc)}
+.lab{font:600 10px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);flex:none;width:62px}
+.pct{flex:none;width:34px;text-align:right;color:var(--t1);font-weight:600}
+
+/* ===== variant B compact rows ===== */
+.cmp .mb{gap:6px;padding:7px 8px}
+.cmp .disp b{font-size:22px}
+.cmp .disp{padding:3px 8px}
+.cmp .tx-btn{height:32px}
+.cmp .mh{padding:5px 8px 5px 10px}
+
+/* ===== variant C tiles ===== */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tiles .mod .mb{padding:7px}
+.tiles .disp b{font-size:24px}
+.tiles .fr{flex-direction:column}
+.tiles .mh{gap:4px}
+.tiles .role{font-size:11px;letter-spacing:.08em}
+.tiles .chip{padding:0 5px;font-size:9px;letter-spacing:.06em;height:18px}
+.tiles .pw{color:var(--no-txt);border-color:var(--no-rim);background:linear-gradient(180deg,color-mix(in srgb,var(--red) 22%,var(--bg1)),color-mix(in srgb,var(--red) 10%,var(--bg0)))}
+.tiles .tx-btn{padding:0 6px;gap:5px;font-size:12px;letter-spacing:0}
+.tiles .key{font-size:9px;padding:0 4px;min-width:18px}
+.rigname{text-align:center;color:var(--t2);font:600 11px Inter;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+.tiles .row2{display:flex;gap:6px}
+.tiles .row2 .btn{flex:1;padding:0 6px}
+.tiles .mh{padding:5px 6px 5px 8px}
+.seg{display:flex;border:1px solid var(--rim1);border-radius:6px;overflow:hidden}
+.seg button{flex:1;height:24px;border:0;background:var(--inset);color:var(--t2);font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase}
+.seg button[aria-pressed=true]{background:linear-gradient(180deg,var(--go-hi),var(--go-lo));color:var(--acc2)}
+.panel{border:1px solid var(--rim0);border-radius:8px;background:var(--bg2);padding:7px 9px;display:flex;flex-direction:column;gap:6px}
+.panel .ol{padding:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Radio panel, mirrored</h1>
+  <p class="lead">Crew and Command become the same module, so the only thing that differs is the label. Three ways to arrange them are below. Every control works: hold a Transmit button, click a padlock, or open an On frequency list.</p>
+  <div class="rules">
+    <span><b>Same parts, same order</b> role, rig, frequency, tune, lock, push-to-talk key, transmit</span>
+    <span><b>Mic shown once</b> one microphone feeds both radios</span>
+    <span><b>Per radio</b> Volume and Pan fold under each module</span>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+(function(){
+  var I={
+    gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
+    lockc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    locko:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.8"/></svg>',
+    retune:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>',
+    off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v8M6.5 6.5a8 8 0 1 0 11 0"/></svg>',
+    chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>',
+    mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
+  };
+  var radios=[
+    {id:"crew",role:"Crew",rig:"VHF · VX-51 Fieldmaster",short:"Fieldmaster",freq:"156.6",key:"V",live:true,ops:["Kestrel","Vance"]},
+    {id:"cmd",role:"Command",rig:"UHF · JD-7 Jadro",short:"Jadro",freq:"122.3",key:"CAPSLOCK",live:true,ops:[]}
+  ];
+  var state={}; radios.forEach(function(r){state[r.id]={lock:false,open:true,tx:false}});
+
+  function onfreq(r,expanded){
+    var n=r.ops.length;
+    var body=n?r.ops.map(function(o){return '<div><i></i>'+o+'<em>in range</em></div>'}).join(""):'<div style="color:var(--t2)">No other operators</div>';
+    return '<div class="ofq"><button class="ofh" data-of="'+r.id+'" aria-expanded="'+expanded+'">'+I.chev+'<span class="l">On frequency</span><span class="n tn">'+n+'</span></button>'+(expanded?'<div class="ol">'+body+'</div>':'')+'</div>';
+  }
+  function head(r,compactSub){
+    return '<div class="mh"><span class="role">'+r.role+'</span><span class="rig">'+(compactSub?'':r.rig)+'</span><span class="sp"></span>'+
+      '<span class="chip live" data-chip="'+r.id+'">LIVE</span><button class="ib" aria-label="'+r.role+' settings">'+I.gear+'</button></div>';
+  }
+  function lock(r){return '<button class="ib" data-lock="'+r.id+'" aria-pressed="false" aria-label="Lock '+r.role+' tuner" title="Lock tuner" style="height:auto;width:34px">'+I.locko+'</button>'}
+  function txbtn(r,label){return '<button class="btn tx-btn go" data-tx="'+r.id+'"><span>'+(label||'Transmit')+'</span><span class="key">'+r.key+'</span></button>'}
+  function remap(r){return '<button class="ib" aria-label="Change '+r.role+' key" title="Change key" style="width:34px;height:40px">'+'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 11h.01M11 11h.01M15 11h.01M8 15h8"/></svg></button>'}
+  function vp(){return '<button class="vp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l12 8-12 8z"/></svg>Volume · Pan</button>'}
+
+  /* A: full mirror */
+  function modA(r){
+    return '<div class="mod" data-mod="'+r.id+'">'+head(r)+'<div class="mb">'+
+      '<div class="fr"><div class="disp"><b class="tn">'+r.freq+'</b><small>MHz</small></div>'+
+      '<div style="display:flex;flex-direction:column;gap:4px"><button class="btn go" style="height:auto;flex:1">'+I.retune+'Retune</button></div>'+lock(r)+
+      '<button class="ib" aria-label="Disconnect '+r.role+'" title="Disconnect" style="height:auto;width:34px;color:var(--no-txt)">'+I.off+'</button></div>'+
+      '<div class="ptt">'+txbtn(r)+remap(r)+'</div>'+
+      '<div class="hint">Press and hold</div>'+
+      onfreq(r,state[r.id].open)+vp()+'</div></div>';
+  }
+  /* B: compact */
+  function modB(r){
+    return '<div class="mod" data-mod="'+r.id+'">'+head(r)+'<div class="mb">'+
+      '<div class="fr"><div class="disp"><b class="tn">'+r.freq+'</b><small>MHz</small></div>'+
+      '<button class="btn go" style="height:auto">'+I.retune+'Retune</button>'+lock(r)+
+      '<button class="ib" aria-label="Disconnect '+r.role+'" title="Disconnect" style="height:auto;width:34px;color:var(--no-txt)">'+I.off+'</button></div>'+
+      '<div class="ptt">'+txbtn(r,'Hold to transmit')+'<button class="btn" data-of="'+r.id+'" style="height:32px">'+r.ops.length+' on freq</button></div></div></div>';
+  }
+  /* C: tile */
+  function modC(r){
+    return '<div class="mod" data-mod="'+r.id+'"><div class="mh"><span class="role">'+r.role+'</span><span class="sp"></span><span class="chip live" data-chip="'+r.id+'">LIVE</span><button class="ib pw" aria-label="Disconnect '+r.role+'" title="Disconnect" style="width:24px">'+I.off+'</button></div><div class="mb">'+
+      '<div class="fr"><div class="disp"><b class="tn">'+r.freq+'</b><small>MHz</small></div></div>'+
+      '<div class="row2"><button class="btn go">'+I.retune+'Tune</button>'+lock(r).replace('style="height:auto;width:34px"','style="height:28px;width:34px;flex:none"')+'<button class="ib" aria-label="Settings" style="height:28px;width:34px;flex:none">'+I.gear+'</button></div>'+
+      txbtn(r,'Transmit')+'<div class="rigname" title="'+r.rig+'">'+r.short+'</div></div></div>';
+  }
+
+  function mic(){
+    return '<div class="mic"><div class="mr"><span class="dotm"></span><span class="t">Mic</span><span class="v">Active</span><span class="sp"></span><button class="ib" aria-label="Speaker">'+I.mic+'</button></div>'+
+      '<div class="mr"><span class="lab">Track</span><div class="bar"><i data-meter></i></div><span class="pct tn" data-pct>3%</span></div>'+
+      '<div class="mr"><span class="lab">Volume</span><input class="sl" type="range" min="0" max="100" value="100" aria-label="Mic volume"><span class="pct tn">100%</span></div></div>';
+  }
+  function A(){return '<div class="win"><div class="pad">'+mic()+modA(radios[0])+modA(radios[1])+'</div></div>'}
+  function B(){return '<div class="win cmp"><div class="pad">'+modB(radios[0])+modB(radios[1])+mic()+'</div></div>'}
+  function C(){
+    return '<div class="win"><div class="pad"><div class="tiles">'+modC(radios[0])+modC(radios[1])+'</div>'+
+      '<div class="panel"><div class="seg" role="group" aria-label="On frequency"><button data-seg="crew" aria-pressed="true">Crew</button><button data-seg="cmd" aria-pressed="false">Command</button></div><div class="ol" data-segbody></div></div>'+mic()+'</div></div>';
+  }
+  var g=document.getElementById("grid");
+  function col(h,p,html){return '<div class="col"><h2>'+h+'</h2><p>'+p+'</p>'+html+'</div>'}
+  function draw(){
+    g.innerHTML=
+      col("A. Full mirror","Two identical modules stacked. Largest touch targets and an On frequency list on each. Needs the most height, so it suits Radio only mode with room to grow.",A())+
+      col("B. Compact rows","Each radio is two lines: tuner, then a transmit bar. On frequency becomes a count you can open. Shortest layout, close to what fits a pinned overlay.",B())+
+      col("C. Side by side","Two tiles share the width, and one On frequency panel switches between them. Best at a glance, and it reads like two physical radios. Needs a wider window.",C());
+    wire();segFill("crew");
+  }
+  function segFill(id){
+    var r=radios.filter(function(x){return x.id===id})[0],b=document.querySelector("[data-segbody]");
+    if(!b)return;
+    b.innerHTML=r.ops.length?r.ops.map(function(o){return '<div><i></i>'+o+'<em>in range</em></div>'}).join(""):'<div style="color:var(--t2)">No other operators</div>';
+  }
+  function setTx(id,on){
+    state[id].tx=on;
+    document.querySelectorAll('[data-mod="'+id+'"]').forEach(function(m){m.classList.toggle("tx",on)});
+    document.querySelectorAll('[data-chip="'+id+'"]').forEach(function(c){c.className="chip "+(on?"txc":"live");c.textContent=on?"TX":"LIVE"});
+    document.querySelectorAll('[data-tx="'+id+'"]').forEach(function(b){b.classList.toggle("on",on)});
+    var anyTx=state.crew.tx||state.cmd.tx;
+    document.querySelectorAll("[data-meter]").forEach(function(m){m.style.width=anyTx?(30+Math.random()*50)+"%":"3%"});
+    document.querySelectorAll("[data-pct]").forEach(function(m){m.textContent=anyTx?"62%":"3%"});
+  }
+  var timer;
+  function wire(){
+    document.querySelectorAll("[data-tx]").forEach(function(b){
+      var id=b.getAttribute("data-tx");
+      function down(e){e.preventDefault();setTx(id,true);clearInterval(timer);timer=setInterval(function(){document.querySelectorAll("[data-meter]").forEach(function(m){m.style.width=(25+Math.random()*55)+"%"})},110)}
+      function up(){if(state[id].tx){setTx(id,false);clearInterval(timer)}}
+      b.addEventListener("mousedown",down);b.addEventListener("touchstart",down,{passive:false});
+      window.addEventListener("mouseup",up);window.addEventListener("touchend",up);
+      b.addEventListener("keydown",function(e){if(e.key===" "||e.key==="Enter"){down(e)}});
+      b.addEventListener("keyup",up);
+    });
+    document.querySelectorAll("[data-lock]").forEach(function(b){
+      b.addEventListener("click",function(){
+        var id=b.getAttribute("data-lock");state[id].lock=!state[id].lock;
+        document.querySelectorAll('[data-lock="'+id+'"]').forEach(function(x){x.setAttribute("aria-pressed",String(state[id].lock));x.innerHTML=state[id].lock?I.lockc:I.locko});
+      });
+    });
+    document.querySelectorAll("button.ofh").forEach(function(b){
+      b.addEventListener("click",function(){var id=b.getAttribute("data-of");state[id].open=!state[id].open;draw()});
+    });
+    document.querySelectorAll("[data-seg]").forEach(function(b){
+      b.addEventListener("click",function(){
+        document.querySelectorAll("[data-seg]").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});
+        segFill(b.getAttribute("data-seg"));
+      });
+    });
+    // restore lock visuals after redraw
+    Object.keys(state).forEach(function(id){if(state[id].lock){document.querySelectorAll('[data-lock="'+id+'"]').forEach(function(x){x.setAttribute("aria-pressed","true");x.innerHTML=I.lockc})}});
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
+
+</body></html>

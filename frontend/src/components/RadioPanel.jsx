@@ -201,7 +201,7 @@ function PanelHeader({ isTuned, onOpenSettings, closeIcon = false, onClose }) {
         textTransform: 'uppercase',
       }}>
         {isTuned && <i className="live-dot" />}
-        Radio
+        CREW
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {isTuned && (

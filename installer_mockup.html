@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Installer Mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root{color-scheme:dark;--bg0:#020C14;--bg1:#061018;--bg2:#0A1828;--bg3:#12263A;--rim0:#1A3A50;--rim1:#2A5A7A;--acc:#66AADD;--acc2:#00EEFF;--gold:var(--acc2);--t1:color-mix(in srgb,var(--acc2) 12%,#f4f4f4);--t2:color-mix(in srgb,var(--acc) 42%,#8c8c8c);--lime:#44dd88;--red:#ff5544;--amber:#ffbb33;--inset:color-mix(in srgb,var(--bg0) 60%,#000);
+--d1:90ms;--d2:160ms;--d3:280ms;--d4:420ms;--out:cubic-bezier(.2,.8,.2,1);--snap:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg0);color:var(--t1);font:13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-block:24px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;text-align:inherit}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+.w{max-width:1000px;margin:0 auto}
+h1{font:800 22px Inter;color:var(--gold);margin-bottom:6px}
+.lead{color:var(--t2);max-width:74ch;margin-bottom:18px}
+.lab{font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);margin:0 0 7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chip{padding:6px 12px;border:1px solid var(--rim0);background:var(--bg1);font:600 12px Inter;color:var(--t2);transition:background var(--d2),border-color var(--d2),color var(--d2)}
+.chip:hover{color:var(--gold);border-color:var(--rim1)}
+.chip i{display:inline-block;width:10px;height:10px;margin-right:7px;background:var(--c);vertical-align:-1px}
+.chip[aria-pressed=true]{background:var(--bg3);border-color:var(--acc);color:var(--gold)}
+.stage{padding:clamp(14px,4vw,44px);border:1px solid var(--rim0);background:radial-gradient(120% 90% at 30% 0%,var(--bg2) 0%,var(--bg0) 62%),var(--bg0);margin-bottom:12px}
+.fit{width:100%;max-width:640px;margin:0 auto;position:relative}
+.win{position:absolute;top:0;left:0;width:640px;height:400px;transform-origin:0 0;background:var(--bg0);border:1px solid var(--rim1);box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px #000;display:flex;flex-direction:column;overflow:hidden}
+.tb{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding-left:12px;border-bottom:1px solid var(--rim0);background:var(--bg1);-webkit-app-region:drag}
+.tb svg{width:13px;height:13px}.tb b{font:800 10px Inter;letter-spacing:.2em}.tb span{font:500 10px Inter;letter-spacing:.14em;color:var(--t2)}
+.tb .c{margin-left:auto;display:flex}.tb .c button{width:38px;height:32px;display:grid;place-items:center;color:var(--t2);font-size:12px;transition:background var(--d2),color var(--d2)}
+.tb .c button:hover{background:var(--bg3);color:var(--gold)}.tb .c button.x:hover{background:var(--red);color:#fff}
+.body{position:relative;flex:1;min-height:0;overflow:hidden}
+.scr{position:absolute;inset:0;padding:22px 30px 10px;display:flex}
+.scr>*{animation:rise var(--d3) var(--out) both;animation-delay:calc(var(--i,0)*60ms)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ft{height:30px;flex:none;border-top:1px solid var(--rim0);background:var(--bg1);display:flex;align-items:center;gap:14px;padding:0 14px;font:600 10px Inter;letter-spacing:.08em;color:var(--t2)}
+.dots{display:flex;gap:6px}.dots i{width:18px;height:3px;background:var(--rim0);transition:background var(--d3)}.dots i.on{background:var(--acc2)}.dots i.done{background:var(--acc)}
+.ft .sp{flex:1}
+/* logo draw-on */
+.lg{overflow:visible}
+.lg path{fill:none;stroke-width:5;stroke-linecap:square;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 380ms var(--out) forwards;animation-delay:var(--dl,0ms)}
+.lg .ink{stroke:var(--acc)}.lg .hot{stroke:var(--acc2)}
+.lg .cur{fill:var(--acc2);opacity:0;animation:blink 1050ms steps(1) infinite;animation-delay:640ms}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes blink{0%{opacity:1}50%{opacity:0}}
+.lg.still path{animation:none;stroke-dashoffset:0}.lg.still .cur{animation:blink 1050ms steps(1) infinite;animation-delay:0s}
+/* welcome */
+.wl{width:100%;align-items:center;gap:30px}
+.wl .logo{width:170px;flex:none;display:grid;place-items:center;border-right:1px solid var(--rim0);align-self:stretch}
+.wl .logo svg{width:104px;height:104px}
+.wr{flex:1;min-width:0}
+.ttl{font:800 38px/1 Inter;letter-spacing:.14em;color:var(--gold);display:flex}
+.ttl span{opacity:0;animation:tp 1ms steps(1) forwards;animation-delay:calc(700ms + var(--k)*55ms)}
+@keyframes tp{to{opacity:1}}
+.sub{font:700 11px Inter;letter-spacing:.3em;color:var(--acc);margin:8px 0 12px}
+.ver{color:var(--t2);font-size:12px}.ver b{color:var(--t1);font-weight:600}
+.stat{margin-top:8px;color:var(--t1);font-size:12px}
+.acts{display:flex;align-items:center;gap:16px;margin-top:18px;flex-wrap:wrap}
+.pb1{height:38px;padding:0 26px;background:linear-gradient(180deg,var(--acc2),var(--acc));color:var(--bg0);font:800 12px Inter;letter-spacing:.14em;text-transform:uppercase;text-align:center;transition:filter var(--d2),transform var(--d2) var(--out)}
+.pb1:hover{filter:brightness(1.08);transform:translateY(-1px)}.pb1:active{transform:none}
+.pb1.red{background:linear-gradient(180deg,#ff7766,var(--red));color:#220804}
+.lk{font:600 12px Inter;color:var(--t2);text-decoration:underline;text-underline-offset:3px;transition:color var(--d2)}.lk:hover{color:var(--gold)}.lk.dg:hover{color:var(--red)}
+.sec{height:38px;padding:0 18px;border:1px solid var(--rim1);background:var(--bg2);font:700 11px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}.sec:hover{background:var(--bg3)}
+.opt{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--d3) var(--out)}.opt.open{grid-template-rows:1fr}
+.opt>div{overflow:hidden;min-height:0}
+.optb{margin-top:14px;border:1px solid var(--rim0);background:var(--bg1);padding:10px 12px;display:flex;flex-direction:column;gap:9px}
+.fld{display:flex;gap:8px;align-items:center}.fld .p{flex:1;min-width:0;background:var(--inset);border:1px solid var(--rim0);padding:6px 9px;font:12px ui-monospace,Menlo,monospace;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fld button{padding:6px 12px;border:1px solid var(--rim1);background:var(--bg2);font:700 10px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+.cb{display:flex;gap:9px;align-items:center;font-size:12px;cursor:pointer;color:var(--t1)}
+.cb input{appearance:none;width:15px;height:15px;border:1px solid var(--rim1);background:var(--inset);display:grid;place-items:center;cursor:pointer;transition:background var(--d2),border-color var(--d2)}
+.cb input:checked{background:var(--acc);border-color:var(--acc2)}.cb input:checked::after{content:"";width:8px;height:4px;border-left:2px solid var(--bg0);border-bottom:2px solid var(--bg0);transform:rotate(-45deg) translate(1px,-1px)}
+/* progress */
+.pg{flex-direction:column;width:100%;gap:0}
+.ph{display:flex;align-items:center;gap:14px;margin-bottom:14px}.ph svg{width:34px;height:34px}
+.ph h2{font:800 18px Inter;letter-spacing:.06em;color:var(--gold);text-transform:uppercase;line-height:1.1}.ph p{color:var(--t2);font-size:12px}
+.bar{--pc:var(--acc2);position:relative;height:12px;background:var(--inset);border:1px solid var(--rim0);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--pc);transition:width var(--d2) linear,background var(--d3)}
+.bar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);transform:translateX(-100%);animation:shine 1500ms linear infinite}
+.bar.rb{--pc:var(--red)}.bar.rb i::after{display:none}
+.bar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 19px,rgba(0,0,0,.5) 19px 20px);pointer-events:none}
+@keyframes shine{to{transform:translateX(100%)}}
+.pr{display:flex;justify-content:space-between;margin:6px 0 10px;font:600 11px Inter;letter-spacing:.06em;color:var(--t2)}.pr b{color:var(--gold);font-variant-numeric:tabular-nums}
+.log{flex:1;min-height:0;overflow:hidden;background:var(--inset);border:1px solid var(--rim0);padding:8px 10px;font:11.5px/1.55 ui-monospace,Menlo,Consolas,monospace;display:flex;flex-direction:column;justify-content:flex-end}
+.ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1);animation:lnin var(--d2) var(--out)}
+.ln time{color:color-mix(in srgb,var(--t2) 55%,var(--bg0));margin-right:9px}.ln.dim{color:var(--t2)}.ln.err{color:var(--red)}.ln .okm{color:var(--lime);margin-left:8px}.ln.okl{color:var(--lime)}
+.ln.cur::after{content:"";display:inline-block;width:7px;height:12px;background:var(--acc2);margin-left:5px;vertical-align:-2px;animation:blink 1050ms steps(1) infinite}
+@keyframes lnin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.pa{display:flex;justify-content:flex-end;margin-top:8px;height:18px}
+/* result */
+.rs{width:100%;align-items:center;gap:26px}
+.rs .ic{width:120px;flex:none;display:grid;place-items:center}
+.rs .ic svg{width:84px;height:84px;overflow:visible}
+.ic circle,.ic path{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 460ms var(--out) forwards}
+.ic path{animation-delay:340ms;animation-duration:300ms}
+.ic.ok *{stroke:var(--lime)}.ic.bad *{stroke:var(--red)}.ic.neu *{stroke:var(--t2)}
+.rs h2{font:800 24px Inter;color:var(--gold);letter-spacing:.03em}.rs .d{color:var(--t2);margin-top:4px;max-width:44ch}
+.rs .mono{font:11.5px ui-monospace,Menlo,monospace;color:var(--t1);margin-top:8px}
+.mini{margin-top:10px;background:var(--inset);border:1px solid var(--rim0);padding:7px 10px;font:11px/1.5 ui-monospace,Menlo,monospace;color:var(--t2);max-height:104px;overflow:hidden;white-space:pre}.mini .e{color:var(--red)}
+.pill{display:inline-block;font:700 9px Inter;letter-spacing:.14em;text-transform:uppercase;padding:1px 7px;border:1px solid var(--lime);color:var(--lime);margin-left:8px;vertical-align:2px}
+.shake{animation:shk 320ms var(--out)}@keyframes shk{20%{transform:translateX(-5px)}60%{transform:translateX(5px)}100%{transform:none}}
+.note{min-height:20px;text-align:center;margin-top:8px;color:var(--lime);font:600 11px Inter;transition:opacity var(--d3)}
+.ctl{display:flex;flex-wrap:wrap;gap:20px 36px;margin-bottom:10px}
+.tw{overflow-x:auto;margin-top:6px}table{border-collapse:collapse;width:100%;min-width:520px;font-size:12.5px}
+th{font:700 10px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--t2);text-align:left;padding:7px 10px;border-bottom:1px solid var(--rim1);background:var(--bg1)}td{padding:7px 10px;border-bottom:1px solid var(--rim0);vertical-align:top}
+h2.s{font:700 12px Inter;letter-spacing:.16em;text-transform:uppercase;color:var(--acc2);margin:26px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--rim0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.lg path,.ic circle,.ic path{stroke-dashoffset:0!important}.ttl span,.lg .cur{opacity:1!important}}
+</style></head><body><div class="w">
+<h1>Nexus installer, custom skinned</h1>
+<p class="lead">A frameless window that performs the real install behind a terminal style progress screen. Pick a scenario, then press Install and watch it run. Every screen and animation is live.</p>
+<div class="ctl">
+ <div><div class="lab">Scenario</div><div class="chips" id="sc"></div></div>
+ <div><div class="lab">Jump to screen</div><div class="chips" id="jm"></div></div>
+ <div style="flex-basis:100%"><div class="lab">Skin the app last saved</div><div class="chips" id="sk"></div></div>
+ <div><div class="lab">Speed</div><div class="chips" id="sp"></div></div>
+</div>
+<div class="stage"><div class="fit" id="fit"><div class="win" id="win">
+ <div class="tb"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M21 8H8V56H21M43 8H56V56H43" fill="none" stroke="var(--acc)" stroke-width="7" stroke-linecap="square"/><path d="M22 21L35 32L22 43" fill="none" stroke="var(--acc2)" stroke-width="7" stroke-linecap="square"/><rect x="37" y="40" width="12" height="7" fill="var(--acc2)"/></svg><b>NEXUS</b><span>SETUP</span><div class="c"><button data-w="min" aria-label="Minimize">&#8212;</button><button class="x" data-w="close" aria-label="Close">&#10005;</button></div></div>
+ <div class="body" id="body"></div>
+ <div class="ft"><span class="dots" id="dots"></span><span id="ftl"></span><span class="sp"></span><span id="ftr">Installs for you only &middot; no administrator needed</span></div>
+</div></div></div>
+<div class="note" id="note" role="status"></div>
+<h2 class="s">How the installer picks its skin</h2><div class="tw"><table><tr><th>Situation</th><th>Skin shown</th></tr><tr><td>Nexus was used before and saved a skin</td><td>That skin, read from the app settings file at launch. Update, repair and uninstall all use it</td></tr><tr><td>First install, or settings missing or unreadable</td><td>Deep Blue, the standard skin</td></tr><tr><td>Saved skin name is unknown (for example from a newer version)</td><td>Deep Blue, with no error shown</td></tr></table></div>
+<h2 class="s">Animation inventory</h2>
+<div class="tw"><table>
+<tr><th>Moment</th><th>Animation</th><th>Timing</th></tr>
+<tr><td>Window opens</td><td>Fade and 8 px rise, content staggered by 60 ms per element</td><td>280 ms</td></tr>
+<tr><td>Logo E draws on</td><td>Left bracket, right bracket, then chevron trace in with a stroke draw. The cursor block appears and blinks</td><td>about 640 ms, blink 1050 ms</td></tr>
+<tr><td>NEXUS title</td><td>Letters type in one at a time after the logo lands</td><td>55 ms per letter</td></tr>
+<tr><td>Options link</td><td>Panel grows open by animating its height</td><td>280 ms</td></tr>
+<tr><td>Install progress</td><td>Segmented bar with a moving shine. Log lines rise in as each real step starts, then get a green ok mark when it finishes</td><td>live</td></tr>
+<tr><td>Cancel or failure</td><td>Bar turns red and runs backward while rollback lines stream</td><td>about 1.4 s</td></tr>
+<tr><td>Finished</td><td>Ring draws, then the check draws inside it</td><td>460 ms plus 300 ms</td></tr>
+<tr><td>Skin</td><td>Chosen before the window paints, so there is no flash of the wrong colors. Skin changes inside the app are never replayed here</td><td>instant</td></tr>
+<tr><td>Reduced motion</td><td>All motion removed. Screens and states still change</td><td>none</td></tr>
+</table></div>
+</div>
+<script>
+var SK=[["Deep Blue","#66AADD","#00EEFF","#020C14","#061018","#0A1828","#12263A","#1A3A50","#2A5A7A"],["Obsidian","#b4c2d3","#e4f2ff","#0a0a0c","#101012","#17171a","#202024","#2c2c31","#4a4a52"],["Ember","#e3a655","#ffc766","#0c0806","#130d09","#1c130d","#281a11","#3a2616","#6a4524"],["Oxide","#e2806a","#ffae92","#0e0607","#160a0b","#20100f","#2e1715","#44201c","#7a3a2e"],["Olive drab","#aec86f","#dff48f","#090b06","#0f120a","#171b0f","#212714","#333b1f","#5c6b34"],["Violet void","#ae92ee","#e6ceff","#0a0612","#100a1a","#181026","#231738","#34224f","#5b3d8c"],["Abyss","#52c6b3","#80f6e8","#04100f","#081817","#0e2321","#16322f","#1d4642","#2f7a72"],["Dune","#d8bd90","#f3deb4","#100e0c","#181512","#221e19","#2f2922","#403830","#6e6254"],["Carbon pink","#ff5fae","#ff8cc6","#030304","#08080a","#0f0f12","#18181c","#25252b","#3e3e47"]],SKI=-1;
+var SC="fresh",scr="welcome",run=0,speed=1,tm=[],pct=0,LOG=[],optOpen=false,clk=0;
+var SCN={fresh:"Fresh install",update:"Update existing",fail:"Locked file failure",remove:"Uninstall"};
+var PATH="C:\\Users\\jonas\\AppData\\Local\\Programs\\Nexus";
+var FILES=["nexus.exe","app.asar","resources/skins/olive.json","resources/ships/hammerhead.png","locales/en-US.pak","ffmpeg.dll","d3dcompiler_47.dll","v8_context_snapshot.bin","resources/radio/ptt.wav"];
+var ST={
+ fresh:[["checking disk space and permissions",700,8],["creating install folder",500,14],["extracting payload",3000,78,"f"],["creating Start Menu shortcut",500,85],["creating desktop shortcut",400,90],["registering uninstall entry",600,97],["finalizing",500,100]],
+ update:[["found Nexus 0.9.12",500,6],["closing running Nexus",900,14],["backing up current version",700,24],["replacing files",2600,80,"f"],["keeping your settings",500,88],["updating shortcuts",500,94],["updating uninstall entry",500,100]],
+ fail:[["checking disk space and permissions",700,8],["creating install folder",500,14],["extracting payload",3000,78,"x"]],
+ remove:[["stopping Nexus",700,10],["removing files",2200,70,"f"],["removing shortcuts",500,82],["removing uninstall entry",500,92],["keeping your settings",500,100]]};
+function $(i){return document.getElementById(i)}
+function later(f,ms){var r=run;tm.push(setTimeout(function(){if(r===run)f()},ms/speed))}
+function stop(){run++;tm.forEach(clearTimeout);tm=[]}
+function note(t){var n=$("note");n.textContent=t;n.style.opacity=1;clearTimeout(note.t);note.t=setTimeout(function(){n.style.opacity=0},2600)}
+function mark(cls,dl){return '<svg viewBox="0 0 64 64" class="lg '+(cls||"")+'" aria-hidden="true"><path class="ink" pathLength="1" style="--dl:0ms" d="M20 10H9V54H20"/><path class="ink" pathLength="1" style="--dl:140ms" d="M44 10H55V54H44"/><path class="hot" pathLength="1" style="--dl:340ms" d="M24 22L36 32L24 42"/><rect class="cur" x="38" y="40" width="10" height="5"/></svg>'}
+function ts(){clk+=1;var s=41000+clk*3;return ("0"+Math.floor(s/3600)%24).slice(-2)+":"+("0"+Math.floor(s/60)%60).slice(-2)+":"+("0"+s%60).slice(-2)}
+function fit(){var f=$("fit"),s=Math.min(1,f.clientWidth/640);$("win").style.transform="scale("+s+")";f.style.height=(400*s)+"px"}
+function dots(a){var h="";for(var i=0;i<3;i++)h+='<i class="'+(i<a?"done":i===a?"on":"")+'"></i>';$("dots").innerHTML=h}
+function checkIc(k){var m={ok:'<circle cx="32" cy="32" r="28" pathLength="1"/><path pathLength="1" d="M20 33l9 9 16-19"/>',bad:'<circle cx="32" cy="32" r="28" pathLength="1"/><path pathLength="1" d="M32 18v18M32 44v1"/>',neu:'<circle cx="32" cy="32" r="28" pathLength="1"/><path pathLength="1" d="M22 32h20"/>'};return '<div class="ic '+k+'"><svg viewBox="0 0 64 64">'+m[k]+'</svg></div>'}
+function show(name){stop();scr=name;var b=$("body"),h="",verb=SC==="update"?"Update":SC==="remove"?"Remove":"Install";
+ if(name==="welcome"){dots(0);$("ftl").textContent=SC==="update"?"EXISTING INSTALL FOUND":SC==="remove"?"UNINSTALL":"WELCOME";
+  if(SC==="remove"){h='<div class="scr wl"><div class="logo">'+mark("still")+'</div><div class="wr" style="--i:1"><div class="ttl" style="font-size:28px;letter-spacing:.08em;display:block">Remove Nexus?</div><div class="sub">UNINSTALL</div><div class="ver">This removes the app from <b>'+PATH+'</b>, plus its shortcuts.</div><div class="optb" style="margin-top:14px"><label class="cb"><input type="checkbox" checked> Keep my settings and skins</label></div><div class="acts"><button class="pb1 red" data-a="go">Uninstall</button><button class="lk" data-a="cancelw">Cancel</button></div></div></div>'}
+  else{var t="NEXUS".split("").map(function(c,i){return '<span style="--k:'+i+'">'+c+'</span>'}).join("");
+   var st=SC==="update"?'<div class="stat"><b style="color:var(--lime)">Nexus 0.9.12</b> is installed. Version <b>0.9.16</b> is ready.</div>':"";
+   var ac=SC==="update"?'<button class="pb1" data-a="go">Update</button><button class="sec" data-a="repair">Repair</button><button class="lk dg" data-a="rem">Uninstall</button>':'<button class="pb1" data-a="go">Install</button><button class="lk" data-a="opt" aria-expanded="'+optOpen+'">Options</button>';
+   var op=SC==="update"?"":'<div class="opt'+(optOpen?" open":"")+'" id="opt"><div><div class="optb"><div class="lab" style="margin:0">Install folder</div><div class="fld"><div class="p">'+PATH+'</div><button data-a="browse">Browse</button></div><label class="cb"><input type="checkbox" checked> Create a desktop shortcut</label><label class="cb"><input type="checkbox"> Start Nexus when I sign in</label></div></div></div>';
+   h='<div class="scr wl"><div class="logo">'+mark()+'</div><div class="wr"><div class="ttl" aria-label="NEXUS">'+t+'</div><div class="sub" style="--i:3">SHIP MANAGEMENT</div><div class="ver" style="--i:4">Version <b>0.9.16</b> &middot; 84 MB'+(SC==="update"?"":" &middot; your settings stay put")+'</div>'+st+'<div class="acts" style="--i:5">'+ac+'</div>'+op+'</div></div>'}}
+ if(name==="progress"){dots(1);$("ftl").textContent="STEP 2 OF 3";var tt=SC==="update"?"Updating Nexus":SC==="remove"?"Removing Nexus":"Installing Nexus";
+  h='<div class="scr pg"><div class="ph">'+mark("still")+'<div><h2 id="ptt">'+tt+'</h2><p id="psub">Please keep this window open.</p></div></div><div class="bar" id="bar"><i id="pf"></i></div><div class="pr"><span id="pst">Starting</span><b id="pc">0%</b></div><div class="log" id="log"></div><div class="pa"><button class="lk" data-a="cancel" id="cx">Cancel</button></div></div>'}
+ if(name==="done"||name==="canceled"||name==="failed"){dots(name==="done"?3:2);
+  var ic,t,d,x="",bt="";
+  if(name==="done"){ic=checkIc("ok");t=SC==="update"?"Nexus is up to date":SC==="remove"?"Nexus was removed":"Nexus is ready";d=SC==="update"?"Updated from 0.9.12 to 0.9.16. Your settings were kept.":SC==="remove"?"Your settings were kept in %APPDATA%\\Nexus.":"Installed for your account. Shortcuts are on your Start menu and desktop.";
+   if(SC!=="remove")x='<label class="cb" style="margin-top:12px"><input type="checkbox" checked> Launch Nexus</label>';bt='<button class="pb1" data-a="close">'+(SC==="remove"?"Close":"Finish")+'</button>';$("ftl").textContent="DONE"}
+  if(name==="canceled"){ic=checkIc("neu");t="Setup canceled";d="Nothing was changed on your computer.";bt='<button class="pb1" data-a="again">Start over</button><button class="lk" data-a="close">Close</button>';$("ftl").textContent="CANCELED"}
+  if(name==="failed"){ic=checkIc("bad");t="Setup could not finish";d="Nexus.exe is in use and could not be replaced. Your previous version was restored.";var L=LOG.slice(-5).map(function(l){return '<div'+(l[1]==="err"?' class="e"':"")+'>'+l[0]+'</div>'}).join("");x='<div class="mini">'+L+'</div>';bt='<button class="pb1" data-a="again">Retry</button><button class="sec" data-a="copy" id="cp">Copy log</button><button class="lk" data-a="close">Close</button>';$("ftl").textContent="FAILED"}
+  h='<div class="scr rs">'+ic+'<div style="min-width:0;flex:1"><h2>'+t+'</h2><p class="d">'+d+'</p>'+(name==="done"&&SC!=="remove"?'<div class="mono">'+PATH+'</div>':"")+x+'<div class="acts" style="margin-top:16px">'+bt+'</div></div></div>'}
+ b.innerHTML=h;
+ if(name==="progress"){LOG.forEach(function(l){addLog(l[0],l[1],true)})}}
+function addLog(t,c,quiet){var L=$("log");if(!L)return null;var old=L.querySelector(".cur");if(old)old.classList.remove("cur");var d=document.createElement("div");d.className="ln "+(c||"")+(c==="err"||c==="okl"?"":" cur");d.innerHTML='<time>'+ts()+'</time>'+t;if(c==="err"||c==="okl")d.classList.remove("cur");L.appendChild(d);while(L.children.length>8)L.removeChild(L.firstChild);if(!quiet)LOG.push([t,c]);return d}
+function setPct(p){pct=p;var f=$("pf");if(f){f.style.width=p+"%";$("pc").textContent=Math.round(p)+"%"}}
+function okMark(){var L=$("log");if(!L)return;var l=L.querySelector(".cur")||L.lastChild;if(l&&!l.querySelector(".okm"))l.insertAdjacentHTML("beforeend",'<span class="okm">ok</span>')}
+function tween(a,b,ms,done){var n=Math.max(2,Math.round(ms/110));for(var k=1;k<=n;k++)(function(k){later(function(){setPct(a+(b-a)*k/n)},ms*k/n)})(k);later(done,ms+20)}
+function start(){stop();LOG=[];pct=0;show("progress");var st=ST[SC],i=0;
+ function next(){if(i>=st.length){return later(function(){show("done")},500)}
+  var s=st[i];addLog("&gt; "+s[0]);$("pst").textContent=s[0].charAt(0).toUpperCase()+s[0].slice(1);var from=pct,ms=s[1],cnt=0;
+  if(s[3]){for(var k=0;k<FILES.length;k++)(function(k){later(function(){addLog("  + "+FILES[k],"dim")},ms*(k+1)/(FILES.length+1))})(k)}
+  if(s[3]==="x"){var cut=from+(s[2]-from)*.8;tween(from,cut,ms*.7,function(){addLog("! cannot replace nexus.exe (file is in use)","err");later(function(){rollback("failed")},500)});return}
+  tween(from,s[2],ms,function(){okMark();i++;next()})}
+ later(next,500)}
+function rollback(after){var bar=$("bar"),cx=$("cx");if(cx)cx.style.visibility="hidden";if(bar)bar.classList.add("rb");$("pst").textContent="Rolling back";$("ptt").textContent="Rolling back";$("psub").textContent="Putting everything back as it was.";
+ addLog("&gt; rolling back changes");later(function(){addLog("  - restoring previous version","dim")},400);later(function(){addLog("  - removed "+Math.max(0,Math.round(pct*14))+" files","dim")},800);
+ tween(pct,0,1400,function(){addLog("rollback complete","okl");later(function(){show(after)},700)})}
+/* chips */
+function skin(){var k=SKI<0?SK[0]:SK[SKI],r=document.documentElement.style;r.setProperty("--acc",k[1]);r.setProperty("--acc2",k[2]);["--bg0","--bg1","--bg2","--bg3","--rim0","--rim1"].forEach(function(v,j){r.setProperty(v,k[3+j])})}
+function chips(){skin();$("sk").innerHTML='<button class="chip" data-k="-1" aria-pressed="'+(SKI<0)+'"><i style="--c:'+SK[0][1]+'"></i>No saved settings (default)</button>'+SK.map(function(k,i){return '<button class="chip" data-k="'+i+'" aria-pressed="'+(SKI===i)+'"><i style="--c:'+k[1]+'"></i>'+k[0]+'</button>'}).join("");
+ $("sc").innerHTML=Object.keys(SCN).map(function(k){return '<button class="chip" data-sc="'+k+'" aria-pressed="'+(k===SC)+'">'+SCN[k]+'</button>'}).join("");
+ var J=[["welcome","Welcome"],["options","Options open"],["progress","Installing"],["rollback","Rolling back"],["done","Finished"],["failed","Failed"],["canceled","Canceled"]];
+ $("jm").innerHTML=J.map(function(j){return '<button class="chip" data-j="'+j[0]+'">'+j[1]+'</button>'}).join("");
+ $("sp").innerHTML=[["1","Normal"],["2","2x"],["0.5","Slow"]].map(function(s){return '<button class="chip" data-sp="'+s[0]+'" aria-pressed="'+(+s[0]===speed)+'">'+s[1]+'</button>'}).join("")}
+document.addEventListener("click",function(e){var t=e.target,x;
+ if(x=t.closest("[data-k]")){SKI=+x.dataset.k;chips();note(SKI<0?"First install: no saved settings, so Deep Blue is used":"Installer reads the saved skin and opens as "+SK[SKI][0]);return}
+ if(x=t.closest("[data-sc]")){SC=x.dataset.sc;optOpen=false;chips();show("welcome");return}
+ if(x=t.closest("[data-sp]")){speed=+x.dataset.sp;chips();return}
+ if(x=t.closest("[data-j]")){var j=x.dataset.j;LOG=[];
+  if(j==="welcome"){optOpen=false;show("welcome")}
+  else if(j==="options"){if(SC==="update"||SC==="remove")SC="fresh";chips();optOpen=true;show("welcome")}
+  else if(j==="progress"){start()}
+  else if(j==="rollback"){start();later(function(){},1);var chk=setInterval(function(){if(pct>=45){clearInterval(chk);stop();addLog("! cancel requested","err");rollback("canceled")}},80)}
+  else if(j==="done"){show("done")}
+  else if(j==="failed"){LOG=[["&gt; extracting payload",""],["  + app.asar","dim"],["  + resources/skins/olive.json","dim"],["! cannot replace nexus.exe (file is in use)","err"],["rollback complete","okl"]];show("failed")}
+  else if(j==="canceled"){show("canceled")}
+  return}
+ if(x=t.closest("[data-w]")){note(x.dataset.w==="close"?"The window closes here":"The window minimizes to the taskbar");return}
+ if(x=t.closest("[data-a]")){var a=x.dataset.a;
+  if(a==="go")return start();
+  if(a==="opt"){optOpen=!optOpen;$("opt").classList.toggle("open",optOpen);x.setAttribute("aria-expanded",optOpen);return}
+  if(a==="browse"){note("A folder picker opens here");return}
+  if(a==="repair"){SC="update";start();return}
+  if(a==="rem"){SC="remove";chips();show("welcome");return}
+  if(a==="cancelw"){SC="update";chips();show("welcome");return}
+  if(a==="cancel"){stop();addLog("! cancel requested","err");rollback("canceled");return}
+  if(a==="again"){if(SC==="fail"){}show("welcome");return}
+  if(a==="close"){note("The window closes here");return}
+  if(a==="copy"){var tx=LOG.map(function(l){return l[0].replace(/&gt;/g,">")}).join("\n");try{navigator.clipboard.writeText(tx).catch(function(){})}catch(_){}x.textContent="Copied";setTimeout(function(){x.textContent="Copy log"},1600);return}}});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&scr==="progress"){var c=$("cx");if(c&&c.style.visibility!=="hidden")c.click()}});
+addEventListener("resize",fit);chips();fit();show("welcome");
+</script></body></html>

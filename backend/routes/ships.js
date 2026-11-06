@@ -486,7 +486,7 @@ router.post('/:id/request-access', isAuthenticated, async (req, res) => {
       requestId: accessReq._id,
       shipId: ship._id,
       shipName: ship.ship_name,
-      shipModel: ship.ship_model || '',
+      shipModel: require('../utils/formatShipModel')(ship.ship_model),
       requesterId: req.user._id,
       requesterName: req.user.citizen_name || req.user.username || '—',
     });

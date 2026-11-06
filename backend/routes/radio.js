@@ -17,19 +17,31 @@ router.get('/models', isAuthenticated, (req, res) => {
 });
 
 // ── Player's own radio ──────────────────────────────────────────────────
-// If the user hasn't been assigned one yet, randomly pick + persist.
+// v0.9+ — optional `?tunerId=left` returns the Command tuner's radio
+// instead of the primary. Omitted or 'right' = primary (unchanged
+// behavior for pre-v0.9 clients).
 router.get('/my-radio', isAuthenticated, async (req, res) => {
   try {
     let u = await User.findById(req.user._id);
     if (!u) return res.status(404).json({ error: 'user not found' });
-    if (!u.radio_type || !radioModels.byId(u.radio_type)) {
-      u.radio_type = radioModels.randomRadio();
-      await u.save();
+    const tunerId = req.query?.tunerId === 'left' ? 'left' : 'right';
+    const field = tunerId === 'left' ? 'command_radio_type' : 'radio_type';
+
+    if (tunerId === 'right') {
+      // Primary auto-assigns if missing (legacy behavior).
+      if (!u[field] || !radioModels.byId(u[field])) {
+        u[field] = radioModels.randomRadio();
+        await u.save();
+      }
     }
-    const entry = radioModels.byId(u.radio_type);
+    // Left radio: null is a valid state (inherits primary). Only return
+    // null if truly unset or the stored id is unknown.
+    const id = u[field];
+    const entry = id ? radioModels.byId(id) : null;
     res.json({
-      radio_type: u.radio_type,
+      radio_type: id || null,
       radio: entry ? { ...entry } : null,
+      tunerId,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -38,27 +50,33 @@ router.get('/my-radio', isAuthenticated, async (req, res) => {
 
 // Player-facing self-serve: change your own radio.
 //   PUT /api/radio/my-radio
-//   body: { radio_type?: string, reroll?: true }
+//   body: { radio_type?: string, reroll?: true, tunerId?: 'left'|'right' }
 // If reroll is true, randomly reassigns. Otherwise sets to the given id.
 router.put('/my-radio', isAuthenticated, async (req, res) => {
   try {
     const u = await User.findById(req.user._id);
     if (!u) return res.status(404).json({ error: 'user not found' });
+    const tunerId = req.body?.tunerId === 'left' ? 'left' : 'right';
+    const field = tunerId === 'left' ? 'command_radio_type' : 'radio_type';
 
     if (req.body?.reroll) {
-      u.radio_type = radioModels.randomRadio();
+      u[field] = radioModels.randomRadio();
+    } else if (req.body?.radio_type === null && tunerId === 'left') {
+      // Allow clearing the Command tuner's radio to inherit the primary.
+      u[field] = null;
     } else {
       const next = String(req.body?.radio_type || '');
       if (!radioModels.byId(next)) {
         return res.status(400).json({ error: 'unknown radio_type' });
       }
-      u.radio_type = next;
+      u[field] = next;
     }
     await u.save();
-    const entry = radioModels.byId(u.radio_type);
+    const entry = u[field] ? radioModels.byId(u[field]) : null;
     res.json({
-      radio_type: u.radio_type,
+      radio_type: u[field] || null,
       radio: entry ? { ...entry } : null,
+      tunerId,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

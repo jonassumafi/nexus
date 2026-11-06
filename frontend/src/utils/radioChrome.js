@@ -150,12 +150,23 @@ function buildChrome(ctx) {
   const outboundDelay = ctx.createDelay(0.5);
   outboundDelay.delayTime.value = 0.08;
 
-  let bedTargetOn = false;
-  const setBedActive = (on) => {
-    bedTargetOn = !!on;
+  // Per-source bed intensities. Lets Crew's full bed (1.0) and Command's
+  // light accent (0.35) coexist without one source overriding another —
+  // we take the max of all active sources. Legacy call-site signature
+  // (just `on`) still works: it addresses source 'default' at full strength.
+  const bedSources = new Map();  // source -> intensity when active
+  const setBedActive = (on, intensity = 1.0, source = 'default') => {
+    if (on) {
+      bedSources.set(source, Math.max(0, Math.min(1, intensity)));
+    } else {
+      bedSources.delete(source);
+    }
     const now = ctx.currentTime;
-    const target = bedTargetOn ? 0.06 : 0; // ~-24 dB — audible under voice without masking
-    const tau = bedTargetOn ? 0.04 : 0.22;
+    const base = 0.06;
+    let maxI = 0;
+    for (const v of bedSources.values()) if (v > maxI) maxI = v;
+    const target = base * maxI;
+    const tau = maxI > 0 ? 0.04 : 0.22;
     bedGain.gain.cancelScheduledValues(now);
     bedGain.gain.setTargetAtTime(target, now, tau);
   };
@@ -216,8 +227,25 @@ function buildChrome(ctx) {
     src.onended = () => { try { src.disconnect(); g.disconnect(); } catch {} };
   };
 
-  const playKeyUp   = () => playSample(CLICK_URLS.up,   () => synthClick(ctx, localBus, 'up'),   { gain: 0.45 });
-  const playKeyDown = () => playSample(CLICK_URLS.down, () => synthClick(ctx, localBus, 'down'), { gain: 0.45 });
+  // Cue-set aware key clicks.
+  // Backwards-compatible API: calling playKeyUp() / playKeyDown() with no
+  // arguments plays the current "classic" .wav samples at the current
+  // volume — identical to pre-v0.9 behavior. Callers can pass a cueSet
+  // object (shape from cueSets.json) to override the sound family. The
+  // "command" set adds a SELCAL-style 2-tone pre-chirp before the click.
+  const playKeyUp = async (cueSet) => {
+    const set = cueSet || null;
+    if (set?.pre?.kind === 'chord') await playPreChord(ctx, localBus, set.pre);
+    const urls = set?.up || CLICK_URLS.up;
+    const gain = (typeof set?.clickGain === 'number') ? set.clickGain : 0.45;
+    playSample(urls, () => synthClick(ctx, localBus, 'up'), { gain });
+  };
+  const playKeyDown = (cueSet) => {
+    const set = cueSet || null;
+    const urls = set?.down || CLICK_URLS.down;
+    const gain = (typeof set?.clickGain === 'number') ? set.clickGain : 0.45;
+    playSample(urls, () => synthClick(ctx, localBus, 'down'), { gain });
+  };
 
   // Kick off the default VHF bed load eagerly so it's warm before the
   // user first keys up.
@@ -231,6 +259,60 @@ function buildChrome(ctx) {
     setBand,
     playKeyUp, playKeyDown,
   };
+}
+
+/**
+ * SELCAL-style 2-tone pre-chirp. Pure Web Audio synthesis — no samples,
+ * no license concern. Called inline before the key-up click when a cueSet
+ * with a `pre.kind === 'chord'` is active. Resolves when the chord has
+ * fully released so the subsequent click doesn't collide with its tail.
+ *
+ * @param {AudioContext} ctx
+ * @param {AudioNode}    dest   Where to route the chord output
+ * @param {{freqs:number[], ms:number, gain:number, attackMs?:number, releaseMs?:number, waveform?:OscillatorType}} spec
+ */
+async function playPreChord(ctx, dest, spec) {
+  try {
+    const now = ctx.currentTime;
+    const durSec   = Math.max(0.05, (spec.ms || 400) / 1000);
+    const peak     = Math.max(0.01, Math.min(0.8, spec.gain ?? 0.3));
+    const atkSec   = Math.max(0.001, (spec.attackMs  ?? 8)  / 1000);
+    const relSec   = Math.max(0.005, (spec.releaseMs ?? 80) / 1000);
+    const waveform = spec.waveform || 'sine';
+
+    // Shared envelope so both tones share phase of attack/sustain/release.
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(0, now);
+    bus.gain.linearRampToValueAtTime(peak,   now + atkSec);
+    bus.gain.setValueAtTime(peak, now + durSec - relSec);
+    bus.gain.linearRampToValueAtTime(0.0001, now + durSec);
+    bus.connect(dest);
+
+    const oscs = [];
+    for (const f of (spec.freqs || [1250, 1850])) {
+      const osc = ctx.createOscillator();
+      osc.type = waveform;
+      osc.frequency.value = f;
+      // Per-tone gain divides so the sum doesn't clip at the bus.
+      const perToneGain = ctx.createGain();
+      perToneGain.gain.value = 1 / Math.max(1, spec.freqs?.length || 2);
+      osc.connect(perToneGain);
+      perToneGain.connect(bus);
+      osc.start(now);
+      osc.stop(now + durSec + 0.02);
+      oscs.push({ osc, perToneGain });
+    }
+
+    // Resolve shortly after the release ends so the caller can chain a click.
+    await new Promise((r) => setTimeout(r, (durSec * 1000) + 10));
+    // Tidy up — oscillators auto-stop; disconnect to free GC.
+    for (const { osc, perToneGain } of oscs) {
+      try { osc.disconnect(); perToneGain.disconnect(); } catch {}
+    }
+    try { bus.disconnect(); } catch {}
+  } catch {
+    /* synthesis failure is non-fatal — the click still plays */
+  }
 }
 
 // ─── Synthesis fallbacks (unchanged from v1.0 for behavior continuity) ──

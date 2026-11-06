@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import formatModel from '../utils/formatShipModel';
 
 const playClick = () => {
   const file = Math.random() > 0.5 ? '/sounds/click.mp3' : '/sounds/click2.mp3';
@@ -203,9 +204,9 @@ function SlotNode({ posName, pos, roleData, currentUserId, canInteract, onSlotCl
   );
 }
 
-export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexChange, currentUserId, onSlotClick, missionStatus, me, flashMySlots = false }) {
+export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexChange, currentUserId, onSlotClick, missionStatus, me, flashMySlots = false, borrowedFrom = null, hideNav = false, locked = false }) {
   const ship        = ships[shipIndex] ?? null;
-  const canInteract = missionStatus === 'WAITING FOR CREW' || missionStatus === 'FINALIZED';
+  const canInteract = !locked && (missionStatus === 'WAITING FOR CREW' || missionStatus === 'FINALIZED');
   const prevShip    = shipIndex > 0                ? ships[shipIndex - 1] : null;
   const nextShip    = shipIndex < ships.length - 1 ? ships[shipIndex + 1] : null;
 
@@ -245,7 +246,25 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
       {/* FIX 3 — nav: 32px name, 16px text, 28px ◀/▶, visibility:hidden for layout stability */}
-      {ships.length > 1 && (
+      {/* Title row — surfaces ship name + model + borrowed-from label. When
+          MissionShipsStrip is driving selection via tabs, hideNav=true
+          suppresses the old arrow nav; this title row stays so the ship
+          identity is always visible above the map. */}
+      {ship && hideNav && (
+        <div style={{
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 12, marginBottom: 8, flexWrap: 'wrap',
+        }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#90b0d7', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            {ship.ship_name ?? '—'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--fg2)' }}>
+            {formatModel(ship.ship_model || ship.type)}
+            {borrowedFrom && <> · Borrowed from {borrowedFrom}</>}
+          </div>
+        </div>
+      )}
+      {ships.length > 1 && !hideNav && (
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginBottom: 10,
@@ -332,6 +351,52 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
             with the padded image content box, not the outer border box. */}
         <div style={{ position: 'absolute', top: 8, left: 8, right: 8, bottom: 8 }}>
           {(() => {
+            // Source of truth is `node_positions` (what the operator actually
+            // placed during registration): one dot per entry, at the stored
+            // x/y. For each node, its slot-within-role is determined by how
+            // many same-role nodes came before it in placement order — that
+            // index maps into `crew_roles[role].filled[i]` to decide who sits
+            // where.
+            //
+            // Legacy fallback: ships without a `node_positions` array (older
+            // seed data) fall through to the auto-laid-out role-keys form so
+            // nothing regresses for pre-schematic ships.
+            const nodes = Array.isArray(ship?.node_positions) ? ship.node_positions : null;
+            if (nodes && nodes.length) {
+              const roleCountSeen = {};
+              return nodes.map((n, idx) => {
+                const role = n.role;
+                const slotIndex = roleCountSeen[role] || 0;
+                roleCountSeen[role] = slotIndex + 1;
+                const rr = ship?.crew_roles?.[role];
+                const occupant = rr?.filled?.[slotIndex] ?? null;
+                // Pass a single-slot view so SlotNode's open/taken logic
+                // shows the specific seat's state, not the whole role's.
+                const roleData = {
+                  roleName: role,
+                  slots: 1,
+                  filled: occupant ? [occupant] : [],
+                };
+                return (
+                  <SlotNode
+                    key={`${role}-${idx}`}
+                    posName={role}
+                    pos={{ left: `${n.x}%`, top: `${n.y}%` }}
+                    roleData={roleData}
+                    currentUserId={currentUserId}
+                    canInteract={canInteract}
+                    onSlotClick={(rn, action) => onSlotClick?.(ship._id, rn, action)}
+                    me={me}
+                    isHighlighted={hoveredSlotIndex !== null && idx === hoveredSlotIndex}
+                    showTooltip={hoveredNodeRole === `${role}-${idx}`}
+                    onNodeEnter={() => handleNodeEnter(`${role}-${idx}`, idx)}
+                    onNodeLeave={handleNodeLeave}
+                    flash={flashMySlots}
+                  />
+                );
+              });
+            }
+            // Legacy auto-layout for ships without stored node_positions.
             const nodePositions = computeNodePositions(roleKeys);
             return roleKeys.map((roleName, roleIndex) => {
               const pos = nodePositions[roleName];
@@ -393,76 +458,113 @@ export default function ShipSchematic({ ships = [], shipIndex = 0, onShipIndexCh
         </div>
       )}
 
-      {/* FIX 9 — crew manifest: fill % computed live; header uses #1A3A50 + #FFBB33 */}
-      {ship?.crew_roles && Object.keys(ship.crew_roles).length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 16, letterSpacing: '0.08em', marginBottom: 6 }}>
-            <span style={{ color: '#5F87A8' }}>CREW MANIFEST — {ship.ship_name ?? ship.type ?? ''}</span>
-            <span style={{ marginLeft: 8, color: '#FFBB33' }}>{fillPct}% FILLED</span>
-          </div>
-          {Object.entries(ship.crew_roles).map(([roleName, roleData], index) => {
-            const filledRaw  = roleData.filled || [];
-            const filled     = filledRaw.map(entry => ({
-              discord_id: toDiscordId(entry),
-              citizen_name: entry?.citizen_name || null,
-            }));
-            const slots      = roleData.slots || 0;
-            const isYours    = currentUserId ? filled.some(f => f.discord_id === String(currentUserId)) : false;
-            const isFull     = filled.length >= slots;
-            const highlighted = hoveredSlotIndex === index;
+      {/* Crew manifest: one row per SLOT (not per role). Source of truth
+          is node_positions in placement order, so a ship with 6 turret
+          operators gets 6 rows that line up with the 6 dots on the
+          schematic above. Legacy ships without node_positions fall back
+          to expanding crew_roles into slot-count rows. */}
+      {ship?.crew_roles && Object.keys(ship.crew_roles).length > 0 && (() => {
+        // Build the per-slot list.
+        const positions = Array.isArray(ship.node_positions) ? ship.node_positions : null;
+        let slotList = [];
+        if (positions && positions.length) {
+          const roleCount = {};
+          for (const n of positions) {
+            const slotIndex = roleCount[n.role] || 0;
+            roleCount[n.role] = slotIndex + 1;
+            slotList.push({ roleName: n.role, slotIndexInRole: slotIndex });
+          }
+        } else {
+          // Legacy: expand crew_roles by its slot count.
+          for (const [roleName, roleData] of Object.entries(ship.crew_roles)) {
+            const slots = roleData?.slots || 0;
+            for (let i = 0; i < slots; i++) {
+              slotList.push({ roleName, slotIndexInRole: i });
+            }
+          }
+        }
+        // Per-role totals used to display "Pilot 1/1" style suffixes when
+        // a role has more than one slot.
+        const roleTotals = {};
+        for (const s of slotList) {
+          roleTotals[s.roleName] = (roleTotals[s.roleName] || 0) + 1;
+        }
 
-            return (
-              <div
-                key={roleName}
-                onMouseEnter={() => handleRowEnter(index)}
-                onMouseLeave={handleRowLeave}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '4px 6px',
-                  fontSize: 16,
-                  border: highlighted ? '1px solid #00EEFF' : '1px solid transparent',
-                  borderBottom: highlighted ? '1px solid #00EEFF' : '1px solid #080F18',
-                  background: highlighted ? 'rgba(0,238,255,0.05)' : 'transparent',
-                  transition: 'all 0.1s ease',
-                }}
-              >
-                <span style={{ color: highlighted ? '#CCE8FF' : '#66AADD' }}>{roleName}</span>
-                <span style={{ color: highlighted ? '#CCE8FF' : 'inherit' }}>
-                  {isYours && (
-                    <>
-                      <span style={{ color: C.yours }}>{me?.citizen_name || 'YOU'}</span>
-                      {canInteract && (
-                        <span
-                          onClick={() => { playClick(); onSlotClick?.(ship._id, roleName, 'withdraw'); }}
-                          style={{ color: '#FF5544', cursor: 'pointer', marginLeft: 8 }}
-                        >[ WITHDRAW ]</span>
-                      )}
-                    </>
-                  )}
-                  {!isYours && isFull && (
-                    <span style={{ fontSize: 13, color: '#99BBDD', fontWeight: 'bold' }}>
-                      {filled.map(f => f.citizen_name || 'UNKNOWN').join(', ')}
-                    </span>
-                  )}
-                  {!isYours && !isFull && canInteract && (
-                    <span
-                      onClick={() => {
-                        console.log('[Manifest Reserve]', { shipId: ship._id, roleName, canInteract });
-                        playClick();
-                        onSlotClick?.(ship._id, roleName, 'reserve');
-                      }}
-                      style={{ color: C.open, cursor: 'pointer' }}
-                    >[ OPEN — CLICK TO RESERVE ]</span>
-                  )}
-                  {!isYours && !isFull && !canInteract && (
-                    <span style={{ color: C.border }}>[ OPEN — CLICK TO RESERVE ]</span>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        return (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 16, letterSpacing: '0.08em', marginBottom: 6 }}>
+              <span style={{ color: '#5F87A8' }}>CREW MANIFEST — {ship.ship_name ?? ship.type ?? ''}</span>
+              <span style={{ marginLeft: 8, color: '#FFBB33' }}>{fillPct}% FILLED</span>
+            </div>
+            {slotList.map(({ roleName, slotIndexInRole }, index) => {
+              const rr = ship.crew_roles[roleName] || {};
+              const filledRaw = rr.filled || [];
+              const occupant = filledRaw[slotIndexInRole];
+              const occupantInfo = occupant ? {
+                discord_id: toDiscordId(occupant),
+                citizen_name: occupant?.citizen_name || null,
+              } : null;
+              const isYours = occupantInfo && currentUserId
+                ? occupantInfo.discord_id === String(currentUserId)
+                : false;
+              const isFull = !!occupant;
+              const highlighted = hoveredSlotIndex === index;
+
+              // Only append the "1 of N" suffix when the role has more than
+              // one slot — otherwise "Pilot" alone reads cleaner than "Pilot 1 of 1".
+              const roleDisplay = roleTotals[roleName] > 1
+                ? `${roleName} ${slotIndexInRole + 1} of ${roleTotals[roleName]}`
+                : roleName;
+
+              return (
+                <div
+                  key={`${roleName}-${slotIndexInRole}`}
+                  onMouseEnter={() => handleRowEnter(index)}
+                  onMouseLeave={handleRowLeave}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '4px 6px',
+                    fontSize: 16,
+                    border: highlighted ? '1px solid #00EEFF' : '1px solid transparent',
+                    borderBottom: highlighted ? '1px solid #00EEFF' : '1px solid #080F18',
+                    background: highlighted ? 'rgba(0,238,255,0.05)' : 'transparent',
+                    transition: 'all 0.1s ease',
+                  }}
+                >
+                  <span style={{ color: highlighted ? '#CCE8FF' : '#66AADD' }}>{roleDisplay}</span>
+                  <span style={{ color: highlighted ? '#CCE8FF' : 'inherit' }}>
+                    {isYours && (
+                      <>
+                        <span style={{ color: C.yours }}>{me?.citizen_name || 'YOU'}</span>
+                        {canInteract && (
+                          <span
+                            onClick={() => { playClick(); onSlotClick?.(ship._id, roleName, 'withdraw'); }}
+                            style={{ color: '#FF5544', cursor: 'pointer', marginLeft: 8 }}
+                          >[ WITHDRAW ]</span>
+                        )}
+                      </>
+                    )}
+                    {!isYours && isFull && (
+                      <span style={{ fontSize: 13, color: '#99BBDD', fontWeight: 'bold' }}>
+                        {occupantInfo?.citizen_name || 'UNKNOWN'}
+                      </span>
+                    )}
+                    {!isYours && !isFull && canInteract && (
+                      <span
+                        onClick={() => { playClick(); onSlotClick?.(ship._id, roleName, 'reserve'); }}
+                        style={{ color: C.open, cursor: 'pointer' }}
+                      >[ OPEN — CLICK TO RESERVE ]</span>
+                    )}
+                    {!isYours && !isFull && !canInteract && (
+                      <span style={{ color: C.border }}>[ OPEN — CLICK TO RESERVE ]</span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -182,13 +182,14 @@ router.post('/', isAuthenticated, async (req, res) => {
     });
 
     const primaryShipDoc = await Ship.findById(primary_ship).select('ship_name ship_model').lean();
+    const formatShipModel = require('../utils/formatShipModel');
     dispatch('missionCreated', {
       missionName: mission.name,
       type: mission.mission_type,
       commanderName: req.user.citizen_name || req.user.username,
       scheduledTime: missionTimeDate ? missionTimeDate.toUTCString() : 'Immediate',
       primaryVessel: primaryShipDoc
-        ? `${primaryShipDoc.ship_name}${primaryShipDoc.ship_model ? ' · ' + primaryShipDoc.ship_model : ''}`
+        ? `${primaryShipDoc.ship_name}${primaryShipDoc.ship_model ? ' · ' + formatShipModel(primaryShipDoc.ship_model) : ''}`
         : null,
     });
 

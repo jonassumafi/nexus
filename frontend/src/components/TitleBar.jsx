@@ -16,6 +16,7 @@
 //   onlyClose — if true, hides min/max (used by the very small radio mode)
 
 import { useEffect, useState } from 'react';
+import NexusMark from './NexusMark';
 
 const DRAG   = { WebkitAppRegion: 'drag' };
 const NODRAG = { WebkitAppRegion: 'no-drag' };
@@ -25,10 +26,26 @@ export default function TitleBar({
   subtitle,
   extras,
   onlyClose = false,
+  // Narrow windows (Companion, Radio-only) can't afford 44px window
+  // controls — they eat 132px of a 324px row. `compact` drops them to
+  // 32px so the brand + version pill stay visible.
+  compact = false,
 }) {
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
   const [maximized, setMaximized] = useState(false);
   const version = electron?.companion?.version;
+  // UDP-only sibling build marker — surfaces either via the bake-time env
+  // flag (pure-UDP bundle), the preload-exposed boolean (UDP Electron
+  // shell), or the ?udp=1 query param appended by main.js urlFor().
+  const udpOnly = (() => {
+    try {
+      if (import.meta.env.VITE_NEXUS_UDP_ONLY === '1') return true;
+      if (electron?.companion?.udpOnly) return true;
+      if (typeof window !== 'undefined' &&
+          new URLSearchParams(window.location.search).get('udp') === '1') return true;
+    } catch {}
+    return false;
+  })();
 
   // We don't get a dedicated "maximize-changed" event through our IPC —
   // just toggle optimistically on click. Not critical visually.
@@ -57,14 +74,15 @@ export default function TitleBar({
         WebkitUserSelect: 'none',
       }}
     >
-      {/* Brand mark — part of the drag region */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+      {/* Brand mark — part of the drag region. New prompt mark + wordmark
+          per logo_e_spec. 16 px small-cut matches the 30 px bar height. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <NexusMark size={16} />
         <span style={{
           fontSize: 11,
           fontWeight: 700,
           letterSpacing: '0.22em',
-          color: 'var(--blue)',
-          textShadow: '0 0 8px color-mix(in srgb, var(--blue) 45%, transparent)',
+          color: 'var(--fg1)',
         }}>
           {title}
         </span>
@@ -80,17 +98,39 @@ export default function TitleBar({
         )}
         {version && (
           <span
-            title={`Nexus Companion v${version}`}
+            title={`Nexus Companion v${version} — compare with your friend's number when debugging`}
             style={{
-              fontSize: 9,
+              fontSize: 10,
+              fontWeight: 600,
               letterSpacing: '0.08em',
-              color: 'var(--fg3)',
-              opacity: 0.7,
+              color: 'var(--cyan, #7ef0dc)',
               fontVariantNumeric: 'tabular-nums',
-              marginLeft: 2,
+              marginLeft: 4,
+              padding: '1px 5px',
+              border: '1px solid color-mix(in srgb, var(--cyan, #7ef0dc) 35%, transparent)',
+              borderRadius: 3,
+              background: 'color-mix(in srgb, var(--cyan, #7ef0dc) 10%, transparent)',
             }}
           >
             v{version}
+          </span>
+        )}
+        {udpOnly && (
+          <span
+            title="UDP-only sibling build — voice transport is locked to UDP"
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              color: 'var(--cyan, #7ef0dc)',
+              marginLeft: 2,
+              padding: '1px 5px',
+              border: '1px solid color-mix(in srgb, var(--cyan, #7ef0dc) 55%, transparent)',
+              borderRadius: 3,
+              background: 'color-mix(in srgb, var(--cyan, #7ef0dc) 18%, transparent)',
+            }}
+          >
+            UDP
           </span>
         )}
       </div>
@@ -112,17 +152,17 @@ export default function TitleBar({
       <div style={{ ...NODRAG, display: 'flex', height: '100%' }}>
         {!onlyClose && (
           <>
-            <WinBtn label="−"  title="Minimize"             onClick={onMinimize} />
-            <WinBtn label={maximized ? '❐' : '▢'} title="Maximize / restore" onClick={onMaxToggle} />
+            <WinBtn label="−"  title="Minimize" compact={compact} onClick={onMinimize} />
+            <WinBtn label={maximized ? '❐' : '▢'} title="Maximize / restore" compact={compact} onClick={onMaxToggle} />
           </>
         )}
-        <WinBtn label="✕" title="Close" onClick={onClose} danger />
+        <WinBtn label="✕" title="Close" compact={compact} onClick={onClose} danger />
       </div>
     </div>
   );
 }
 
-function WinBtn({ label, title, onClick, danger }) {
+function WinBtn({ label, title, onClick, danger, compact }) {
   const [hover, setHover] = useState(false);
   return (
     <button
@@ -134,7 +174,7 @@ function WinBtn({ label, title, onClick, danger }) {
       aria-label={title}
       style={{
         ...NODRAG,
-        width: 44,
+        width: compact ? 32 : 44,
         height: '100%',
         padding: 0,
         border: 0,

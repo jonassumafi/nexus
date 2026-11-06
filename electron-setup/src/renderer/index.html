@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;" />
+  <title>Nexus Setup</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <!-- Frameless 640×400 window. Titlebar is draggable (CSS -webkit-app-region). -->
+  <div class="tb">
+    <!-- Small bracket-chevron mark, same shape as the companion logo -->
+    <svg viewBox="0 0 64 64" class="tbmark" aria-hidden="true">
+      <path d="M21 8H8V56H21M43 8H56V56H43" fill="none" stroke="var(--acc)" stroke-width="7" stroke-linecap="square"/>
+      <path d="M22 21L35 32L22 43" fill="none" stroke="var(--acc2)" stroke-width="7" stroke-linecap="square"/>
+      <rect x="37" y="40" width="12" height="7" fill="var(--acc2)"/>
+    </svg>
+    <b>NEXUS</b><span>SETUP</span>
+    <div class="c">
+      <button data-w="min"   aria-label="Minimize">—</button>
+      <button class="x" data-w="close" aria-label="Close">×</button>
+    </div>
+  </div>
+
+  <div class="body" id="body"></div>
+
+  <div class="ft">
+    <span class="dots" id="dots"></span>
+    <span id="ftl"></span>
+    <span class="sp"></span>
+    <span id="ftr">Installs for you only · no administrator needed</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import api from '../services/api';
+import TerminalBoot from './TerminalBoot';
 
 const playClick = () => {
   const file = Math.random() > 0.5 ? '/sounds/click.mp3' : '/sounds/click2.mp3';
@@ -66,199 +67,49 @@ const INPUT_STYLE = {
 
 // ─── Boot sequence ──────────────────────────────────────────────────────────
 
-// Splash-style dot animation system, mirrored from ShipRegistration.
-const CM_DOT_SLOTS = 20;
-const CM_TICK_MS = 80;
-const CM_IDLE = 'idle';
-const CM_ANIMATING = 'animating';
-const CM_RESOLVED = 'resolved';
-const CM_DIVIDER = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
-
-function cmDots(n) {
-  return '[' + '.'.repeat(n) + ' '.repeat(CM_DOT_SLOTS - n) + ']';
-}
-function cmRandInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
-
-const CM_LINE_DEFS = [
-  { label: 'AUTHENTICATING OPERATOR  ', status: 'OK',     color: '#66AADD', range: [600, 1800] },
-  { label: 'ACCESSING MISSION DB     ', status: 'OK',     color: '#66AADD', range: [500, 1600] },
-  { label: 'LOADING FLEET MANIFEST   ', status: 'OK',     color: '#66AADD', range: [400, 1400] },
-  { label: 'INITIALIZING CREW SYSTEM ', status: 'OK',     color: '#66AADD', range: [500, 1500] },
-  { label: 'PREPARING PARAMETERS     ', status: 'OK',     color: '#66AADD', range: [400, 1200] },
-  { label: 'ESTABLISHING CONNECTION  ', status: 'READY',  color: '#44FF88', range: [300, 1000] },
-  { label: 'MISSION TERMINAL         ', status: 'ONLINE', color: '#44FF88', range: [200, 800]  },
+const CM_PHASES = [
+  { label: 'AUTHENTICATING OPERATOR',  status: 'OK'     },
+  { label: 'ACCESSING MISSION DB',     status: 'OK'     },
+  { label: 'LOADING FLEET MANIFEST',   status: 'OK'     },
+  { label: 'INITIALIZING CREW SYSTEM', status: 'OK'     },
+  { label: 'PREPARING PARAMETERS',     status: 'OK'     },
+  { label: 'ESTABLISHING CONNECTION',  status: 'READY'  },
+  { label: 'MISSION TERMINAL',         status: 'ONLINE' },
 ];
 
 function BootSequence({ operatorName, onDone }) {
-  const [duration] = useState(() => 5000 + Math.random() * 2000);
-  const seqRef = useRef(null);
   const sndRef = useRef(null);
-
-  const [header1, setHeader1]     = useState(false);
-  const [header2, setHeader2]     = useState(false);
-  const [showDivOpen, setDivOpen] = useState(false);
-  const [showDivClose, setDivClose] = useState(false);
-  const [showReady, setShowReady] = useState(false);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [lineStates, setLineStates] = useState(
-    CM_LINE_DEFS.map(() => ({ phase: CM_IDLE, dots: 0 }))
-  );
-
-  if (!seqRef.current) {
-    const HEADER_TIME = 700;
-    const TAIL_TIME = 500;
-    const budget = Math.max(2000, duration - HEADER_TIME - TAIL_TIME);
-    let durations = CM_LINE_DEFS.map(({ range }) => cmRandInt(range[0], range[1]));
-    const total = durations.reduce((s, d) => s + d, 0);
-    if (total > budget) {
-      const scale = budget / total;
-      durations = durations.map(d => Math.max(Math.floor(d * scale), 150));
-    }
-    seqRef.current = { durations, headerTime: HEADER_TIME };
-  }
 
   useEffect(() => {
     const snd = new Audio('/sounds/mission_boot.mp3');
-    snd.loop = false;
     snd.volume = 0.4;
-    snd.muted = true;
     snd.play().catch(() => {});
     sndRef.current = snd;
-    const unmute = setTimeout(() => { try { snd.muted = false; } catch (e) {} }, 80);
-    const stopSnd = setTimeout(() => {
-      try { snd.pause(); snd.currentTime = 0; snd.src = ''; snd.load(); } catch (e) {}
-    }, duration);
-
-    const tids = [];
-    const iids = [];
-    const schedule = (fn, delay) => { tids.push(setTimeout(fn, delay)); };
-
-    schedule(() => setHeader1(true), 0);
-    schedule(() => setDivOpen(true), 150);
-    schedule(() => setHeader2(true), 300);
-
-    let cursor = seqRef.current.headerTime;
-    CM_LINE_DEFS.forEach((_, index) => {
-      const dur = seqRef.current.durations[index];
-      schedule(() => {
-        setLineStates(prev => {
-          const next = [...prev];
-          next[index] = { phase: CM_ANIMATING, dots: 0 };
-          return next;
-        });
-        let dotPos = 0;
-        const iid = setInterval(() => {
-          dotPos = (dotPos + 1) % (CM_DOT_SLOTS + 1);
-          setLineStates(prev => {
-            const next = [...prev];
-            if (next[index].phase === CM_ANIMATING) {
-              next[index] = { phase: CM_ANIMATING, dots: dotPos };
-            }
-            return next;
-          });
-        }, CM_TICK_MS);
-        iids.push(iid);
-        schedule(() => {
-          clearInterval(iid);
-          setLineStates(prev => {
-            const next = [...prev];
-            next[index] = { phase: CM_RESOLVED, dots: CM_DOT_SLOTS };
-            return next;
-          });
-        }, dur);
-      }, cursor);
-      cursor += dur;
-    });
-
-    schedule(() => setDivClose(true), cursor + 100);
-    schedule(() => setShowReady(true),  cursor + 250);
-    schedule(() => setShowPrompt(true), cursor + 400);
-
-    const doneTimer = setTimeout(() => { onDone?.(); }, duration + 3000);
-
     return () => {
-      clearTimeout(unmute);
-      clearTimeout(stopSnd);
-      clearTimeout(doneTimer);
-      tids.forEach(clearTimeout);
-      iids.forEach(clearInterval);
-      try { snd.pause(); snd.currentTime = 0; snd.src = ''; snd.load(); } catch (e) {}
+      try { snd.pause(); snd.currentTime = 0; snd.src = ''; snd.load(); } catch {}
     };
-  }, [duration, onDone]);
-
-  const lineColor = (ls, idx) =>
-    ls.phase === CM_RESOLVED ? CM_LINE_DEFS[idx].color : '#66AADD';
+  }, []);
 
   return (
     <div style={{
       background: '#000',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100%',
-      width: '100%',
-      overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: '100%', width: '100%', overflow: 'hidden',
     }}>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        width: 'fit-content',
-        maxWidth: 700,
-        padding: '0 40px',
-        // Monospace so the bracketed [....] progress columns line up
-        // on a common left axis, matching the Ship Registry boot. In
-        // a proportional font the ad-hoc trailing spaces in each
-        // CM_LINE_DEFS label have variable widths and the brackets
-        // staircase visibly.
-        fontFamily: "var(--font-mono, 'JetBrains Mono', ui-monospace, Consolas, monospace)",
-        fontSize: 15,
-        lineHeight: 1.9,
-        letterSpacing: '0.04em',
-      }}>
-        {header1 && (
-          <div style={{ color: '#99BBDD' }}>
-            NEXUS MISSION COMMAND — TERMINAL ACCESS
-          </div>
-        )}
-        {showDivOpen && (
-          <div style={{ color: '#1A3A50' }}>{CM_DIVIDER}</div>
-        )}
-        {header2 && (
-          <div style={{ color: '#66AADD', whiteSpace: 'pre', marginBottom: 12 }}>
-            {`OPERATOR: ${operatorName || 'UNKNOWN'}  //  AUTH: VERIFIED`}
-          </div>
-        )}
-
-        {CM_LINE_DEFS.map((def, i) => {
-          const ls = lineStates[i];
-          if (ls.phase === CM_IDLE) return null;
-          return (
-            <div key={i} style={{ color: lineColor(ls, i), whiteSpace: 'pre' }}>
-              {def.label}{cmDots(ls.dots)}{ls.phase === CM_RESOLVED ? '  ' + def.status : ''}
-            </div>
-          );
-        })}
-
-        {showDivClose && (
-          <div style={{ color: '#1A3A50', marginTop: 8 }}>{CM_DIVIDER}</div>
-        )}
-        {showReady && (
-          <div style={{ color: '#44FF88', whiteSpace: 'pre' }}>
-            &gt; MISSION TERMINAL READY
-          </div>
-        )}
-        {showPrompt && (
-          <div style={{ color: '#00EEFF', whiteSpace: 'pre' }}>
-            &gt; AWAITING MISSION DATA INPUT...
-            <span style={{
-              display: 'inline-block', width: 8, height: 14,
-              background: '#66AADD', verticalAlign: 'middle', marginLeft: 6,
-              animation: 'blink 0.8s step-end infinite',
-            }} />
-          </div>
-        )}
-      </div>
+      <TerminalBoot
+        title="NEXUS MISSION COMMAND — TERMINAL ACCESS"
+        operatorLine={<>OPERATOR: <b>{operatorName || 'UNKNOWN'}</b> &nbsp;//&nbsp; AUTH: <b>VERIFIED</b></>}
+        phases={CM_PHASES}
+        phaseDelay={700}
+        onComplete={() => {
+          try { sndRef.current?.pause(); } catch {}
+          onDone?.();
+        }}
+        completeDelay={1200}
+        awaitingLabel="AWAITING MISSION DATA INPUT"
+        readyLabel="MISSION TERMINAL READY"
+        loadingLabel="MISSION TERMINAL LOADING"
+      />
     </div>
   );
 }

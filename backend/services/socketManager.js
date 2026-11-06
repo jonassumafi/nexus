@@ -145,9 +145,14 @@ function init(socketIo) {
     })();
 
     // ── JOIN FREQUENCY ──────────────────────────────────────────────────────
+    // v0.9+ — multi-tuner. A `tunerId` field ('left' | 'right', optional,
+    // defaults to 'right' for legacy single-radio clients) lets a socket
+    // hold up to two frequency rooms concurrently. Rooms are scoped by
+    // tunerId so a dual-radio client can join 243.0 on 'left' and 128.4
+    // on 'right' without the server collapsing them.
     socket.on('radio:join', async (data) => {
       try {
-        const { frequency, missionId } = data || {};
+        const { frequency, missionId, tunerId } = data || {};
         if (!frequency) {
           socket.emit('radio:error', { message: 'frequency required' });
           return;
@@ -161,21 +166,25 @@ function init(socketIo) {
           }
         }
 
-        const room = `freq_${frequency}`;
+        const tuner = tunerId === 'left' ? 'left' : 'right';
+        const room = `freq_${frequency}:${tuner}`;
 
-        // Leave any previous frequency rooms
-        const prevRooms = [...socket.rooms].filter(r => r.startsWith('freq_'));
+        // Leave any previous frequency rooms *for this tuner only* — the
+        // other tuner's room is independent and must stay joined.
+        const prevRooms = [...socket.rooms].filter(r =>
+          r.startsWith('freq_') && r.endsWith(`:${tuner}`)
+        );
         for (const r of prevRooms) {
           socket.leave(r);
           socket.to(r).emit('radio:peer-left', {
             socketId: socket.id,
             userId: socket.userId,
             citizenName: socket.citizenName,
+            tunerId: tuner,
           });
         }
 
-        // Evict any stale sockets for this same user already in the target room
-        // (e.g. lingering old socket from a browser refresh).
+        // Evict stale sockets for this user+tuner (duplicate connections).
         const existingSockets = await io.in(room).fetchSockets();
         for (const s of existingSockets) {
           if (s.userId === socket.userId && s.id !== socket.id) {
@@ -184,6 +193,7 @@ function init(socketIo) {
               socketId: s.id,
               userId: s.userId,
               citizenName: s.citizenName,
+              tunerId: tuner,
             });
           }
         }
@@ -194,6 +204,7 @@ function init(socketIo) {
           userId: socket.userId,
           citizenName: socket.citizenName,
           socketId: socket.id,
+          tunerId: tuner,
         });
 
         const roomSockets = await io.in(room).fetchSockets();
@@ -203,9 +214,10 @@ function init(socketIo) {
             userId: s.userId,
             citizenName: s.citizenName,
             socketId: s.id,
+            tunerId: tuner,
           }));
 
-        socket.emit('radio:room-peers', { frequency, peers });
+        socket.emit('radio:room-peers', { frequency, tunerId: tuner, peers });
       } catch (err) {
         socket.emit('radio:error', { message: err.message });
       }
@@ -213,20 +225,25 @@ function init(socketIo) {
 
     // ── LEAVE FREQUENCY ─────────────────────────────────────────────────────
     socket.on('radio:leave', (data) => {
-      const { frequency } = data || {};
+      const { frequency, tunerId } = data || {};
       if (!frequency) return;
-      const room = `freq_${frequency}`;
+      const tuner = tunerId === 'left' ? 'left' : 'right';
+      const room = `freq_${frequency}:${tuner}`;
       socket.leave(room);
       socket.to(room).emit('radio:peer-left', {
         socketId: socket.id,
         userId: socket.userId,
         citizenName: socket.citizenName,
+        tunerId: tuner,
       });
     });
 
     // ── WEBRTC OFFER ────────────────────────────────────────────────────────
+    // tunerId is passed through so the receiver can pair the signaling to
+    // the correct per-radio peer connection. Defaults to 'right' for
+    // legacy single-radio clients.
     socket.on('radio:offer', (data) => {
-      const { targetSocketId, offer, frequency } = data || {};
+      const { targetSocketId, offer, frequency, tunerId } = data || {};
       if (!targetSocketId || !offer) return;
       io.to(targetSocketId).emit('radio:offer', {
         offer,
@@ -234,26 +251,27 @@ function init(socketIo) {
         fromUserId: socket.userId,
         fromCitizenName: socket.citizenName,
         frequency,
+        tunerId: tunerId === 'left' ? 'left' : 'right',
       });
     });
 
-    // ── WEBRTC ANSWER ───────────────────────────────────────────────────────
     socket.on('radio:answer', (data) => {
-      const { targetSocketId, answer } = data || {};
+      const { targetSocketId, answer, tunerId } = data || {};
       if (!targetSocketId || !answer) return;
       io.to(targetSocketId).emit('radio:answer', {
         answer,
         fromSocketId: socket.id,
+        tunerId: tunerId === 'left' ? 'left' : 'right',
       });
     });
 
-    // ── ICE CANDIDATE ───────────────────────────────────────────────────────
     socket.on('radio:ice-candidate', (data) => {
-      const { targetSocketId, candidate } = data || {};
+      const { targetSocketId, candidate, tunerId } = data || {};
       if (!targetSocketId || !candidate) return;
       io.to(targetSocketId).emit('radio:ice-candidate', {
         candidate,
         fromSocketId: socket.id,
+        tunerId: tunerId === 'left' ? 'left' : 'right',
       });
     });
 
@@ -261,9 +279,10 @@ function init(socketIo) {
     // Per-frequency live-transmitter tracking so we can detect collisions
     // and tag ptt-start events with crypto status for the KY-58 chirp.
     socket.on('radio:ptt-start', async (data) => {
-      const { frequency } = data || {};
+      const { frequency, tunerId } = data || {};
       if (!frequency) return;
-      const room = `freq_${frequency}`;
+      const tuner = tunerId === 'left' ? 'left' : 'right';
+      const room = `freq_${frequency}:${tuner}`;
 
       // Resolve this operator's radio type → crypto flag. Lookup is in
       // memory via radioModels (28 presets, cheap).
@@ -293,13 +312,15 @@ function init(socketIo) {
         citizenName: socket.citizenName,
         socketId: socket.id,
         crypto,
+        tunerId: tuner,
       });
     });
 
     socket.on('radio:ptt-stop', (data) => {
-      const { frequency } = data || {};
+      const { frequency, tunerId } = data || {};
       if (!frequency) return;
-      const room = `freq_${frequency}`;
+      const tuner = tunerId === 'left' ? 'left' : 'right';
+      const room = `freq_${frequency}:${tuner}`;
       const active = pttActiveByFreq.get(room);
       if (active) {
         active.delete(socket.id);
@@ -309,6 +330,7 @@ function init(socketIo) {
         userId: socket.userId,
         citizenName: socket.citizenName,
         socketId: socket.id,
+        tunerId: tuner,
       });
     });
 

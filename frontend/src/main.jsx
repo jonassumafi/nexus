@@ -6,6 +6,15 @@ import { SocketProvider } from './context/SocketContext.jsx';
 import { useAuthContext } from './context/AuthContext.jsx';
 import './styles/global.css';
 
+// UDP voice dev harness — exposes window.nexusUdp.* in the Electron
+// webview for ad-hoc testing of the TX/RX pipeline. Safe to leave in;
+// does nothing until the user calls one of the methods. Remove once
+// UDP mode is wired into the real UI.
+import { installDevHarness } from './utils/udpVoiceDevTest';
+if (typeof window !== 'undefined' && window.electronAPI?.udp) {
+  try { installDevHarness(); } catch (err) { console.warn('[udp-harness]', err); }
+}
+
 import Gate         from './pages/Gate.jsx';
 import Splash       from './pages/Splash.jsx';
 import Dashboard    from './pages/Dashboard.jsx';
@@ -19,6 +28,7 @@ import RadioWidget  from './pages/RadioWidget.jsx';
 import Companion    from './pages/Companion.jsx';
 import GlobalChatPopout from './pages/GlobalChatPopout.jsx';
 import RootErrorBoundary from './components/RootErrorBoundary.jsx';
+import Toaster from './components/Toaster.jsx';
 
 // Apply persisted theme + density before React mounts so there's no FOUC.
 try {
@@ -26,6 +36,9 @@ try {
   if (t) document.documentElement.setAttribute('data-theme', t);
   const d = localStorage.getItem('nexus_density');
   document.documentElement.setAttribute('data-dens', d || 'comfort');
+  // Mirror the current skin to userData so Nexus Setup can match colors
+  // before its window paints. Fire-and-forget; no-op outside Electron.
+  try { window.electronAPI?.saveSkin?.(t || 'deepblue'); } catch {}
 } catch {}
 // Handles /auth/discord/callback?code=xxx — exchanges code for JWT via backend
 function AuthCallback() {
@@ -106,6 +119,7 @@ createRoot(document.getElementById('root')).render(
           } />
         </Routes>
         </BrowserRouter>
+        <Toaster />
       </SocketProvider>
     </AuthProvider>
   </RootErrorBoundary>

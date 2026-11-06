@@ -1,0 +1,22 @@
+{
+  "name": "nexus-setup",
+  "version": "0.9.18",
+  "description": "Custom-skinned Windows installer for the Nexus Companion.",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "cross-env NEXUS_SETUP_DEV=1 electron .",
+    "build": "node scripts/build.js",
+    "package": "electron-builder --win --config electron-builder.yml"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "license": "GPL-3.0-or-later"
+}

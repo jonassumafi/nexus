@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus Prompt Mark Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root{color-scheme:dark;--bg0:#020C14;--bg1:#061018;--bg2:#0A1828;--bg3:#12263A;--rim0:#1A3A50;--rim1:#2A5A7A;--blue:#66AADD;--cyan:#00EEFF;--t1:#dbe9f5;--t2:#8aa6bd;--lime:#44FF88;--amber:#FFBB33;--red:#FF5544;
+--d2:160ms;--d3:280ms;--out:cubic-bezier(.2,.8,.2,1)}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg0)}
+body{background:var(--bg0);color:var(--t1);font:13px/1.55 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-block:24px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;text-align:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.wrap{max-width:920px;margin:0 auto}
+h1{font:700 22px Inter;margin-bottom:6px}
+.lead{color:var(--t2);max-width:76ch;margin-bottom:18px}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:20px;padding:10px 12px;border:1px solid var(--rim0);background:var(--bg1)}
+nav.toc a{color:var(--blue);text-decoration:none;font-size:12px}nav.toc a:hover{text-decoration:underline}
+.skins{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;position:sticky;top:0;z-index:5;padding:8px 0;background:var(--bg0)}
+.skins button{display:flex;gap:7px;align-items:center;padding:5px 10px;border:1px solid var(--rim0);background:var(--bg1);font:600 10px Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)}
+.skins button i{width:10px;height:10px;background:var(--c)}
+.skins button[aria-pressed=true]{border-color:var(--blue);color:var(--t1);background:var(--bg3)}
+section.s{margin-bottom:36px}
+section.s>h2{font:700 12px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--rim0)}
+section.s p{max-width:78ch;margin-bottom:9px}
+h3{font:700 12px Inter;color:var(--blue);margin:14px 0 6px}
+ul,ol{margin:0 0 10px 20px;max-width:78ch}li{margin-bottom:4px}
+code{font:12px ui-monospace,Menlo,Consolas,monospace;background:var(--bg0);border:1px solid var(--rim0);padding:0 4px;color:var(--cyan)}
+pre{font:11.5px/1.55 ui-monospace,Menlo,Consolas,monospace;background:var(--bg0);border:1px solid var(--rim0);padding:10px 12px;overflow-x:auto;color:var(--t1);white-space:pre}
+.tw{overflow-x:auto;margin-bottom:12px}
+table{border-collapse:collapse;width:100%;min-width:540px}
+th,td{padding:6px 9px;border:1px solid var(--rim0);text-align:left;vertical-align:top;font-size:12px}
+th{background:var(--bg2);font:700 10px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--t2)}
+.call{border-left:3px solid var(--amber);background:var(--bg1);padding:8px 12px;margin:10px 0;max-width:78ch}.call b{color:var(--amber)}
+.ok{border-left-color:var(--lime)}.ok b{color:var(--lime)}
+.codebox{position:relative;margin-bottom:12px}
+.copy{position:absolute;top:6px;right:6px;padding:3px 9px;border:1px solid var(--rim1);background:var(--bg2);font:700 9px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}
+.copy:hover{background:var(--bg3)}
+/* mark */
+.mark{--ink:var(--blue);--hot:var(--cyan);display:block}
+.mark.mono{--ink:currentColor;--hot:currentColor}
+.mark .cur{animation:blink 1050ms steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.mark.static .cur{animation:none}
+.mark.boot .bk{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 360ms var(--out) forwards}
+.mark.boot .ch{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 220ms var(--out) 280ms forwards}
+.mark.boot .cur{opacity:0;animation:curin 1ms 520ms forwards,blink 1050ms steps(1) 560ms infinite}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes curin{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.mark .cur{animation:none!important}.mark.boot .bk,.mark.boot .ch{animation:none!important;stroke-dashoffset:0}.mark.boot .cur{animation:none!important;opacity:1}}
+.stage{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:12px}
+.tile{border:1px solid var(--rim0);background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px 14px;min-height:190px;position:relative}
+.tile.lt{background:#e6ebef;color:#0b2a40}
+.tile.lt .mark{--ink:color-mix(in srgb,var(--blue) 52%,#000);--hot:color-mix(in srgb,var(--cyan) 46%,#000)}
+.tile.lt .wm{color:#0b2a40}.tile.lt .wm small{color:#4a6577}
+.tile figcaption,.cap{font:700 9px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.tile.lt figcaption{color:#4a6577}
+.big{width:128px;height:128px}
+.hz{display:flex;align-items:center;gap:calc(var(--H)*.3)}
+.hz .mark{width:var(--H);height:var(--H)}
+.wm{font:800 calc(var(--H)*.56) Inter;letter-spacing:.2em;line-height:1;color:var(--t1)}
+.wm small{display:block;font:600 calc(var(--H)*.235) Inter;letter-spacing:.3em;margin-top:calc(var(--H)*.12);color:var(--t2)}
+.stk{display:flex;flex-direction:column;align-items:center;gap:calc(var(--H)*.35)}
+.stk .mark{width:var(--H);height:var(--H)}
+.stk .wm{font-size:calc(var(--H)*.5);text-align:center;padding-left:.2em}
+.stk .wm small{letter-spacing:.3em}
+.btn{padding:5px 12px;border:1px solid var(--rim1);background:var(--bg2);font:700 10px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}.btn:hover{background:var(--bg3)}
+.icons{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:12px}
+.ic{display:flex;flex-direction:column;align-items:center;gap:6px}
+.appicon{--r:22%;border-radius:var(--r);background:var(--bg0);border:1px solid var(--rim1);display:grid;place-items:center}
+.appicon .mark{width:62%;height:62%}
+.mask{border-radius:50%}
+.mask .mark{width:52%;height:52%}
+.fav{display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--bg0);border:1px solid var(--rim0)}
+.fav.lt{background:#e6ebef;--blue:#0f5c8f;--cyan:#007a99}
+/* app mocks */
+.mock{border:1px solid var(--rim0);background:var(--bg1);margin-bottom:12px;overflow:hidden}
+.top{display:flex;align-items:center;gap:14px;height:40px;padding:0 14px;border-bottom:1px solid var(--rim0);background:var(--bg2)}
+.top .hz{--H:20px}
+.top .nav{display:flex;gap:16px;margin-left:12px;font:600 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--t2)}
+.top .nav b{color:var(--cyan);font-weight:600}
+.tb{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;background:var(--bg2);border-bottom:1px solid var(--rim0);max-width:324px}
+.tb .mark{width:16px;height:16px}.tb span{font:700 10px Inter;letter-spacing:.16em;text-transform:uppercase}
+.tb i{margin-left:auto;color:var(--t2);font-style:normal;letter-spacing:6px}
+.term{font:12px/1.7 ui-monospace,Menlo,Consolas,monospace;padding:12px 16px;background:color-mix(in srgb,var(--bg0) 72%,#000);color:var(--blue);letter-spacing:.04em}
+.term b{color:var(--cyan);font-weight:700}.term .d{color:color-mix(in srgb,var(--blue) 55%,var(--bg0))}
+.term .bl{display:inline-block;width:.6em;height:1.05em;background:var(--cyan);vertical-align:-.18em;animation:blink 1050ms steps(1) infinite}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.grid{position:relative}
+</style></head><body><div class="wrap">
+<h1>Nexus prompt mark, specification</h1>
+<p class="lead">Implementation spec for the new Nexus logo, built from option E: square brackets around a prompt chevron and a cursor. It ties the identity to the terminal look used across the app. The mark follows the player's skin, has a small size cut for favicons, and has a short boot animation. The live reference below is the source of truth, and the sections after it give exact geometry, color rules, files and checks.</p>
+<nav class="toc"><a href="#s0">Live reference</a><a href="#s1">Construction</a><a href="#s2">Source SVG</a><a href="#s3">Color</a><a href="#s4">Lockups</a><a href="#s5">Icons</a><a href="#s6">Placement</a><a href="#s7">Motion</a><a href="#s8">Do and don't</a><a href="#s9">Files</a><a href="#s10">Verify first</a><a href="#s11">Acceptance</a></nav>
+<div class="skins" id="skins" role="group" aria-label="Skin"></div>
+
+<section class="s" id="s0"><h2>0. Live reference</h2>
+<p>Pick a skin above and every mark in this page recolors from the same two tokens the app already uses, <code>--blue</code> and <code>--cyan</code>. The cursor blinks. Replay shows the boot draw-on.</p>
+<div class="stage">
+ <figure class="tile"><svg class="mark big" id="demoMark" viewBox="0 0 64 64" role="img" aria-label="Nexus"></svg><div style="display:flex;gap:8px"><button class="btn" id="replay">Replay boot</button><button class="btn" id="mono" aria-pressed="false">Mono</button></div><figcaption>Master mark, dark</figcaption></figure>
+ <figure class="tile lt"><svg class="mark big static" data-m viewBox="0 0 64 64" role="img" aria-label="Nexus"></svg><figcaption>Master mark, light surface</figcaption></figure>
+</div>
+<div class="stage">
+ <figure class="tile"><div class="hz" style="--H:48px"><svg class="mark" data-m viewBox="0 0 64 64" aria-hidden="true"></svg><div class="wm">NEXUS<small>SHIP MANAGEMENT</small></div></div><figcaption>Horizontal lockup</figcaption></figure>
+ <figure class="tile"><div class="stk" style="--H:64px"><svg class="mark" data-m viewBox="0 0 64 64" aria-hidden="true"></svg><div class="wm">NEXUS<small>SHIP MANAGEMENT</small></div></div><figcaption>Stacked lockup</figcaption></figure>
+</div>
+</section>
+
+<section class="s" id="s1"><h2>1. Construction</h2>
+<p>Everything sits on a 64 by 64 grid. Strokes are 5 units with square caps and miter joins, so corners stay crisp when scaled. The grid below is drawn from the real geometry.</p>
+<div class="stage"><figure class="tile" style="padding:14px"><svg id="cons" viewBox="-6 -6 76 76" width="300" height="300" role="img" aria-label="Construction grid"></svg><figcaption>Geometry, 64 unit grid</figcaption></figure>
+<div>
+<div class="tw"><table><tr><th>Part</th><th>Geometry</th><th>Color</th></tr>
+<tr><td>Left bracket</td><td><code>M20 10 H9 V54 H20</code>, stroke 5</td><td>ink</td></tr>
+<tr><td>Right bracket</td><td><code>M44 10 H55 V54 H44</code>, stroke 5</td><td>ink</td></tr>
+<tr><td>Prompt chevron</td><td><code>M24 22 L36 32 L24 42</code>, stroke 5</td><td>hot</td></tr>
+<tr><td>Cursor</td><td>Rectangle x 38, y 40, 10 wide, 5 tall</td><td>hot</td></tr></table></div>
+<ul>
+<li>The brackets span 9 to 55 horizontally and 10 to 54 vertically, so the mark's visual box is 46 by 44 and centered on (32, 32).</li>
+<li>The chevron and cursor share a baseline. The cursor's bottom edge (y 45) lines up within half a unit of the chevron's lower outer edge (about y 44.5), as a typed cursor sits after a prompt.</li>
+<li>Do not redraw the mark. Use the source SVG in section 2 as is.</li>
+</ul></div></div>
+</section>
+
+<section class="s" id="s2"><h2>2. Source SVG</h2>
+<h3>Master mark (use at 24 px and above)</h3>
+<div class="codebox"><button class="copy" data-c="master">Copy</button><pre id="master"></pre></div>
+<h3>Small size cut (use below 24 px, including the favicon)</h3>
+<p>At 16 and 20 px the master strokes get thin. This cut thickens the strokes to 7, enlarges the cursor and drops 4 units of bracket height, so it still reads as brackets, a prompt and a cursor.</p>
+<div class="codebox"><button class="copy" data-c="small">Copy</button><pre id="small"></pre></div>
+<h3>Static favicon (fixed colors, default skin)</h3>
+<div class="codebox"><button class="copy" data-c="fav">Copy</button><pre id="fav"></pre></div>
+<p>Classes: <code>bk</code> brackets, <code>ch</code> chevron, <code>cur</code> cursor. <code>pathLength="1"</code> on the brackets and chevron is what the draw-on animation uses. Keep it.</p>
+</section>
+
+<section class="s" id="s3"><h2>3. Color</h2>
+<div class="call ok"><b>Rule.</b> The mark never uses its own palette. Brackets use <code>--blue</code> (the skin accent). The chevron and cursor use <code>--cyan</code> (the skin's bright accent). Both change with the skin, like every other piece of chrome.</div>
+<div class="tw"><table><tr><th>Context</th><th>Brackets</th><th>Chevron and cursor</th></tr>
+<tr><td>Dark surfaces (default)</td><td><code>var(--blue)</code></td><td><code>var(--cyan)</code></td></tr>
+<tr><td>Light surfaces (docs, print, white pages)</td><td><code>color-mix(in srgb, var(--blue) 52%, #000)</code></td><td><code>color-mix(in srgb, var(--cyan) 46%, #000)</code></td></tr>
+<tr><td>Mono (one color stencil, watermarks, tinted overlays)</td><td colspan="2"><code>currentColor</code> for all parts</td></tr>
+<tr><td>Disabled or inactive</td><td><code>var(--t2)</code> style muted color</td><td>Same muted color, no blink</td></tr></table></div>
+<p>The semantic colors (lime, red, amber) are never used in the logo, since they carry status meaning elsewhere in the app. The deep blue skin gives <code>#66AADD</code> and <code>#00EEFF</code>. Check the other eight skins in the switcher above, especially Obsidian and Dune where the two accents are close in value, and confirm the cyan parts still separate from the blue parts.</p>
+</section>
+
+<section class="s" id="s4"><h2>4. Lockups</h2>
+<p>Let <b>H</b> be the height of the mark in the lockup. All other values derive from H, so the lockup scales cleanly.</p>
+<div class="tw"><table><tr><th>Element</th><th>Horizontal</th><th>Stacked</th></tr>
+<tr><td>Wordmark</td><td>Inter 800, <code>NEXUS</code>, size 0.56 H, tracking 0.2em, color <code>--t1</code></td><td>Same, size 0.5 H, centered. Add 0.2em left padding so tracking does not push it off center</td></tr>
+<tr><td>Subtitle</td><td><code>SHIP MANAGEMENT</code>, Inter 600, size 0.235 H, tracking 0.3em, color <code>--t2</code>, 0.12 H below the wordmark</td><td>Same</td></tr>
+<tr><td>Gap mark to text</td><td>0.30 H, text vertically centered on the mark</td><td>0.35 H</td></tr>
+<tr><td>Clear space</td><td colspan="2">0.25 H on every side, free of other content</td></tr>
+<tr><td>Minimum size</td><td colspan="2">Mark alone 16 px (small cut). Lockup H 24 px. Hide the subtitle when H is below 32 px.</td></tr></table></div>
+<p>The subtitle text and the word "Nexus" come from the existing product naming. Confirm the subtitle wording before shipping and remove it from the lockup if it is not final.</p>
+</section>
+
+<section class="s" id="s5"><h2>5. Icons</h2>
+<div class="icons">
+ <div class="ic"><div class="appicon" style="width:128px;height:128px"><svg class="mark static" data-m viewBox="0 0 64 64" aria-hidden="true"></svg></div><span class="cap">App icon, 22% radius</span></div>
+ <div class="ic"><div class="appicon mask" style="width:128px;height:128px"><svg class="mark static" data-m viewBox="0 0 64 64" aria-hidden="true"></svg></div><span class="cap">Maskable, safe zone</span></div>
+ <div class="ic"><div class="fav"><svg class="mark static" data-s width="32" height="32" viewBox="0 0 64 64"></svg><svg class="mark static" data-s width="20" height="20" viewBox="0 0 64 64"></svg><svg class="mark static" data-s width="16" height="16" viewBox="0 0 64 64"></svg></div><span class="cap">Favicon, dark tab</span></div>
+ <div class="ic"><div class="fav lt"><svg class="mark static" data-s width="32" height="32" viewBox="0 0 64 64"></svg><svg class="mark static" data-s width="20" height="20" viewBox="0 0 64 64"></svg><svg class="mark static" data-s width="16" height="16" viewBox="0 0 64 64"></svg></div><span class="cap">Favicon, light tab</span></div>
+</div>
+<div class="tw"><table><tr><th>Asset</th><th>Spec</th></tr>
+<tr><td>App icon</td><td>Rounded square, radius 22 percent of the side, fill <code>--bg0</code>, 1px border <code>--rim1</code> (drawn at 1/128 of the side). The mark is the master geometry at 62 percent of the side, centered. Export 1024, 512, 192 and 180 pixel PNGs.</td></tr>
+<tr><td>Maskable icon</td><td>Square with no radius and a full bleed <code>--bg0</code> background. Mark at 52 percent of the side so the whole mark sits inside the 80 percent circular safe zone. Export 512 and 192.</td></tr>
+<tr><td>Favicon</td><td>Small size cut, fixed default skin colors (deep blue values), transparent background. Ship as <code>favicon.svg</code> plus <code>favicon.ico</code> containing 16, 32 and 48 pixel images.</td></tr>
+<tr><td>Electron icon</td><td>The 1024 pixel app icon as the source for the platform icons (<code>.ico</code>, <code>.icns</code>, <code>.png</code>), following the existing build config.</td></tr></table></div>
+<h3>Optional: favicon follows the skin</h3>
+<p>When the player picks a skin, rewrite the favicon link with a data URI built from the small cut, filled with that skin's <code>--blue</code> and <code>--cyan</code>. Keep the static file as the default for first load and for browsers that ignore the change. This is a nice touch, not a requirement.</p>
+</section>
+
+<section class="s" id="s6"><h2>6. Placement in the app</h2>
+<h3>Top bar</h3>
+<div class="mock"><div class="top"><div class="hz"><svg class="mark" data-s viewBox="0 0 64 64" aria-hidden="true"></svg><div class="wm" style="font-size:11px">NEXUS</div></div><div class="nav"><b>Missions</b><span>My ships</span><span>Registry</span><span>Crew</span></div></div></div>
+<p>Replace the current ring mark. Mark 20 px using the small cut, followed by the wordmark only (no subtitle) at 11 px. Same height as today's bar, no layout change.</p>
+<h3>Companion window title bar</h3>
+<div class="mock" style="max-width:324px"><div class="tb"><svg class="mark" data-s viewBox="0 0 64 64" aria-hidden="true"></svg><span>Nexus</span><i>&bull;&bull;&bull;</i></div></div>
+<p>Mark 16 px (small cut), 8px gap, title in the existing 10px uppercase style. The title bar stays 36 px tall.</p>
+<h3>Terminal screens</h3>
+<div class="mock"><div class="term"><b>[&gt;_]</b> NEXUS FLEET REGISTRY <span class="d">&mdash; TERMINAL ACCESS</span><br><span class="d">&gt; AWAITING VESSEL DATA INPUT...</span><span class="bl"></span></div></div>
+<p>Inside terminals use the text glyph <code>[&gt;_]</code> in <code>--t-bright</code> before the screen title, since the terminals are monospace text and the glyph is the mark's own shape. The blinking block cursor already in the terminals matches the mark's cursor, so it keeps its existing blink rate (1050 ms) and the logo cursor uses the same one.</p>
+<h3>Other places</h3>
+<ul>
+<li>Login or landing screen: stacked lockup, H 64 px, centered, with the boot draw-on on first paint.</li>
+<li>Loading states: the mark at 32 px with only the cursor blinking.</li>
+<li>Emails, share cards and the page title: static mark with the lockup.</li>
+<li>Browser tab title stays text. Only the favicon changes.</li>
+</ul>
+</section>
+
+<section class="s" id="s7"><h2>7. Motion</h2>
+<div class="tw"><table><tr><th>Effect</th><th>Spec</th></tr>
+<tr><td>Cursor blink</td><td>Opacity 1 to 0, <code>steps(1)</code>, 1050ms, infinite, 50 percent duty. The same rate as the terminal block cursor.</td></tr>
+<tr><td>Boot draw-on (login, first load, boot sequence)</td><td>Brackets draw over 360ms (<code>stroke-dashoffset</code> 1 to 0 with <code>pathLength</code> 1, ease-out). The chevron draws over 220ms starting at 280ms. The cursor appears at 520ms and starts blinking at 560ms. Total about 600ms.</td></tr>
+<tr><td>Hover on a logo link</td><td>No motion. Raise the cyan parts to full brightness only if the link is not already at it.</td></tr>
+<tr><td>Static contexts (favicon, icons, emails, print)</td><td>No animation, cursor shown solid.</td></tr>
+<tr><td>Reduced motion</td><td>Cursor does not blink and stays visible. Boot draw-on is skipped and the mark shows complete.</td></tr></table></div>
+<p>Use the keyframes already defined in this page's CSS (<code>blink</code>, <code>draw</code>, <code>curin</code>) rather than rewriting them. Animate only the top bar mark on first load, never on every route change.</p>
+</section>
+
+<section class="s" id="s8"><h2>8. Do and don't</h2>
+<ul>
+<li><b>Do</b> use the small cut under 24 px and the master at 24 px and above.</li>
+<li><b>Do</b> keep the brackets in the accent and the chevron and cursor in the bright accent.</li>
+<li><b>Do</b> let the mark follow the skin, and use the mono variant for one color uses.</li>
+<li><b>Don't</b> add outlines, glows, gradients, drop shadows or a containing circle. A rounded square is only for app icons.</li>
+<li><b>Don't</b> rotate, skew or stretch the mark, or change the order of the chevron and cursor.</li>
+<li><b>Don't</b> recolor parts with lime, red or amber, which are status colors.</li>
+<li><b>Don't</b> keep the old ring mark anywhere once the new one is in. Search for every use.</li>
+</ul>
+</section>
+
+<section class="s" id="s9"><h2>9. Files and components</h2>
+<div class="tw"><table><tr><th>Deliverable</th><th>Notes</th></tr>
+<tr><td><code>NexusMark</code> component</td><td>Inline SVG that takes <code>size</code> (chooses the master or the small cut at the 24 px threshold), <code>mono</code>, <code>animate</code> (boot draw-on) and <code>blink</code> props. Colors come from CSS variables, never props.</td></tr>
+<tr><td><code>NexusLockup</code> component</td><td>Mark plus wordmark in the horizontal or stacked layout, with <code>height</code> as the only size input and all ratios derived from section 4.</td></tr>
+<tr><td><code>favicon.svg</code>, <code>favicon.ico</code></td><td>Section 2 and 5. Update the head links.</td></tr>
+<tr><td>PNG icons</td><td>1024, 512, 192, 180 app icon and 512, 192 maskable. Update the web manifest and the apple touch icon link.</td></tr>
+<tr><td>Electron icons</td><td>Generated from the 1024 source through the existing builder setup.</td></tr>
+<tr><td>Terminal title glyph</td><td>Add <code>[&gt;_]</code> to each terminal screen title in <code>--t-bright</code>.</td></tr></table></div>
+</section>
+
+<section class="s" id="s10"><h2>10. Verify in the codebase first</h2>
+<ol>
+<li>Every place the current ring logo is used: top bar, login, loading states, favicon, manifest, Electron build config, README, emails and any exported images.</li>
+<li>Whether the skin tokens are called <code>--blue</code> and <code>--cyan</code> in the code, and whether they are set on the root element, so the mark can read them. Use the real names if they differ.</li>
+<li>The existing app icon pipeline (which tool turns the source PNG into <code>.ico</code> and <code>.icns</code>).</li>
+<li>Whether a web manifest exists and what sizes it lists.</li>
+<li>The subtitle wording and whether the lockup should show it.</li>
+</ol>
+</section>
+
+<section class="s" id="s11"><h2>11. Acceptance checklist</h2>
+<ul>
+<li>The geometry matches section 1 exactly, with no extra effects.</li>
+<li>Brackets use <code>--blue</code> and the chevron and cursor use <code>--cyan</code>, and both follow the skin in all nine skins.</li>
+<li>Below 24 px the small cut is used and still reads as brackets, prompt and cursor in the tab bar on dark and light.</li>
+<li>The cursor blinks at 1050 ms and stops under reduced motion. The boot draw-on plays once on first load.</li>
+<li>The top bar, companion title bar and terminal titles use the placements in section 6 without changing bar heights.</li>
+<li>Both lockups follow the ratios and clear space in section 4.</li>
+<li>All icons listed in section 5 exist and the manifest and Electron build reference them.</li>
+<li>No trace of the old ring mark remains.</li>
+</ul></section>
+</div>
+<script>
+var SK=[["Deep blue","#66AADD","#00EEFF","#020C14","#061018","#0A1828","#12263A","#1A3A50","#2A5A7A"],["Obsidian","#b4c2d3","#e4f2ff","#0a0a0c","#101012","#17171a","#202024","#2c2c31","#4a4a52"],["Ember","#e3a655","#ffc766","#0c0806","#130d09","#1c130d","#281a11","#3a2616","#6a4524"],["Oxide","#e2806a","#ffae92","#0e0607","#160a0b","#20100f","#2e1715","#44201c","#7a3a2e"],["Olive drab","#aec86f","#dff48f","#090b06","#0f120a","#171b0f","#212714","#333b1f","#5c6b34"],["Violet void","#ae92ee","#e6ceff","#0a0612","#100a1a","#181026","#231738","#34224f","#5b3d8c"],["Abyss","#52c6b3","#80f6e8","#04100f","#081817","#0e2321","#16322f","#1d4642","#2f7a72"],["Dune","#d8bd90","#f3deb4","#100e0c","#181512","#221e19","#2f2922","#403830","#6e6254"],["Carbon pink","#ff5fae","#ff8cc6","#030304","#08080a","#0f0f12","#18181c","#25252b","#3e3e47"]];
+var MASTER='<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nexus">\n  <path class="bk" pathLength="1" d="M20 10H9V54H20" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter"/>\n  <path class="bk" pathLength="1" d="M44 10H55V54H44" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter"/>\n  <path class="ch" pathLength="1" d="M24 22L36 32L24 42" fill="none" stroke="var(--hot)" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter"/>\n  <rect class="cur" x="38" y="40" width="10" height="5" fill="var(--hot)"/>\n</svg>';
+var SMALL='<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nexus">\n  <path class="bk" pathLength="1" d="M21 8H8V56H21M43 8H56V56H43" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>\n  <path class="ch" pathLength="1" d="M22 21L35 32L22 43" fill="none" stroke="var(--hot)" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>\n  <rect class="cur" x="37" y="40" width="12" height="7" fill="var(--hot)"/>\n</svg>';
+var FAV='<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">\n  <path d="M21 8H8V56H21M43 8H56V56H43" fill="none" stroke="#66AADD" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>\n  <path d="M22 21L35 32L22 43" fill="none" stroke="#00EEFF" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>\n  <rect x="37" y="40" width="12" height="7" fill="#00EEFF"/>\n</svg>';
+function inner(s){return s.replace(/^<svg[^>]*>\n?/,"").replace(/<\/svg>$/,"")}
+document.getElementById("master").textContent=MASTER;document.getElementById("small").textContent=SMALL;document.getElementById("fav").textContent=FAV;
+document.querySelectorAll("[data-m]").forEach(function(e){e.innerHTML=inner(MASTER)});
+document.querySelectorAll("[data-s]").forEach(function(e){e.innerHTML=inner(SMALL)});
+var dm=document.getElementById("demoMark");dm.innerHTML=inner(MASTER);
+// construction
+var c=document.getElementById("cons"),g='';for(var i=0;i<=64;i+=8){g+='<line x1="'+i+'" y1="0" x2="'+i+'" y2="64" stroke="var(--rim0)" stroke-width=".4"/><line x1="0" y1="'+i+'" x2="64" y2="'+i+'" stroke="var(--rim0)" stroke-width=".4"/>'}
+g+='<rect x="0" y="0" width="64" height="64" fill="none" stroke="var(--rim1)" stroke-width=".6"/><line x1="32" y1="-3" x2="32" y2="67" stroke="var(--rim1)" stroke-width=".4" stroke-dasharray="2 2"/><line x1="-3" y1="32" x2="67" y2="32" stroke="var(--rim1)" stroke-width=".4" stroke-dasharray="2 2"/>';
+g+='<g class="mark static" style="--ink:var(--blue);--hot:var(--cyan)">'+inner(MASTER)+'</g>';
+g+='<g font-family="Inter" font-size="2.6" fill="var(--t2)"><text x="9" y="7.4" text-anchor="middle">9</text><text x="55" y="7.4" text-anchor="middle">55</text><text x="-1" y="11" text-anchor="end">10</text><text x="-1" y="55.5" text-anchor="end">54</text><text x="43" y="62" text-anchor="middle">cursor 10 x 5</text></g>';
+c.innerHTML=g;
+// skins
+var sb=document.getElementById("skins");
+function apply(i){var k=SK[i],r=document.documentElement.style;r.setProperty("--blue",k[1]);r.setProperty("--cyan",k[2]);["--bg0","--bg1","--bg2","--bg3","--rim0","--rim1"].forEach(function(v,j){r.setProperty(v,k[3+j])})}
+SK.forEach(function(k,i){var b=document.createElement("button");b.setAttribute("aria-pressed",i===0);b.innerHTML='<i style="--c:'+k[1]+'"></i>'+k[0];b.onclick=function(){apply(i);sb.querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed",x===b)})};sb.appendChild(b)});
+// demo controls
+function replay(){dm.classList.remove("boot");void dm.getBoundingClientRect();dm.classList.add("boot")}
+document.getElementById("replay").onclick=replay;
+document.getElementById("mono").onclick=function(){var on=dm.classList.toggle("mono");this.setAttribute("aria-pressed",on);this.style.background=on?"var(--bg3)":""};
+document.querySelectorAll(".copy").forEach(function(b){b.onclick=function(){var t=document.getElementById(b.dataset.c).textContent;var done=function(){var o=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=o},1200)};
+ try{navigator.clipboard.writeText(t).then(done,function(){sel()})}catch(e){sel()}function sel(){var r=document.createRange();r.selectNodeContents(document.getElementById(b.dataset.c));var s=getSelection();s.removeAllRanges();s.addRange(r)}}});
+</script></body></html>

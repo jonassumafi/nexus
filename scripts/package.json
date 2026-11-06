@@ -1,0 +1,13 @@
+{
+  "name": "nexus-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One-off repo scripts (icon generation, etc.).",
+  "scripts": {
+    "icons": "node generate-icons.js"
+  },
+  "dependencies": {
+    "png-to-ico": "^2.1.8",
+    "sharp": "^0.33.5"
+  }
+}

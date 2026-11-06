@@ -74,6 +74,31 @@ router.put('/voice-profile', isAuthenticated, async (req, res) => {
       updates['voice_profile.ptt_key'] = k;
     }
 
+    // v0.9+ Command tuner persistence. Each field is a thin pass-through
+    // under voice_profile for compat with existing clients that only know
+    // the ptt_key field. Setting any to null clears it.
+    const COMMAND_FIELDS = [
+      'command_ptt_key', 'command_label', 'command_frequency',
+      'command_volume', 'command_pan', 'command_locked',
+    ];
+    for (const f of COMMAND_FIELDS) {
+      if (!(f in req.body)) continue;
+      const v = req.body[f];
+      if (v === null) {
+        updates[`voice_profile.${f}`] = null;
+      } else if (f === 'command_volume' || f === 'command_pan') {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return res.status(400).json({ error: `${f} must be a number` });
+        updates[`voice_profile.${f}`] = n;
+      } else if (f === 'command_locked') {
+        updates[`voice_profile.${f}`] = !!v;
+      } else {
+        const s = String(v);
+        if (s.length > 64) return res.status(400).json({ error: `${f} too long` });
+        updates[`voice_profile.${f}`] = s;
+      }
+    }
+
     const user = await User.findByIdAndUpdate(req.user._id, { $set: updates }, { new: true });
     res.json(user.voice_profile);
   } catch (err) {

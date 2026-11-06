@@ -18,6 +18,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import api from '../services/api';
 import { useSocketContext } from '../context/SocketContext';
 import { playKeystroke, preloadKeystroke } from '../utils/keystrokeSfx';
+import FriendMarkerIcon from './FriendMarkerIcon';
 
 const UNREAD_KEY  = 'nexus_chat_last_seen_ts';
 const RECT_KEY    = 'nexus_chat_popover_rect';
@@ -88,7 +89,7 @@ export function useChatUnread() {
   return { count, markSeen };
 }
 
-export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mode = 'popover' }) {
+export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mode = 'popover', friendIds, onAvatarClick }) {
   const { socket } = useSocketContext();
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
 
@@ -424,7 +425,7 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
             Silence on the net. Be the first to say something.
           </div>
         ) : (
-          messages.map(m => <ChatRow key={m._id} msg={m} />)
+          messages.map(m => <ChatRow key={m._id} msg={m} friendIds={friendIds} onAvatarClick={onAvatarClick} />)
         )}
       </div>
 
@@ -549,8 +550,15 @@ function ResizeEdge({ pos, onMouseDown }) {
   return <div style={styles[pos]} onMouseDown={onMouseDown} />;
 }
 
-function ChatRow({ msg }) {
+function ChatRow({ msg, friendIds, onAvatarClick }) {
   const avatar = avatarFor(msg);
+  const avRef = useRef(null);
+  const isFriend = !!(friendIds && (friendIds.has?.(String(msg.user_id)) || friendIds.has?.(String(msg.author_id))));
+  const clickable = !!onAvatarClick && (msg.user_id || msg.author_id);
+  const handleAvatar = () => {
+    if (!clickable) return;
+    onAvatarClick?.(String(msg.user_id || msg.author_id), avRef);
+  };
   const t = new Date(msg.timestamp);
   const timeLabel = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return (
@@ -559,27 +567,40 @@ function ChatRow({ msg }) {
       padding: '4px 6px',
       borderRadius: 4,
     }}>
-      {avatar ? (
-        <img src={avatar} alt=""
-          style={{
-            width: 28, height: 28, borderRadius: '50%',
-            objectFit: 'cover',
-            border: '1px solid var(--rim1)',
-            flexShrink: 0,
-          }}
-        />
-      ) : (
-        <div style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--blue) 55%, var(--bg3)), var(--bg0) 80%)',
-          border: '1px solid var(--rim1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, fontWeight: 700, color: 'var(--fg0)',
+      <button
+        ref={avRef}
+        onClick={handleAvatar}
+        disabled={!clickable}
+        aria-label={clickable ? `Open ${msg.citizen_name}'s ID card` : msg.citizen_name}
+        style={{
+          padding: 0, border: 0, background: 'none',
+          cursor: clickable ? 'pointer' : 'default',
           flexShrink: 0,
-        }}>
-          {initialsFor(msg.citizen_name)}
-        </div>
-      )}
+        }}
+      >
+        {avatar ? (
+          <img src={avatar} alt=""
+            style={{
+              width: 28, height: 28, borderRadius: '50%',
+              objectFit: 'cover',
+              border: '1px solid var(--rim1)',
+              flexShrink: 0,
+              display: 'block',
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--blue) 55%, var(--bg3)), var(--bg0) 80%)',
+            border: '1px solid var(--rim1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, fontWeight: 700, color: 'var(--fg0)',
+            flexShrink: 0,
+          }}>
+            {initialsFor(msg.citizen_name)}
+          </div>
+        )}
+      </button>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{
@@ -591,6 +612,7 @@ function ChatRow({ msg }) {
           }}>
             {msg.citizen_name}
           </span>
+          {isFriend && <FriendMarkerIcon size={14} />}
           <span style={{
             fontSize: 'clamp(7.5px, 3.2cqi, 9px)',
             color: 'var(--fg3)',

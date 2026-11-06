@@ -1,0 +1,4 @@
+node_modules/
+dist/
+payload/nexus-companion.zip
+payload/manifest.json

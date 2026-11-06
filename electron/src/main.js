@@ -14,8 +14,44 @@
 const { app, BrowserWindow, session, ipcMain, screen, globalShortcut, Menu, Tray } = require('electron');
 const path = require('path');
 const fs   = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 const NEXUS_URL = process.env.NEXUS_URL || 'https://nexus-missions.space';
+
+// UDP-only sibling build. Set at build time via electron-builder.udp.yml's
+// cross-env, or detected at runtime via the product name baked in by
+// electron-builder. One frontend bundle, two Electron shells — the UDP
+// shell appends ?udp=1 to every loadURL so the renderer locks transport.
+// Detection chain for the UDP sibling build:
+//   1. NEXUS_UDP_ONLY env (dev runs via `cross-env` in package.json)
+//   2. package.json `name` contains "udp" (set by electron-builder.udp.yml
+//      extraMetadata override — this is what works in the packaged installer)
+//   3. app.getName() contains "UDP" (fallback if a future rename only
+//      touches productName)
+const UDP_ONLY = process.env.NEXUS_UDP_ONLY === '1'
+  || /udp/i.test(app.getName() || '')
+  || /udp/i.test(app.getAppPath() || '');
+function urlFor(path) {
+  const base = NEXUS_URL + path;
+  if (!UDP_ONLY) return base;
+  return base + (base.includes('?') ? '&' : '?') + 'udp=1';
+}
+
+// electron-updater config:
+//   • autoDownload=true so a new version is pulled in the background and
+//     the user just has to click "Install now" when prompted
+//   • autoInstallOnAppQuit=false — we want the user to see the splash,
+//     opt into the restart, not get surprise-installed on next quit
+//   • allowPrerelease=false — stable channel only
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.allowPrerelease = false;
+autoUpdater.logger = {
+  info:  (...args) => console.log('[updater]', ...args),
+  warn:  (...args) => console.warn('[updater]', ...args),
+  error: (...args) => console.error('[updater]', ...args),
+  debug: () => {},
+};
 
 // ─── Mode definitions ─────────────────────────────────────────────────────
 // Each mode is a URL path + a target window size. The radio mode has two
@@ -30,16 +66,17 @@ const MODES = {
   },
   companion: {
     path: '/companion',
-    size: { width: 340, height: 540 },
+    // v0.9.0 — grew by ~120px vertically to fit the Command tuner card.
+    size: { width: 340, height: 660 },
     minSize: { width: 340, height: 540 },
   },
   radio: {
     path: '/radio',
-    // v0.8.0 — resizable. Thin horizontal strip by default; user can drag
-    // taller to see more peers, or shrink to a one-row minimum. Width
-    // minimum reflects the number of controls that must fit in a row.
-    size: { width: 560, height: 120 },
-    minSize: { width: 420, height: 80 },
+    // v0.9.0 — Command tuner card added below the primary strip. Default
+    // height raised to accommodate; user can still drag taller to see more
+    // peers or shrink to just the primary strip.
+    size: { width: 560, height: 290 },
+    minSize: { width: 420, height: 120 },
   },
 };
 
@@ -75,7 +112,13 @@ function saveState(partial) {
 }
 
 // ─── State ────────────────────────────────────────────────────────────────
-let currentPttKey = 'v';
+// v0.9 — two-radio PTT bindings. `pttKeys.left` and `pttKeys.right` each
+// hold either a key name ('v', 'CapsLock'), a mouse-button name ('Mouse4'),
+// or null (unbound). Legacy single-key API maps to the 'right' slot so
+// pre-v0.9 clients keep working.
+let currentPttKey = 'v'; // legacy mirror of pttKeys.right
+const pttKeys = { left: null, right: 'v' };
+const pttDownState = { left: false, right: false };
 
 // Normalize a key name for cross-source matching. node-global-key-listener
 // reports e.g. "CAPS LOCK" (with a space); JS KeyboardEvent.key reports
@@ -171,18 +214,23 @@ function createWindow() {
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, cb) => cb(true));
   session.defaultSession.setPermissionCheckHandler(() => true);
 
-  // Clear the HTTP cache on launch. The on-disk cost of a cold-start
-  // asset fetch is negligible compared to the risk of serving stale
-  // bundles from a prior installed version — which is exactly how v0.4.0's
-  // broken /radio bundle persisted after upgrading to v0.5.0.
-  session.defaultSession.clearCache().catch(() => {});
-
   // Belt-and-suspenders: also disable background throttling on the
   // existing webContents, in case webPreferences wasn't honored for some
   // reason on this platform / Electron version.
   try { mainWindow.webContents.setBackgroundThrottling(false); } catch {}
 
-  mainWindow.loadURL(NEXUS_URL + MODES[currentMode].path);
+  // Clear the HTTP cache on launch AND await it before the first load, so
+  // the window never gets served stale bundles from a prior session. The
+  // on-disk cost of a cold-start asset fetch is negligible compared to the
+  // risk of running against a prior version's JS — which is exactly how
+  // v0.4.0's broken /radio bundle persisted after upgrading to v0.5.0.
+  // Backend-only / server-side radio-routing fixes land as soon as the
+  // user relaunches the app, with no electron-updater installer needed.
+  session.defaultSession.clearCache()
+    .catch(() => {})
+    .finally(() => {
+      mainWindow.loadURL(urlFor(MODES[currentMode].path));
+    });
 
   mainWindow.webContents.on('did-fail-load', (_e, _code, desc) => {
     console.error(`[main] load failed: ${desc}`);
@@ -274,7 +322,13 @@ function switchMode(nextMode) {
   mainWindow.setMinimumSize(MODES[currentMode].minSize.width, MODES[currentMode].minSize.height);
   mainWindow.setSize(b.width, b.height, true);
   if (b.x !== undefined && b.y !== undefined) mainWindow.setPosition(b.x, b.y);
-  mainWindow.loadURL(NEXUS_URL + MODES[currentMode].path);
+  // Clear cache on mode switch too, so any mid-session frontend deploy is
+  // picked up without a full app relaunch.
+  session.defaultSession.clearCache()
+    .catch(() => {})
+    .finally(() => {
+      mainWindow.loadURL(urlFor(MODES[currentMode].path));
+    });
 }
 
 // Grow / shrink the radio widget to reveal / hide the settings drawer.
@@ -307,35 +361,42 @@ function startKeyHook() {
 
     const nameFor = (keycode) => CODE_TO_NAME[keycode] || `code-${keycode}`;
 
-    uIOhook.on('keydown', (e) => {
-      if (normKey(nameFor(e.keycode)) !== normKey(currentPttKey)) return;
-      if (pttDown) return;
-      pttDown = true;
-      mainWindow?.webContents.send('nexus:ptt', { down: true });
-    });
-    uIOhook.on('keyup', (e) => {
-      if (normKey(nameFor(e.keycode)) !== normKey(currentPttKey)) return;
-      if (!pttDown) return;
-      pttDown = false;
-      mainWindow?.webContents.send('nexus:ptt', { down: false });
-    });
+    // v0.9 — fire PTT for whichever tuner's binding matches. If both
+    // tuners share a binding (shouldn't happen in UI — duplicate rejection
+    // is enforced client-side — but defend here too) we fire the right
+    // tuner only. The renderer handles independent transmit chains per
+    // tuner id.
+    const matchTuner = (candidate) => {
+      const c = normKey(candidate);
+      if (pttKeys.right && c === normKey(pttKeys.right)) return 'right';
+      if (pttKeys.left  && c === normKey(pttKeys.left))  return 'left';
+      return null;
+    };
+    const firePttDown = (tunerId) => {
+      if (!tunerId || pttDownState[tunerId]) return;
+      pttDownState[tunerId] = true;
+      pttDown = pttDownState.left || pttDownState.right;
+      mainWindow?.webContents.send('nexus:ptt', { down: true, tunerId });
+    };
+    const firePttUp = (tunerId) => {
+      if (!tunerId || !pttDownState[tunerId]) return;
+      pttDownState[tunerId] = false;
+      pttDown = pttDownState.left || pttDownState.right;
+      mainWindow?.webContents.send('nexus:ptt', { down: false, tunerId });
+    };
 
-    // Mouse-button PTT. Side buttons (Mouse4+) are gaming-mouse extras
-    // that don't collide with normal UI clicking, so we accept those as
-    // PTT bindings. Left/middle/right (1-3) are intentionally rejected.
+    uIOhook.on('keydown', (e) => firePttDown(matchTuner(nameFor(e.keycode))));
+    uIOhook.on('keyup',   (e) => firePttUp  (matchTuner(nameFor(e.keycode))));
+
+    // Mouse-button PTT. Side buttons (Mouse4+) only; left/middle/right
+    // (1-3) are rejected to avoid colliding with normal UI clicks.
     uIOhook.on('mousedown', (e) => {
       if (!e || typeof e.button !== 'number' || e.button < 4) return;
-      if (normKey(`Mouse${e.button}`) !== normKey(currentPttKey)) return;
-      if (pttDown) return;
-      pttDown = true;
-      mainWindow?.webContents.send('nexus:ptt', { down: true });
+      firePttDown(matchTuner(`Mouse${e.button}`));
     });
     uIOhook.on('mouseup', (e) => {
       if (!e || typeof e.button !== 'number' || e.button < 4) return;
-      if (normKey(`Mouse${e.button}`) !== normKey(currentPttKey)) return;
-      if (!pttDown) return;
-      pttDown = false;
-      mainWindow?.webContents.send('nexus:ptt', { down: false });
+      firePttUp(matchTuner(`Mouse${e.button}`));
     });
     uIOhook.start();
 
@@ -356,13 +417,41 @@ function stopKeyHook() {
 }
 
 // ─── IPC ──────────────────────────────────────────────────────────────────
+// Legacy single-key API — kept for backwards compatibility. Maps to the
+// 'right' tuner slot so old clients that only know one PTT key keep
+// working. Dual-radio clients should use nexus:setPttKeys instead.
 ipcMain.handle('nexus:setPttKey', (_e, key) => {
   const k = String(key || 'v');
-  if (normKey(k) !== normKey(currentPttKey)) {
+  if (normKey(k) !== normKey(pttKeys.right)) {
+    pttKeys.right = k;
     currentPttKey = k;
-    console.log('[main] PTT key updated to', currentPttKey);
+    console.log('[main] PTT key (right/legacy) updated to', k);
   }
   return true;
+});
+
+// v0.9 — two-radio PTT bindings. Accepts { left?, right? } with either
+// a key name, mouse button name, or null to clear. Only the keys passed
+// are updated; omitted keys preserve their current value.
+ipcMain.handle('nexus:setPttKeys', (_e, bindings) => {
+  const next = bindings || {};
+  if ('left' in next) {
+    pttKeys.left = next.left ? String(next.left) : null;
+    if (pttDownState.left && pttKeys.left === null) {
+      pttDownState.left = false;
+      mainWindow?.webContents.send('nexus:ptt', { down: false, tunerId: 'left' });
+    }
+  }
+  if ('right' in next) {
+    pttKeys.right = next.right ? String(next.right) : null;
+    currentPttKey = pttKeys.right || 'v';
+    if (pttDownState.right && pttKeys.right === null) {
+      pttDownState.right = false;
+      mainWindow?.webContents.send('nexus:ptt', { down: false, tunerId: 'right' });
+    }
+  }
+  console.log('[main] PTT keys →', { left: pttKeys.left, right: pttKeys.right });
+  return { left: pttKeys.left, right: pttKeys.right };
 });
 
 ipcMain.handle('nexus:togglePin', () => {
@@ -412,6 +501,66 @@ ipcMain.handle('nexus:maxToggle', () => {
 });
 ipcMain.handle('nexus:close', () => mainWindow?.close());
 
+// ─── Skin mirror (for the custom installer) ───────────────────────────
+// Renderer's localStorage lives inside Chromium's LevelDB, which the
+// installer cannot practically read. We mirror the current skin id to a
+// plain JSON file in userData so the installer can match the app's
+// colors on first paint. Writes are idempotent and fire-and-forget; the
+// app never reads this file back.
+const SKIN_PATH = () => path.join(app.getPath('userData'), 'skin.json');
+ipcMain.handle('nexus:save-skin', (_e, skin) => {
+  try {
+    const id = typeof skin === 'string' ? skin.trim() : '';
+    if (!id) return false;
+    fs.mkdirSync(path.dirname(SKIN_PATH()), { recursive: true });
+    fs.writeFileSync(SKIN_PATH(), JSON.stringify({ skin: id }, null, 2));
+    return true;
+  } catch { return false; }
+});
+
+// ─── UDP voice (experimental) ─────────────────────────────────────────
+// Thin IPC → udp-voice module. Renderer owns the mic PCM path; main
+// process owns the encoder + socket. See src/udp-voice.js for the wire
+// format. onRx forwards raw packet buffers back to the renderer, which
+// decodes them in step 3.
+const udpVoice = require('./udp-voice');
+let udpRxUnsub = null;
+ipcMain.handle('nexus:udp:open', (_e, opts) => {
+  try {
+    const info = udpVoice.open(opts || {});
+    udpRxUnsub?.();
+    udpRxUnsub = udpVoice.onRx((buf) => {
+      try { mainWindow?.webContents?.send('nexus:udp:rx', buf); } catch {}
+    });
+    return { ok: true, ...info };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('nexus:udp:close', () => {
+  try { udpRxUnsub?.(); udpRxUnsub = null; udpVoice.close(); return { ok: true }; }
+  catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('nexus:udp:retune', (_e, opts) => {
+  try { udpVoice.retune(opts || {}); return { ok: true }; }
+  catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('nexus:udp:send', (_e, pcm16) => {
+  try {
+    // IPC may hand us an ArrayBuffer, a Buffer, or a typed array. Normalize.
+    let buf;
+    if (Buffer.isBuffer(pcm16)) buf = pcm16;
+    else if (pcm16 instanceof ArrayBuffer) buf = Buffer.from(pcm16);
+    else if (pcm16?.buffer) buf = Buffer.from(pcm16.buffer, pcm16.byteOffset || 0, pcm16.byteLength);
+    else return { ok: false, error: 'bad pcm payload' };
+    const n = udpVoice.send(buf);
+    return { ok: true, encodedBytes: n };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('nexus:udp:keepalive', () => {
+  try { udpVoice.keepalive(); return { ok: true }; }
+  catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('nexus:udp:status', () => udpVoice.status());
+
 // ─── Chat popout window ────────────────────────────────────────────────
 // Detachable Global Chat — a separate frameless BrowserWindow that
 // loads the /chat-popout route. Supports pin-on-top (so it floats over
@@ -445,7 +594,7 @@ function openChatPopout() {
       backgroundThrottling: false,
     },
   });
-  chatPopout.loadURL(NEXUS_URL + '/chat-popout');
+  chatPopout.loadURL(urlFor('/chat-popout'));
   chatPopout.on('closed', () => { chatPopout = null; });
 }
 
@@ -538,10 +687,70 @@ app.whenReady().then(() => {
   startKeyHook();
   registerSafeMode();
   createTray();
+  // Wait a bit before checking for updates so the window + renderer are
+  // ready to receive IPC events. Running during Dev (unpacked) is a no-op
+  // because electron-updater refuses to update unpacked apps.
+  setTimeout(() => {
+    try { autoUpdater.checkForUpdates(); }
+    catch (err) { console.warn('[updater] initial check failed:', err?.message); }
+  }, 4000);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+
+// ─── Auto-updater events → renderer ───────────────────────────────────────
+// The renderer shows a small banner using these channels. The main process
+// is the source of truth; IPC is one-way (main → renderer) for status +
+// progress, and two-way for user actions ("install now", "later").
+autoUpdater.on('checking-for-update', () => {
+  mainWindow?.webContents.send('nexus:update:checking');
+});
+autoUpdater.on('update-available', (info) => {
+  mainWindow?.webContents.send('nexus:update:available', {
+    version: info?.version,
+    releaseDate: info?.releaseDate,
+    releaseNotes: info?.releaseNotes,
+  });
+});
+autoUpdater.on('update-not-available', () => {
+  mainWindow?.webContents.send('nexus:update:none');
+});
+autoUpdater.on('download-progress', (p) => {
+  mainWindow?.webContents.send('nexus:update:progress', {
+    percent: Math.round(p?.percent || 0),
+    bytesPerSecond: p?.bytesPerSecond || 0,
+    transferred: p?.transferred || 0,
+    total: p?.total || 0,
+  });
+});
+autoUpdater.on('update-downloaded', (info) => {
+  mainWindow?.webContents.send('nexus:update:ready', {
+    version: info?.version,
+    releaseNotes: info?.releaseNotes,
+  });
+});
+autoUpdater.on('error', (err) => {
+  console.warn('[updater] error:', err?.message);
+  mainWindow?.webContents.send('nexus:update:error', { message: err?.message });
+});
+
+ipcMain.handle('nexus:update:checkNow', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { ok: true, version: result?.updateInfo?.version || null };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+});
+ipcMain.handle('nexus:update:installNow', () => {
+  // Fires the install + restart flow immediately. The user should save
+  // whatever they're doing first — we don't force a confirmation here
+  // because the renderer already does.
+  try { autoUpdater.quitAndInstall(false, true); }
+  catch (err) { console.error('[updater] quitAndInstall failed:', err?.message); }
+});
+
 app.on('will-quit', () => {
   try { globalShortcut.unregisterAll(); } catch {}
 });

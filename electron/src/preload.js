@@ -14,6 +14,13 @@
 // standard Windows frame; the renderer is a plain web page inside it.
 
 const { contextBridge, ipcRenderer } = require('electron');
+// Pull the version from package.json so the title-bar badge never drifts
+// out of sync with the installer. Hardcoded strings here caused a 0.9.12
+// badge to persist through the 0.9.13 build.
+const APP_VERSION = (() => {
+  try { return require('../package.json').version || 'dev'; }
+  catch { return 'dev'; }
+})();
 
 // Log the native key-hook startup result once at launch so a quick DevTools
 // peek (F12 or Ctrl+Alt+D) can confirm the hook is alive without flooding
@@ -28,7 +35,32 @@ ipcRenderer.on('nexus:hook-status', (_e, payload) => {
 contextBridge.exposeInMainWorld('electronAPI', {
   companion: {
     platform: process.platform,
-    version: '0.8.0',
+    version: APP_VERSION,
+    // Baked at build time via electron-builder.udp.yml. Renderer uses this
+    // to lock transport to UDP + hide the toggle. Also readable via the
+    // ?udp=1 URL param (set by main.js urlFor()) so the single frontend
+    // bundle doesn't need a separate build.
+    udpOnly: process.env.NEXUS_UDP_ONLY === '1',
+  },
+
+  // ─── UDP voice (experimental) ─────────────────────────────────────────
+  // Narrow bridge to the native-side dgram+Opus module. The renderer
+  // feeds raw PCM frames (960 samples, 16-bit mono @ 48 kHz) via send();
+  // the main process encodes + transmits. See electron/src/udp-voice.js.
+  udp: {
+    open(opts)   { return ipcRenderer.invoke('nexus:udp:open', opts); },
+    close()      { return ipcRenderer.invoke('nexus:udp:close'); },
+    retune(opts) { return ipcRenderer.invoke('nexus:udp:retune', opts); },
+    status()     { return ipcRenderer.invoke('nexus:udp:status'); },
+    // ArrayBuffer/Int16Array shuttled over IPC — Electron serializes
+    // structured-cloneable buffers efficiently (zero-copy for TypedArrays).
+    send(pcm16)  { return ipcRenderer.invoke('nexus:udp:send', pcm16); },
+    keepalive()  { return ipcRenderer.invoke('nexus:udp:keepalive'); },
+    onRx(handler) {
+      const listener = (_e, payload) => handler(payload);
+      ipcRenderer.on('nexus:udp:rx', listener);
+      return () => ipcRenderer.removeListener('nexus:udp:rx', listener);
+    },
   },
 
   // PTT bridge from the native OS-level key hook.
@@ -40,6 +72,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   setPttKey(key) {
     return ipcRenderer.invoke('nexus:setPttKey', key);
+  },
+
+  // v0.9 — two-radio PTT bindings. Pass { left?, right? } with key
+  // names ('v', 'CapsLock'), mouse buttons ('Mouse4'), or null to clear.
+  // Omitted keys preserve their current value.
+  setPttKeys(bindings) {
+    return ipcRenderer.invoke('nexus:setPttKeys', bindings);
+  },
+
+  // ─── Auto-updater ──────────────────────────────────────────────────────
+  update: {
+    checkNow()   { return ipcRenderer.invoke('nexus:update:checkNow'); },
+    installNow() { return ipcRenderer.invoke('nexus:update:installNow'); },
+    on(eventName, handler) {
+      const channels = {
+        checking:  'nexus:update:checking',
+        available: 'nexus:update:available',
+        none:      'nexus:update:none',
+        progress:  'nexus:update:progress',
+        ready:     'nexus:update:ready',
+        error:     'nexus:update:error',
+      };
+      const ch = channels[eventName];
+      if (!ch) return () => {};
+      const listener = (_e, payload) => handler(payload);
+      ipcRenderer.on(ch, listener);
+      return () => ipcRenderer.removeListener(ch, listener);
+    },
   },
 
   // Window controls — minimize / maximize / close are now handled by
@@ -54,6 +114,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize()       { return ipcRenderer.invoke('nexus:minimize'); },
   maxToggle()      { return ipcRenderer.invoke('nexus:maxToggle'); },
   close()          { return ipcRenderer.invoke('nexus:close'); },
+
+  // Skin mirror for the custom installer. Fire-and-forget; writes a
+  // plain JSON file that Nexus Setup reads to match colors.
+  saveSkin(id)     { return ipcRenderer.invoke('nexus:save-skin', id); },
 
   onWindowState(handler) {
     const listener = (_e, state) => handler(state);

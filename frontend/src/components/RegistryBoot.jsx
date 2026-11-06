@@ -1,210 +1,82 @@
-import { useState, useEffect, useRef } from 'react';
+// Registry boot — thin wrapper around TerminalBoot. Owns the ship fetch
+// and the SFX script (download loop, signal resolution, signal established);
+// visuals and sequencing are all shared.
+
+import { useEffect, useRef, useState } from 'react';
 import api from '../services/api';
+import TerminalBoot from './TerminalBoot';
 
-const DIVIDER = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
-
-const DOS_DEFS = [
-  { text: '> INITIALIZING NEXUS REGISTRY ACCESS PROTOCOL...', color: '#66AADD' },
-  { text: '> AUTHENTICATING OPERATOR CREDENTIALS...',          color: '#66AADD' },
-  { text: '> CREDENTIALS VERIFIED — CLEARANCE LEVEL: OPERATOR', color: '#44FF88' },
-  { text: '> ESTABLISHING UPLINK TO UEE CENTRAL DATABASE...', color: '#66AADD' },
-  // audio.onended gates line 4
-  { text: '> SIGNAL ACQUIRED — NODE 7 ONLINE',               color: '#44FF88' },
-  // Final VESSEL MANIFESTS SYNCHRONIZED line is injected dynamically inside
-  // startSequence() with the actual ship count after the bars finish.
+const PHASES = [
+  { label: 'AUTHENTICATING OPERATOR',    status: 'OK'    },
+  { label: 'ACCESSING FLEET REGISTRY',   status: 'OK'    },
+  { label: 'VERIFYING CLEARANCE',        status: 'OK'    },
+  { label: 'ESTABLISHING UPLINK',        status: 'OK'    },
+  { label: 'INITIALIZING CREW EDITOR',   status: 'OK'    },
+  { label: 'ESTABLISHING CONNECTION',    status: 'READY' },
 ];
 
 export default function RegistryBoot({ onComplete }) {
-  const [dosLines,      setDosLines]      = useState([]);
-  const [signalVisible, setSignalVisible] = useState(false);
-  const [activeBars,    setActiveBars]    = useState(0);
-  const [signalLocked,  setSignalLocked]  = useState(false);
+  const [ships, setShips] = useState(null);
 
-  const shipsRef        = useRef([]);
-  const onCompleteRef   = useRef(onComplete);
-  const tids            = useRef([]);
-  const audioRef        = useRef(null);
-  const dlAudioRef      = useRef(null);
-  const cancelledRef    = useRef(false);
-  const seqStarted      = useRef(false);
-
-  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
-
-  useEffect(() => {
-    return () => {
-      cancelledRef.current = true;
-      tids.current.forEach(clearTimeout);
-      const a = audioRef.current;
-      if (a) { try { a.pause(); a.src = ''; a.load(); } catch {} }
-      const dl = dlAudioRef.current;
-      if (dl) { try { dl.pause(); dl.src = ''; dl.load(); } catch {} }
-    };
-  }, []);
+  const dlAudioRef   = useRef(null);
+  const resAudioRef  = useRef(null);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
     api.get('/ships?includeStats=true')
       .then(({ data }) => {
         if (cancelledRef.current) return;
-        const list = Array.isArray(data) ? data : [];
-        shipsRef.current = list;
-        startSequence(list);
+        setShips(Array.isArray(data) ? data : []);
       })
-      .catch(() => {
-        if (!cancelledRef.current) startSequence([]);
-      });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      .catch(() => { if (!cancelledRef.current) setShips([]); });
 
-  function sched(fn, delay) {
-    const id = setTimeout(() => { if (!cancelledRef.current) fn(); }, delay);
-    tids.current.push(id);
-    return id;
-  }
-
-  function addLine(text, color) {
-    if (cancelledRef.current) return;
-    setDosLines(prev => [...prev, { id: Date.now() + Math.random(), text, color }]);
-  }
-
-  function startSequence(ships) {
-    if (seqStarted.current) return;
-    seqStarted.current = true;
-
-    const shipCount = ships.length;
-
-    // Download sound plays as soon as the sequence begins (before line 0
-    // renders) and is stopped when line 3 "ESTABLISHING UPLINK" fires.
-    const dlSfx = new Audio('/sounds/download_sound.mp3');
-    dlAudioRef.current = dlSfx;
-    dlSfx.play().catch(() => {});
-
-    // Lines 0-3 at 1200ms intervals
-    sched(() => addLine(DOS_DEFS[0].text, DOS_DEFS[0].color), 0);
-    sched(() => addLine(DOS_DEFS[1].text, DOS_DEFS[1].color), 1200);
-    sched(() => addLine(DOS_DEFS[2].text, DOS_DEFS[2].color), 2400);
-    sched(() => {
-      // Line 3 fires: cut the download sound.
-      try { dlSfx.pause(); dlSfx.currentTime = 0; } catch {}
-
-      addLine(DOS_DEFS[3].text, DOS_DEFS[3].color);
-
-      // Play signal_resolution and gate the post-audio sequence on the first
-      // trigger — either natural `onended` OR the 8s fallback, whichever
-      // fires first. `afterAudioFired` is a single-shot flag shared across
-      // both paths so we never replay the sequence.
-      const audio = new Audio('/sounds/signal_resolution.mp3');
-      audioRef.current = audio;
-      audio.volume = 0.5;
-      audio.play().catch(() => {});
-
-      let afterAudioFired = false;
-      const afterAudio = () => {
-        if (afterAudioFired || cancelledRef.current) return;
-        afterAudioFired = true;
-
-        addLine(DOS_DEFS[4].text, DOS_DEFS[4].color);
-        const sfx = new Audio('/sounds/signal_established.mp3');
-        sfx.play().catch(() => {});
-        sched(() => {
-          setSignalVisible(true);
-          animateBars(() => {
-            addLine(`> VESSEL MANIFESTS SYNCHRONIZED — ${shipCount} RECORDS LOADED`, '#44FF88');
-            sched(() => onCompleteRef.current?.(shipsRef.current), 3000);
-          });
-        }, 2400);
-      };
-
-      audio.onended = afterAudio;
-      sched(afterAudio, 8000);
-    }, 3600);
-  }
-
-  function animateBars(cb) {
-    let i = 0;
-    const tick = () => {
-      if (cancelledRef.current) return;
-      if (i < 5) {
-        setActiveBars(i + 1);
-        i++;
-        const id = setTimeout(tick, 220);
-        tids.current.push(id);
-      } else {
-        setSignalLocked(true);
-        const id = setTimeout(cb, 500);
-        tids.current.push(id);
-      }
+    return () => {
+      cancelledRef.current = true;
+      const dl = dlAudioRef.current;  if (dl) { try { dl.pause(); dl.src = ''; dl.load(); } catch {} }
+      const a  = resAudioRef.current; if (a)  { try { a.pause();  a.src = '';  a.load(); } catch {} }
     };
-    tick();
-  }
+  }, []);
 
-  const barHeights = [8, 16, 24, 32, 40];
+  const handlePhase = (idx) => {
+    if (idx === 0) {
+      const dl = new Audio('/sounds/download_sound.mp3');
+      dlAudioRef.current = dl;
+      dl.play().catch(() => {});
+    }
+    if (idx === 3) {
+      const dl = dlAudioRef.current;
+      if (dl) { try { dl.pause(); dl.currentTime = 0; } catch {} }
+      const a = new Audio('/sounds/signal_resolution.mp3');
+      a.volume = 0.5;
+      resAudioRef.current = a;
+      a.play().catch(() => {});
+    }
+    if (idx === PHASES.length - 1) {
+      try { new Audio('/sounds/signal_established.mp3').play().catch(() => {}); } catch {}
+    }
+  };
+
+  const shipCount = ships?.length ?? 0;
 
   return (
     <div style={{
       height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: '#000', overflow: 'hidden',
     }}>
-      <div style={{
-        width: 700,
-        padding: 40,
-        boxSizing: 'border-box',
-        fontFamily: "var(--font-mono)",
-      }}>
-        {/* Header — left-aligned to match the DOS log and the other boot
-            sequences (Splash, ShipRegistration BootSequence). Previously
-            title and subtitle were centered while the divider and body
-            lines were left-aligned, which made the horizontal bar look
-            offset. Keeping everything flush-left along the content block's
-            left edge is the consistent idiom. */}
-        <div style={{
-          fontSize: 20, color: '#CCE8FF', fontWeight: 'bold',
-          letterSpacing: '0.16em',
-          marginBottom: 4,
-        }}>
-          NEXUS INTERSTELLAR TRAFFIC SYSTEM
-        </div>
-        <div style={{
-          fontSize: 14, color: '#5F87A8',
-          letterSpacing: '0.12em',
-          marginBottom: 4,
-        }}>
-          CENTRAL SHIP REGISTRY — OPERATOR ACCESS
-        </div>
-        <div style={{ color: '#1A3A50', fontSize: 16, letterSpacing: '0.06em', lineHeight: 1.9, marginBottom: 20 }}>
-          {DIVIDER}
-        </div>
-
-        {/* DOS log */}
-        <div style={{ minHeight: 130, marginBottom: 24 }}>
-          {dosLines.map(line => (
-            <div key={line.id} style={{
-              fontSize: 18, color: line.color,
-              letterSpacing: '0.06em', lineHeight: 1.9,
-            }}>
-              {line.text}
-            </div>
-          ))}
-        </div>
-
-        {/* Signal row */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 10, marginBottom: 24,
-          opacity: signalVisible ? 1 : 0, transition: 'opacity 0.5s',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 40 }}>
-            {barHeights.map((h, i) => (
-              <div key={i} style={{
-                width: 8, height: h,
-                background: activeBars > i ? '#00EEFF' : '#1A3A50',
-                transition: 'background 0.3s',
-              }} />
-            ))}
-          </div>
-          <div style={{ fontSize: 16, color: '#00EEFF', letterSpacing: '0.1em' }}>
-            {signalLocked ? 'SIGNAL LOCKED · UEE NODE 7' : 'ACQUIRING SIGNAL...'}
-          </div>
-        </div>
-      </div>
+      <TerminalBoot
+        title="NEXUS INTERSTELLAR TRAFFIC SYSTEM"
+        subtitle="CENTRAL SHIP REGISTRY — OPERATOR ACCESS"
+        operatorLine={<>OPERATOR: <b>REGISTRY ACCESS</b> &nbsp;//&nbsp; CLEARANCE: <b>VERIFIED</b></>}
+        phases={PHASES}
+        phaseDelay={700}
+        finalLine={`> VESSEL MANIFESTS SYNCHRONIZED — ${shipCount} RECORDS LOADED`}
+        onPhaseChange={handlePhase}
+        onComplete={() => onComplete?.(ships ?? [])}
+        completeDelay={3000}
+        awaitingLabel="AWAITING VESSEL DATA INPUT"
+        readyLabel="REGISTRY TERMINAL READY"
+        loadingLabel="REGISTRY TERMINAL LOADING"
+      />
     </div>
   );
 }

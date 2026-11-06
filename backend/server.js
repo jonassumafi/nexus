@@ -24,6 +24,8 @@ const adminRoutes = require('./routes/admin');
 const radioRoutes = require('./routes/radio');
 const bugReportRoutes = require('./routes/bugReport');
 const chatRoutes = require('./routes/chat');
+const friendRoutes = require('./routes/friends');
+const dmRoutes = require('./routes/dms');
 
 const app = express();
 const server = http.createServer(app);
@@ -63,6 +65,29 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/radio', radioRoutes);
 app.use('/api/bug-report', bugReportRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/dms', dmRoutes);
+
+// Expose `io` for routes that need to compute presence hints without
+// going through the socketManager singleton.
+app.set('io', io);
+
+// ─── Nexus Companion release feed (electron-updater source) ──────────────
+// Serves `latest.yml` + the installer .exe from backend/releases/.
+// Deployment: `npm run build` in electron/, then copy the two artifacts
+// (latest.yml + Nexus Companion Setup X.Y.Z.exe) into backend/releases/.
+// electron-updater on each installed client checks latest.yml every launch
+// and downloads the new .exe in the background. Immutable files, so a
+// long cache header is safe.
+const path = require('path');
+app.use('/api/releases',
+  express.static(path.join(__dirname, 'releases'), {
+    etag: true,
+    lastModified: true,
+    maxAge: '1h',       // short so a new release is picked up quickly
+    index: false,       // no directory listing
+  }),
+);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 

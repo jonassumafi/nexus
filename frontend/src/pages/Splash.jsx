@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AsciiBox from '../components/AsciiBox';
+import TerminalBoot from '../components/TerminalBoot';
+import NexusLockup from '../components/NexusLockup';
 
 const playClick = () => {
   const file = Math.random() > 0.5 ? '/sounds/click.mp3' : '/sounds/click2.mp3';
@@ -9,48 +11,20 @@ const playClick = () => {
   snd.play().catch(() => {});
 };
 
-const DOT_SLOTS = 20;
-const TICK_MS = 80;
-
-const LINE_DEFS = [
-  { label: 'BIOS v2.31.04           ', status: 'OK',        color: '#2A5A7A', range: [800,  2800] },
-  { label: 'CHECKING MEMORY         ', status: '640MB OK',  color: '#2A5A7A', range: [700,  2600] },
-  { label: 'LOADING BOOT DEVICE     ', status: 'FOUND',     color: '#2A5A7A', range: [600,  2000] },
-  { label: 'READING SECTOR TABLE    ', status: 'OK',        color: '#2A5A7A', range: [1000, 3600] },
-  { label: 'LOADING CREW MODULE     ', status: 'OK',        color: '#2A5A7A', range: [800,  2800] },
-  { label: 'LOADING MISSION MODULE  ', status: 'OK',        color: '#2A5A7A', range: [900,  3200] },
-  { label: 'LOADING RP ENGINE       ', status: 'OK',        color: '#2A5A7A', range: [1200, 4400] },
-  { label: 'ESTABLISHING CONNECTION ', status: 'CONNECTED', color: '#44FF88', range: [1000, 3600] },
-  { label: 'AUTHENTICATING NODE     ', status: 'VERIFIED',  color: '#44FF88', range: [800,  2800] },
+// Phase content preserved from the old LINE_DEFS — labels/status words are
+// the same, only the render shape changed. The "CONNECTED" and "VERIFIED"
+// chips at the end become the READY chip with the lime LED under treatment A.
+const SPLASH_PHASES = [
+  { label: 'BIOS v2.31.04',            status: 'OK'        },
+  { label: 'CHECKING MEMORY',          status: 'OK'        },
+  { label: 'LOADING BOOT DEVICE',      status: 'OK'        },
+  { label: 'READING SECTOR TABLE',     status: 'OK'        },
+  { label: 'LOADING CREW MODULE',      status: 'OK'        },
+  { label: 'LOADING MISSION MODULE',   status: 'OK'        },
+  { label: 'LOADING RP ENGINE',        status: 'OK'        },
+  { label: 'ESTABLISHING CONNECTION',  status: 'CONNECTED' },
+  { label: 'AUTHENTICATING NODE',      status: 'VERIFIED'  },
 ];
-
-function randInt(a, b) {
-  return Math.floor(Math.random() * (b - a + 1)) + a;
-}
-
-function buildSequence() {
-  let durations = LINE_DEFS.map(({ range }) => randInt(range[0], range[1]));
-  const total = durations.reduce((s, d) => s + d, 0);
-  if (total > 28000) {
-    const scale = 28000 / total;
-    durations = durations.map(d => Math.max(Math.floor(d * scale), 600));
-  }
-  return {
-    durations,
-    headerGap:  randInt(400, 800),
-    group1Gap:  randInt(600, 1200),
-    group2Gap:  randInt(600, 1200),
-    header2Lag: randInt(200, 500),
-  };
-}
-
-const IDLE      = 'idle';
-const ANIMATING = 'animating';
-const RESOLVED  = 'resolved';
-
-function dots(n) {
-  return '[' + '.'.repeat(n) + ' '.repeat(DOT_SLOTS - n) + ']';
-}
 
 // Decode JWT payload and return { valid: bool, expired: bool }
 // Treats tokens where onboarding_complete is false as invalid — forces fresh OAuth
@@ -73,22 +47,12 @@ function checkToken() {
 export default function Splash() {
   const navigate = useNavigate();
 
-  const seqRef    = useRef(null);
   const audios    = useRef({});
   const fadingRef = useRef(false);
 
-  if (!seqRef.current) seqRef.current = buildSequence();
-
-  const [header1, setHeader1]       = useState(false);
-  const [header2, setHeader2]       = useState(false);
-  const [lineStates, setLineStates] = useState(
-    LINE_DEFS.map(() => ({ phase: IDLE, dots: 0 }))
-  );
-  const [gap1, setGap1]       = useState(false);
-  const [gap2, setGap2]       = useState(false);
-  const [welcome, setWelcome] = useState(false);
-  const [prompt, setPrompt]   = useState(false);
-  const [fading, setFading]           = useState(false);
+  const [welcome, setWelcome]           = useState(false);
+  const [prompt, setPrompt]             = useState(false);
+  const [fading, setFading]             = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
 
   // ─── Audio setup ─────────────────────────────────────────────────────────────
@@ -104,7 +68,6 @@ export default function Splash() {
     try {
       const fromGate = sessionStorage.getItem('hdd_started') === 'true';
       if (fromGate && window.__nexus_hdd) {
-        // Adopt the audio element Gate started — single instance, no duplicate/orphan.
         hdd = window.__nexus_hdd;
         window.__nexus_hdd = null;
         sessionStorage.removeItem('hdd_started');
@@ -139,8 +102,6 @@ export default function Splash() {
     };
   }, []);
 
-  // ─── Audio helpers ────────────────────────────────────────────────────────────
-
   const fadeOut = (key, stepSize = 0.05, intervalMs = 50) => {
     try {
       const a = audios.current[key];
@@ -172,7 +133,6 @@ export default function Splash() {
 
   const fadeOutComms = () => fadeOut('comms', 0.07, 50);
 
-  // Fade HDD to 0 over exactly 400ms (20 steps × 20ms)
   const fadeOutHDD400 = () => {
     try {
       const a = audios.current.hdd;
@@ -191,8 +151,6 @@ export default function Splash() {
     } catch {}
   };
 
-  // ─── Audio toggle button handler ─────────────────────────────────────────────
-
   const handleAudioToggle = (e) => {
     e.stopPropagation();
     const hdd = audios.current.hdd;
@@ -208,87 +166,20 @@ export default function Splash() {
     }
   };
 
-  // ─── Main animation sequence ──────────────────────────────────────────────────
+  // Comms sfx used to fire alongside the ESTABLISHING CONNECTION phase in
+  // the old range-based timing; route it through onPhaseChange so the
+  // trigger still lands on the same conceptual step (now phase 7).
+  const handlePhase = (idx) => {
+    if (idx === 7) playComms();
+    if (idx === SPLASH_PHASES.length - 1) fadeOutComms();
+  };
 
-  useEffect(() => {
-    const { durations, headerGap, group1Gap, group2Gap, header2Lag } = seqRef.current;
-    const tids = [];
-    const iids = [];
-
-    const schedule = (fn, delay) => {
-      const id = setTimeout(fn, delay);
-      tids.push(id);
-      return id;
-    };
-
-    setHeader1(true);
-    schedule(() => setHeader2(true), header2Lag);
-
-    let cursor = header2Lag + headerGap;
-
-    const runLine = (index) => {
-      const dur = durations[index];
-
-      schedule(() => {
-        setLineStates(prev => {
-          const next = [...prev];
-          next[index] = { phase: ANIMATING, dots: 0 };
-          return next;
-        });
-
-        if (index === 7) playComms();
-
-        let dotPos = 0;
-        const iid = setInterval(() => {
-          dotPos = (dotPos + 1) % (DOT_SLOTS + 1);
-          setLineStates(prev => {
-            const next = [...prev];
-            if (next[index].phase === ANIMATING) {
-              next[index] = { phase: ANIMATING, dots: dotPos };
-            }
-            return next;
-          });
-        }, TICK_MS);
-        iids.push(iid);
-
-        schedule(() => {
-          clearInterval(iid);
-          setLineStates(prev => {
-            const next = [...prev];
-            next[index] = { phase: RESOLVED, dots: DOT_SLOTS };
-            return next;
-          });
-          if (index === 3) setGap1(true);
-          if (index === 6) setGap2(true);
-          if (index === 8) fadeOutComms();
-        }, dur);
-
-      }, cursor);
-
-      cursor += dur;
-      if (index === 3) cursor += group1Gap;
-      if (index === 6) cursor += group2Gap;
-    };
-
-    for (let i = 0; i < LINE_DEFS.length; i++) runLine(i);
-
-    schedule(() => setWelcome(true), cursor + 600);
-    schedule(() => setPrompt(true),  cursor + 600 + 800);
-
-    return () => {
-      tids.forEach(clearTimeout);
-      iids.forEach(clearInterval);
-    };
-  }, []);
+  const handleBootComplete = () => {
+    setWelcome(true);
+    setTimeout(() => setPrompt(true), 800);
+  };
 
   // ─── Keypress / click handler — ANY-TIME skip ────────────────────────────────
-  //
-  // Previously this handler was gated on `prompt` (the "PRESS ANY KEY TO
-  // CONTINUE" state) so users had to watch the entire boot sequence before
-  // they could proceed. That gets tedious once you've seen it, and worse
-  // once you're already authenticated — nothing meaningful happens in the
-  // animation. Now ANY keypress or click at any point in the sequence
-  // fast-forwards to the end state and routes the user.
 
   useEffect(() => {
     const handleInput = () => {
@@ -321,7 +212,6 @@ export default function Splash() {
       }
     };
 
-    // Ignore modifier-only presses so Ctrl, Shift, etc. aren't swallowed.
     const onKeyDown = (e) => {
       if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
       handleInput();
@@ -335,12 +225,7 @@ export default function Splash() {
     };
   }, [navigate]);
 
-  // ─── Already-authenticated fast-path ─────────────────────────────────────────
-  // Users who already have a valid JWT shouldn't have to sit through the
-  // boot sequence every time the app launches. Short-circuit on mount
-  // straight to the dashboard, with a tiny delay so the fading transition
-  // feels intentional rather than jarring.
-
+  // Fast-path for already-authenticated users.
   useEffect(() => {
     const { valid } = checkToken();
     if (!valid) return;
@@ -357,11 +242,6 @@ export default function Splash() {
     return () => clearTimeout(t);
   }, [navigate]);
 
-  // ─── Render ───────────────────────────────────────────────────────────────────
-
-  const lineColor = (ls, idx) =>
-    ls.phase === RESOLVED ? LINE_DEFS[idx].color : '#66AADD';
-
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
 
   return (
@@ -376,8 +256,6 @@ export default function Splash() {
     }}>
       <div className="vignette" />
 
-      {/* Close button for Electron users — keeps the splash from feeling
-          like a cutscene they can't escape. */}
       {electron && (
         <button
           className="btn warn"
@@ -400,8 +278,8 @@ export default function Splash() {
           bottom: 20,
           right: 20,
           background: 'transparent',
-          border: `1px solid ${audioEnabled ? '#44FF88' : '#2A5A7A'}`,
-          color: audioEnabled ? '#44FF88' : '#2A5A7A',
+          border: `1px solid ${audioEnabled ? 'var(--lime)' : 'var(--rim1)'}`,
+          color: audioEnabled ? 'var(--lime)' : 'var(--rim1)',
           width: 34,
           height: 34,
           padding: 0,
@@ -424,70 +302,49 @@ export default function Splash() {
         )}
       </button>
 
-      <div style={{ width: '100%', maxWidth: 700 }}>
+      <div style={{ width: '100%', maxWidth: 760 }}>
         <AsciiBox fontSize={21.6} charW={13.2}>
           <div style={{
             fontFamily: "var(--font-mono)",
             fontSize: 16.8,
             lineHeight: 1.9,
-            color: '#66AADD',
+            color: 'var(--blue)',
           }}>
+            {/* Stacked lockup per logo_e_spec section 6 — the only spot
+                where the boot draw-on plays. Keeps the version + copyright
+                text so the context above the terminal still reads. */}
+            <div style={{
+              display: 'flex', justifyContent: 'center', marginBottom: 14,
+            }}>
+              <NexusLockup height={64} orientation="stacked" animate />
+            </div>
+            <div style={{ color: 'var(--t2)', marginBottom: 2, textAlign: 'center' }}>
+              NEXUS INTERSTELLAR TRAFFIC SYSTEM v1.0
+            </div>
+            <div style={{ color: 'var(--rim1)', marginBottom: 20, textAlign: 'center' }}>
+              COPYRIGHT 2956 FRONTIER OPERATORS GUILD
+            </div>
 
-            {header1 && (
-              <div style={{ color: '#99BBDD', marginBottom: 2 }}>
-                NEXUS INTERSTELLAR TRAFFIC SYSTEM v1.0
-              </div>
-            )}
-            {header2 && (
-              <div style={{ color: '#2A5A7A', marginBottom: 20 }}>
-                COPYRIGHT 2956 FRONTIER OPERATORS GUILD
-              </div>
-            )}
-
-            {LINE_DEFS.slice(0, 4).map((def, i) => {
-              const ls = lineStates[i];
-              if (ls.phase === IDLE) return null;
-              return (
-                <div key={i} style={{ color: lineColor(ls, i), whiteSpace: 'pre' }}>
-                  {def.label}{dots(ls.dots)}{ls.phase === RESOLVED ? '  ' + def.status : ''}
-                </div>
-              );
-            })}
-
-            {gap1 && <div>&nbsp;</div>}
-
-            {LINE_DEFS.slice(4, 7).map((def, i) => {
-              const idx = i + 4;
-              const ls = lineStates[idx];
-              if (ls.phase === IDLE) return null;
-              return (
-                <div key={idx} style={{ color: lineColor(ls, idx), whiteSpace: 'pre' }}>
-                  {def.label}{dots(ls.dots)}{ls.phase === RESOLVED ? '  ' + def.status : ''}
-                </div>
-              );
-            })}
-
-            {gap2 && <div>&nbsp;</div>}
-
-            {LINE_DEFS.slice(7, 9).map((def, i) => {
-              const idx = i + 7;
-              const ls = lineStates[idx];
-              if (ls.phase === IDLE) return null;
-              return (
-                <div key={idx} style={{ color: lineColor(ls, idx), whiteSpace: 'pre' }}>
-                  {def.label}{dots(ls.dots)}{ls.phase === RESOLVED ? '  ' + def.status : ''}
-                </div>
-              );
-            })}
+            <TerminalBoot
+              phases={SPLASH_PHASES}
+              phaseDelay={700}
+              onPhaseChange={handlePhase}
+              onComplete={handleBootComplete}
+              completeDelay={400}
+              width={680}
+              awaitingLabel="AWAITING NODE HANDSHAKE"
+              readyLabel="SYSTEM READY"
+              loadingLabel="SYSTEM LOADING"
+            />
 
             {welcome && (
-              <div style={{ color: '#99BBDD', marginTop: 20 }}>
+              <div style={{ color: 'var(--t2)', marginTop: 20 }}>
                 WELCOME TO NEXUS 1.0 <span className="cursor">|</span>
               </div>
             )}
 
             {prompt && (
-              <div style={{ color: '#00EEFF', marginTop: 8 }} className="prompt-pulse">
+              <div style={{ color: 'var(--cyan)', marginTop: 8 }} className="prompt-pulse">
                 {'[ PRESS ANY KEY TO CONTINUE ]'}
               </div>
             )}

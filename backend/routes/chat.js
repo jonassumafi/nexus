@@ -19,6 +19,19 @@ const MIN_INTERVAL_MS = 400;       // per-user cooldown — anti-flood
 // can't actually overwhelm the room.
 const lastSend = new Map();
 
+// Mirror of frontend/src/utils/avatar.js:resolveAvatar — keep the two
+// in step so chat and the Dashboard identity chip pick the same source.
+function resolveAvatarForStorage(u) {
+  const a = u?.avatar;
+  if (!a) return null;
+  if (/^(https?:|data:|\/)/i.test(a)) return a;
+  if (u?.discord_id) {
+    const ext = a.startsWith('a_') ? 'gif' : 'png';
+    return `https://cdn.discordapp.com/avatars/${u.discord_id}/${a}.${ext}?size=256`;
+  }
+  return null;
+}
+
 router.get('/', isAuthenticated, async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || DEFAULT_LIMIT, 500);
@@ -48,7 +61,10 @@ router.post('/', isAuthenticated, async (req, res) => {
     const msg = await ChatMessage.create({
       sender_id   : u._id,
       citizen_name: u.citizen_name || u.username || 'Operator',
-      avatar_url  : u.portrait_url || u.avatar_url || null,
+      // The User model stores a single `avatar` field that's either a
+      // raw Discord hash or a full URL (onboarding portrait flow). Resolve
+      // to a full URL here so the chat UI never has to know which case.
+      avatar_url  : resolveAvatarForStorage(u),
       discord_id  : u.discord_id || null,
       text,
       timestamp   : new Date(),

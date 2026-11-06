@@ -23,6 +23,7 @@ function applyTheme(id) {
   if (id === 'deepblue') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', id);
   try { localStorage.setItem('nexus_theme', id); } catch {}
+  try { window.electronAPI?.saveSkin?.(id); } catch {}
 }
 function applyDensity(d) {
   document.documentElement.setAttribute('data-dens', d);

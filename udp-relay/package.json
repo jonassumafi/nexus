@@ -1,0 +1,16 @@
+{
+  "name": "nexus-udp-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "UDP voice relay for Nexus Companion — fanout by {frequency, tunerId}.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test-send": "node test-client.js send",
+    "test-recv": "node test-client.js recv"
+  },
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "@discordjs/opus": "^0.10.0"
+  }
+}

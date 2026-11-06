@@ -1534,3 +1534,141 @@ html[data-dens="compact"] .dt-h{margin-bottom:8px}
   text-align:right}
 .plate b{display:block;font-family:var(--label);font-size:15px;letter-spacing:.14em;
   color:var(--fg1);font-weight:700}
+
+/* ===== Registry terminal — skin-token driven =====
+   Per /terminal_themes.html. Three treatments live as .term.A / .term.B / .term.C
+   on the container. Every color derives from the active skin's --bg0, --blue,
+   --cyan, --lime so swapping skin recolors the whole terminal automatically.
+   The RegistryBoot component uses .term.A (tinted phosphor) by default. */
+.term {
+  --t-bg:    color-mix(in srgb, var(--bg0) 72%, #000);
+  --t-text:  var(--blue);
+  --t-dim:   color-mix(in srgb, var(--blue) 55%, var(--bg0));
+  --t-faint: color-mix(in srgb, var(--blue) 28%, var(--bg0));
+  --t-bright:var(--cyan);
+  --t-glow:  color-mix(in srgb, var(--blue) 34%, transparent);
+  --t-ready: color-mix(in srgb, var(--lime) 62%, var(--blue));
+  position: relative;
+  background: var(--t-bg);
+  border: 1px solid var(--rim0);
+  color: var(--t-text);
+  font: 500 11px/1.9 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: .02em;
+  overflow: hidden;
+  text-transform: uppercase;
+}
+.term::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(180deg, transparent 0 2px,
+    color-mix(in srgb, #000 22%, transparent) 2px 3px);
+  opacity: .5;
+}
+.term .ln { display: block; white-space: nowrap; }
+.term .ln.anim { opacity: 0; transform: translateX(-4px); animation: term-lnin 220ms cubic-bezier(.2,.8,.2,1) forwards; animation-delay: calc(var(--i, 0) * 110ms); }
+@keyframes term-lnin { to { opacity: 1; transform: none; } }
+.term .hd { color: var(--t-bright); font-weight: 700; letter-spacing: .06em; }
+.term .rule { color: var(--t-faint); overflow: hidden; }
+.term .op { color: var(--t-text); }
+.term .op b { color: var(--t-bright); font-weight: 700; }
+.term .st { display: grid; grid-template-columns: 25ch 22ch auto; column-gap: 1ch; align-items: center; }
+.term .lb { color: var(--t-dim); }
+.term .dots { display: inline-block; overflow: hidden; vertical-align: bottom; white-space: nowrap; }
+.term .dots.anim { width: 0; animation: term-fillb 380ms steps(20) forwards; animation-delay: calc(var(--i, 0) * 110ms + 120ms); }
+.term .dots.filled { width: 20ch; }
+@keyframes term-fillb { to { width: 20ch; } }
+.term .br { color: var(--t-dim); }
+.term .ok { color: var(--t-text); }
+.term .pr { color: var(--t-bright); font-weight: 700; }
+.term .cur {
+  display: inline-block; width: .6em; height: 1.05em;
+  background: var(--t-bright); vertical-align: -2px; margin-left: .3ch;
+  animation: term-blink 1.06s steps(1) infinite;
+}
+@keyframes term-blink { 50% { opacity: 0; } }
+
+/* Treatment A — tinted phosphor (soft glow, green LED for READY) */
+.term.A { text-shadow: 0 0 8px var(--t-glow); }
+.term.A .rdy { color: var(--t-bright); font-weight: 700; text-shadow: 0 0 10px var(--t-glow); }
+.term.A .led {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--lime) 70%, transparent);
+  margin-right: .8ch; vertical-align: 1px;
+}
+
+/* Treatment B — inverse chips (flat, no glow, no green) */
+.term.B .ok, .term.B .rdy {
+  display: inline-block; padding: 0 .8ch;
+  background: var(--t-text); color: var(--t-bg); font-weight: 700;
+}
+.term.B .rdy { background: var(--t-bright); }
+.term.B .lb { color: var(--t-text); }
+.term.B .hd {
+  background: var(--t-bright); color: var(--t-bg);
+  display: inline-block; padding: 0 1ch;
+}
+
+/* Treatment C — framed panel (banner + segmented bars + green chips) */
+.term.C { padding: 0; text-shadow: none; font-weight: 500; }
+.term.C .bn {
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg3) 78%, var(--bg2)),
+    color-mix(in srgb, var(--bg1) 85%, var(--bg2)));
+  border-bottom: 1px solid var(--rim0);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--blue) 20%, transparent) inset;
+}
+.term.C .bn b { font: 700 10px Inter; letter-spacing: .16em; color: #fff; }
+.term.C .bn span.v {
+  margin-left: auto; font: 700 10px Inter; letter-spacing: .08em;
+  color: var(--t-bright);
+  border: 1px solid color-mix(in srgb, var(--blue) 42%, var(--bg0));
+  background: color-mix(in srgb, var(--blue) 16%, var(--bg0));
+  padding: 1px 6px;
+}
+.term.C .bd { padding: 14px 14px 14px; }
+.term.C .st { grid-template-columns: 25ch 1fr 7ch; column-gap: 10px; }
+.term.C .seg2 { display: flex; gap: 2px; height: 8px; }
+.term.C .seg2 i {
+  flex: 1; background: color-mix(in srgb, var(--blue) 16%, var(--bg0));
+  transition: background 160ms;
+}
+.term.C .seg2 i.on { background: var(--t-text); }
+.term.C .ok {
+  border: 1px solid color-mix(in srgb, var(--blue) 42%, var(--bg0));
+  background: color-mix(in srgb, var(--blue) 16%, var(--bg0));
+  color: var(--t-bright); padding: 0 .6ch;
+  text-align: center; font-size: 10px; line-height: 1.5;
+}
+.term.C .rdy {
+  border: 1px solid color-mix(in srgb, var(--lime) 62%, var(--bg0));
+  background: color-mix(in srgb, var(--lime) 24%, var(--bg0));
+  color: color-mix(in srgb, var(--lime) 55%, #fff);
+  padding: 0 .6ch; text-align: center; font-size: 10px; line-height: 1.5;
+}
+.term.C .rule { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .term .ln.anim { opacity: 1; transform: none; animation: none !important; }
+  .term .dots.anim { width: 20ch; animation: none !important; }
+  .term.C .seg2 i { background: var(--t-text); }
+  .term .cur { animation: none; }
+}
+
+/* ===== Nexus prompt mark (logo_e_spec.html) ===== */
+.nx-mark { display: inline-block; }
+.nx-mark .nx-cur { transform-origin: center; }
+.nx-mark.nx-blink .nx-cur { animation: nx-blink 1050ms steps(1) infinite; }
+@keyframes nx-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+/* Boot draw-on. Brackets 0→360ms, chevron 280→500ms, cursor fades in at 520ms. */
+.nx-mark.nx-boot .nx-bk { stroke-dasharray: 1; stroke-dashoffset: 1; animation: nx-draw 360ms cubic-bezier(.2,.8,.2,1) forwards; }
+.nx-mark.nx-boot .nx-ch { stroke-dasharray: 1; stroke-dashoffset: 1; animation: nx-draw 220ms cubic-bezier(.2,.8,.2,1) 280ms forwards; }
+.nx-mark.nx-boot .nx-cur { opacity: 0; animation: nx-curin 100ms cubic-bezier(.2,.8,.2,1) 520ms forwards; }
+@keyframes nx-draw { to { stroke-dashoffset: 0; } }
+@keyframes nx-curin { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .nx-mark.nx-blink .nx-cur { animation: none; opacity: 1; }
+  .nx-mark.nx-boot .nx-bk,
+  .nx-mark.nx-boot .nx-ch { stroke-dasharray: none; stroke-dashoffset: 0; animation: none; }
+  .nx-mark.nx-boot .nx-cur { opacity: 1; animation: none; }
+}
