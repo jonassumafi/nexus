@@ -11,8 +11,14 @@ const { resolveSkin, DEFAULT_SKIN } = require('./skin-tokens');
 // Product names the companion has shipped under. The installer hunts
 // each in order; first match wins. Keeping the list short and explicit
 // is simpler than parsing Chromium profile directories.
+// The packaged companion ships no productName, so Electron derives
+// userData from the package name (extraMetadata sets
+// nexus-companion-udp) — that's where skin.json really lives. The
+// display-name folders are kept as legacy fallbacks.
 const PRODUCT_NAMES = [
+  'nexus-companion-udp',
   'Nexus Companion UDP',
+  'nexus-companion',
   'Nexus Companion',
 ];
 
@@ -23,7 +29,7 @@ function userDataFor(productName) {
 
 function readSkinFile(filePath) {
   try {
-    const raw = fs.readFileSync(filePath, 'utf8');
+    const raw = fs.readFileSync(filePath, 'utf8').replace(/^﻿/, ''); // tolerate a BOM
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed.skin === 'string') return parsed.skin.trim();
   } catch {}

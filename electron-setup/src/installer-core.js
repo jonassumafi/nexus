@@ -13,7 +13,11 @@
 // Status is one of: 'start', 'ok', 'warn', 'err'. Renderer maps these
 // to log lines + a pct value driven off `opts.plan` indexing.
 
-const fs = require('fs');
+// Under Electron, `fs` treats any path ending in .asar as an archive, so
+// extracting / moving / deleting the companion's resources\app.asar
+// fails ("Invalid package"). original-fs is the unpatched module; plain
+// Node (headless tests) keeps using fs.
+const fs = process.versions.electron ? require('original-fs') : require('fs');
 const path = require('path');
 const os = require('os');
 const child = require('child_process');
@@ -22,6 +26,14 @@ const AdmZip = require('adm-zip');
 const REG_ROOT = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Nexus';
 const STAGING_DIR = '_staging';
 const BACKUP_DIR  = '_backup';
+// Lists the top-level entries this installer placed in the install dir.
+// Update / rollback / uninstall touch only these, so a custom /D= path
+// that already holds other files never loses them.
+const MARKER_FILE = '.nexus-install.json';
+// A copy of the setup exe kept in the install dir, so the uninstall entry
+// keeps working after the downloaded installer (or electron-updater's
+// cached copy) is deleted.
+const UNINSTALLER = 'Uninstall Nexus.exe';
 
 // ─── Paths ────────────────────────────────────────────────────────────
 
@@ -117,6 +129,85 @@ function ensureDir(dir) {
 function listDirShallow(dir) {
   try { return fs.readdirSync(dir).map(n => path.join(dir, n)); } catch { return []; }
 }
+function rmdirIfEmpty(dir) {
+  try { fs.rmdirSync(dir); } catch {} // fails (harmlessly) when not empty
+}
+function samePath(a, b) {
+  return path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+}
+
+// ─── Uninstaller copy ─────────────────────────────────────────────────
+
+// Copies the portable setup exe the user launched into installDir as
+// UNINSTALLER. Returns its path, or null when not running as the
+// packaged portable exe (dev runs). Skips the copy when we are already
+// running from that file (update/repair launched from the uninstaller).
+function installUninstaller(installDir) {
+  const src = process.env.PORTABLE_EXECUTABLE_FILE;
+  if (!src || !fs.existsSync(src)) return null;
+  const dest = path.join(installDir, UNINSTALLER);
+  if (samePath(src, dest)) return dest;
+  const tmp = dest + '.new';
+  try {
+    fs.copyFileSync(src, tmp);
+    fs.renameSync(tmp, dest); // replaces an older uninstaller
+  } catch (err) { rimraf(tmp); throw err; }
+  return dest;
+}
+
+// Windows won't delete (or rename) a running exe, and the portable
+// launcher keeps the uninstaller open until it exits. So when the
+// uninstall runs from the installed uninstaller, hand the last step to a
+// cmd.exe that retries deleting it every second until the launcher has
+// exited, then removes the install dir if that left it empty (rd without
+// /s never deletes a non-empty folder). Gives up after about an hour.
+//
+// It must be spawned detached: libuv puts non-detached children in a
+// kill-on-close job, so they die with us. Detached also means no
+// console, which PowerShell can't run without; cmd and ping can.
+function scheduleSelfDelete(file, dir) {
+  if (/["%^]/.test(file + dir)) return false; // can't be quoted safely for cmd
+  const script = 'for /l %i in (1,1,3600) do @('
+    + 'del /f /q "' + file + '" >nul 2>&1'
+    // Explicit if/else: with `if (...) & ping`, cmd folds the ping into
+    // the if, so the loop never waited and burned through in seconds.
+    + ' & if exist "' + file + '" (ping -n 2 127.0.0.1 >nul)'
+    + ' else (rd "' + dir + '" >nul 2>&1 & exit))';
+  try {
+    const p = child.spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', '"' + script + '"'], {
+      detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true,
+    });
+    p.unref();
+    return true;
+  } catch { return false; }
+}
+
+// ─── Ownership tracking ───────────────────────────────────────────────
+
+function zipTopLevel(zip) {
+  const names = new Set();
+  for (const e of zip.getEntries()) {
+    const top = e.entryName.split(/[\\/]/)[0];
+    if (top) names.add(top);
+  }
+  return names;
+}
+function readMarker(installDir) {
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(installDir, MARKER_FILE), 'utf8'));
+    return Array.isArray(m.entries) ? m.entries.filter(n => typeof n === 'string' && n && !/[\\/]/.test(n) && n !== '..' && n !== '.') : [];
+  } catch { return []; }
+}
+function writeMarker(installDir, entries, version) {
+  fs.writeFileSync(path.join(installDir, MARKER_FILE), JSON.stringify({ version, entries: [...entries].sort() }, null, 2));
+}
+// Entries in installDir that belong to us: what the previous install
+// recorded plus what the current payload ships (covers legacy installs
+// that predate the marker). Only names that exist are returned.
+function ownedEntries(installDir, payloadNames) {
+  const names = new Set([...readMarker(installDir), ...payloadNames, MARKER_FILE]);
+  return [...names].map(n => path.join(installDir, n)).filter(p => fs.existsSync(p));
+}
 
 // ─── Shortcut creation (powershell COM, no admin) ─────────────────────
 
@@ -144,8 +235,7 @@ function desktopDir() {
 
 // ─── Extraction with per-entry progress ───────────────────────────────
 
-async function extractZip(zipPath, destDir, { onFile, cancelSignal } = {}) {
-  const zip = new AdmZip(zipPath);
+async function extractZip(zip, destDir, { onFile, cancelSignal } = {}) {
   const entries = zip.getEntries();
   const total = entries.length;
   for (let i = 0; i < total; i++) {
@@ -182,6 +272,9 @@ async function runInstall({
   const existing    = detectInstall();
   const isUpdate    = !!existing;
   const finalExe    = path.join(installDir, exeName);
+  const dirExisted  = fs.existsSync(installDir);
+  let zip = null, payloadNames = new Set();
+  const promoted = []; // paths moved staging → installDir by this run
 
   const steps = [
     'checking disk space and permissions',
@@ -198,21 +291,21 @@ async function runInstall({
   const bail = async (err) => {
     try {
       onStep({ name: 'rolling back changes', status: 'warn' });
+      // Only entries this run promoted are removed; anything else in
+      // installDir is the user's, or old files that never reached backup.
       if (fs.existsSync(backupDir)) {
-        // Restore previous version: delete whatever's at installDir (except backup/staging), move backup back.
-        for (const p of listDirShallow(installDir)) {
-          if (path.basename(p) === STAGING_DIR || path.basename(p) === BACKUP_DIR) continue;
-          rimraf(p);
-        }
+        // Restore previous version: drop what we promoted, move backup back.
+        for (const p of promoted) rimraf(p);
         for (const p of listDirShallow(backupDir)) {
           fs.renameSync(p, path.join(installDir, path.basename(p)));
         }
         rimraf(backupDir);
       } else if (!isUpdate) {
-        // Fresh install that failed — remove everything we created.
-        rimraf(installDir);
+        // Fresh install that failed — remove only what we created.
+        for (const p of promoted) rimraf(p);
       }
       rimraf(stagingDir);
+      if (!isUpdate && !dirExisted) rmdirIfEmpty(installDir);
       onStep({ name: 'rollback complete', status: 'ok' });
     } catch (rollbackErr) {
       onStep({ name: 'rollback failed: ' + rollbackErr.message, status: 'err' });
@@ -224,6 +317,8 @@ async function runInstall({
     // Step 1
     onStep({ name: steps[0], status: 'start' });
     ensureDir(installDir);
+    zip = new AdmZip(getPayloadZipPath());
+    payloadNames = zipTopLevel(zip);
     onStep({ name: steps[0], status: 'ok' });
 
     // Step 2
@@ -239,10 +334,14 @@ async function runInstall({
     // Step 3
     onStep({ name: steps[2], status: 'start' });
     if (isUpdate) {
-      // Move current contents into backupDir atomically (same volume).
+      // Move our current files into backupDir atomically (same volume).
+      // Unrelated files in installDir stay put.
+      rimraf(backupDir); // leftover from an interrupted run
       ensureDir(backupDir);
-      for (const p of listDirShallow(installDir)) {
-        if (path.basename(p) === STAGING_DIR || path.basename(p) === BACKUP_DIR) continue;
+      // The uninstaller stays: it may be the exe running this update, and
+      // it's replaced in place after promotion anyway.
+      for (const p of ownedEntries(installDir, payloadNames)) {
+        if (path.basename(p).toLowerCase() === UNINSTALLER.toLowerCase()) continue;
         fs.renameSync(p, path.join(backupDir, path.basename(p)));
       }
     }
@@ -251,7 +350,7 @@ async function runInstall({
 
     // Step 4 — extraction with per-file callback
     onStep({ name: steps[3], status: 'start' });
-    await extractZip(getPayloadZipPath(), stagingDir, {
+    await extractZip(zip, stagingDir, {
       cancelSignal: cancel,
       onFile: ({ index, total, name }) => {
         onStep({ name: '+ ' + name, status: 'start', fileProgress: { index, total } });
@@ -263,10 +362,23 @@ async function runInstall({
     // Step 5 — promote staging → install root
     onStep({ name: steps[4], status: 'start' });
     for (const p of listDirShallow(stagingDir)) {
-      fs.renameSync(p, path.join(installDir, path.basename(p)));
+      const dest = path.join(installDir, path.basename(p));
+      rimraf(dest); // repair over a dir where a stray copy remains
+      fs.renameSync(p, dest);
+      promoted.push(dest);
     }
     rimraf(stagingDir);
     onStep({ name: steps[4], status: 'ok' });
+
+    onStep({ name: 'installing uninstaller', status: 'start' });
+    const hadUninstaller = fs.existsSync(path.join(installDir, UNINSTALLER));
+    const uninstallerExe = installUninstaller(installDir);
+    if (uninstallerExe && !hadUninstaller) promoted.push(uninstallerExe);
+    const owned = new Set(payloadNames);
+    if (uninstallerExe) owned.add(UNINSTALLER);
+    writeMarker(installDir, owned, version);
+    promoted.push(path.join(installDir, MARKER_FILE));
+    onStep({ name: 'installing uninstaller', status: 'ok' });
 
     // Step 6 — Start Menu shortcut
     onStep({ name: steps[5], status: 'start' });
@@ -291,9 +403,13 @@ async function runInstall({
     regAdd(REG_ROOT, 'InstallLocation', installDir);
     regAdd(REG_ROOT, 'DisplayIcon',     finalExe);
     // Self-exec for uninstall: we re-run the setup exe with --uninstall.
-    const selfExe = process.execPath.toLowerCase().includes('electron.exe')
-      ? finalExe // dev fallback; packaged build never hits this
-      : process.execPath;
+    // A portable build runs from a temp extraction that is deleted on
+    // exit; PORTABLE_EXECUTABLE_FILE is the real exe the user launched.
+    const selfExe = uninstallerExe
+      || process.env.PORTABLE_EXECUTABLE_FILE
+      || (process.execPath.toLowerCase().includes('electron.exe')
+        ? finalExe // dev fallback; packaged build never hits this
+        : process.execPath);
     regAdd(REG_ROOT, 'UninstallString', `"${selfExe}" --uninstall`);
     regAdd(REG_ROOT, 'QuietUninstallString', `"${selfExe}" --uninstall --silent`);
     regAdd(REG_ROOT, 'NoModify', 1, 'REG_DWORD');
@@ -316,7 +432,8 @@ async function runInstall({
 
     return { installDir, version, productName, exeName };
   } catch (err) {
-    if (err.message === 'canceled') { await bail(err); const e = new Error('canceled'); e.canceled = true; throw e; }
+    // bail() always rethrows the error it's given, so flag it first.
+    if (err.message === 'canceled') err.canceled = true;
     await bail(err);
   }
 }
@@ -342,7 +459,24 @@ async function runUninstall({
   onStep({ name: 'stopping Nexus', status: 'ok' });
 
   onStep({ name: 'removing files', status: 'start' });
-  rimraf(existing.path);
+  // Remove only what we installed, then the folder itself if that left
+  // it empty. Never rimraf InstallLocation wholesale: with /D= it can be
+  // a folder the user also keeps other things in.
+  let payloadNames = new Set();
+  try { payloadNames = zipTopLevel(new AdmZip(getPayloadZipPath())); } catch {}
+  payloadNames.add(UNINSTALLER); // installs that predate the marker entry
+  for (const p of ownedEntries(existing.path, payloadNames)) rimraf(p);
+  rimraf(path.join(existing.path, STAGING_DIR));
+  rimraf(path.join(existing.path, BACKUP_DIR));
+  rimraf(path.join(existing.path, UNINSTALLER + '.new'));
+  const uninstallerPath = path.join(existing.path, UNINSTALLER);
+  if (fs.existsSync(uninstallerPath)) {
+    // Still there → it's the exe running this uninstall; it deletes
+    // itself (and the then-empty folder) once it has exited.
+    scheduleSelfDelete(uninstallerPath, existing.path);
+  } else {
+    rmdirIfEmpty(existing.path);
+  }
   onStep({ name: 'removing files', status: 'ok' });
 
   onStep({ name: 'removing shortcuts', status: 'start' });
@@ -360,7 +494,11 @@ async function runUninstall({
   } else {
     onStep({ name: 'removing settings', status: 'start' });
     const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-    for (const name of ['Nexus Companion UDP', 'Nexus Companion']) {
+    // This build's settings only; 'nexus-companion' belongs to the
+    // separate non-UDP companion and must survive. The packaged app's
+    // userData is %APPDATA%\nexus-companion-udp (package name, since it
+    // ships no productName); the display-name folder is legacy.
+    for (const name of ['nexus-companion-udp', 'Nexus Companion UDP']) {
       rimraf(path.join(appData, name));
     }
     onStep({ name: 'removing settings', status: 'ok' });

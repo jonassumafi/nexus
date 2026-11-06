@@ -16,7 +16,7 @@ npm run build
 That does, in order:
 1. Builds the companion as an unpacked directory (`electron/dist/win-unpacked`).
 2. Zips it into `payload/nexus-companion.zip` + writes `payload/manifest.json`.
-3. Packages `dist/Nexus-Setup-<version>.exe` (portable single-file).
+3. Packages `dist/Nexus UDP Setup <version>.exe` (portable single-file).
 4. Emits `dist/latest-udp.yml` so `electron-updater` handoff keeps working.
 
 Publish by copying both files into `backend/releases/`.
@@ -44,7 +44,9 @@ Silent install exit codes: `0` success, `1` error, `2` canceled.
 ## Skin behavior
 
 Launches with whatever skin the companion last saved
-(`%APPDATA%\Nexus Companion UDP\skin.json`). Falls back to Deep Blue
+(`%APPDATA%\nexus-companion-udp\skin.json` — the packaged companion has
+no `productName`, so Electron names its userData folder after the
+package name). Falls back to Deep Blue
 if the file is missing, unreadable, or names an unknown skin — never
 shows an error for any of those. The installer only reads the file;
 it never writes it.

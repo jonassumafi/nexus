@@ -100,6 +100,9 @@ ipcMain.handle('setup:get-context', () => {
     manifest: m,
     version: m.version || '0.0.0',
     productName: m.productName || 'Nexus Companion UDP',
+    // Windows Settings → Uninstall launches us with --uninstall (no
+    // --silent); the renderer opens straight on the uninstall screen.
+    uninstallRequested: flags.uninstall,
   };
 });
 

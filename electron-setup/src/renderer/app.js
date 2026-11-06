@@ -187,7 +187,7 @@
             : scenario === 'repair' ? 'Nexus is repaired'
             : 'Nexus is ready';
         det = scenario === 'update' ? ('Updated to ' + esc(ctx?.version || '') + '. Your settings were kept.')
-            : scenario === 'remove' ? 'Your settings were kept in %APPDATA%\\Nexus Companion UDP.'
+            : scenario === 'remove' ? 'Your settings were kept in %APPDATA%\\nexus-companion-udp.'
             : scenario === 'repair' ? 'All files restored. Your settings were kept.'
             : 'Installed for your account. Shortcuts are on your Start menu and desktop.';
         if (scenario !== 'remove') {
@@ -205,7 +205,10 @@
       } else {
         ic  = checkIcon('bad');
         ttl = 'Setup could not finish';
-        det = 'Something went wrong. Your previous version was restored.';
+        // Only an update/repair has a previous version to restore.
+        det = scenario === 'fresh'  ? 'The installation failed. Anything it added was removed.'
+            : scenario === 'remove' ? 'The uninstall failed. Some files may remain.'
+            : 'Something went wrong. Your previous version was restored.';
         const tail = LOG.slice(-5).map(l => '<div' + (l[1] === 'err' ? ' class="e"' : '') + '>' + l[0] + '</div>').join('');
         extra = '<div class="mini">' + tail + '</div>';
         bt = '<button class="pb1" data-a="again">Retry</button>'
@@ -362,6 +365,8 @@
       }
       if (a === 'repair') { scenario = 'repair'; render('welcome'); return; }
       if (a === 'rem')    { scenario = 'remove'; render('welcome'); return; }
+      // Launched only to uninstall → Cancel means "never mind", so close.
+      if (a === 'cancelw' && ctx?.uninstallRequested) { api.close(); return; }
       if (a === 'cancelw'){ scenario = ctx?.existing ? 'update' : 'fresh'; render('welcome'); return; }
       if (a === 'cancel') { api.cancel(); return; }
       if (a === 'again')  { scenario = ctx?.existing ? 'update' : 'fresh'; render('welcome'); return; }
@@ -395,7 +400,7 @@
     try {
       ctx = await api.getContext();
       installDir = ctx?.existing?.path || ctx?.defaultDir || '';
-      scenario = ctx?.existing ? 'update' : 'fresh';
+      scenario = ctx?.existing ? (ctx.uninstallRequested ? 'remove' : 'update') : 'fresh';
     } catch {
       scenario = 'fresh';
     }

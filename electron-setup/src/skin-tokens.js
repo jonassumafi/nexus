@@ -21,7 +21,8 @@ const SKINS = {
 const DEFAULT_SKIN = 'deepblue';
 
 function resolveSkin(id) {
-  if (typeof id === 'string' && SKINS[id]) return { id, ...SKINS[id] };
+  // Own-property check: "constructor", "toString" etc. are unknown skins.
+  if (typeof id === 'string' && Object.prototype.hasOwnProperty.call(SKINS, id)) return { id, ...SKINS[id] };
   return { id: DEFAULT_SKIN, ...SKINS[DEFAULT_SKIN] };
 }
 

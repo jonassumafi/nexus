@@ -24,7 +24,15 @@ function log(step) { console.log('\n▶ ' + step); }
 function run(cmd, args, opts) {
   log(cmd + ' ' + args.join(' '));
   const r = child.spawnSync(cmd, args, { stdio: 'inherit', ...opts });
+  if (r.error) console.error('✗ spawn error: ' + r.error.message);
   if (r.status !== 0) { console.error('✗ failed: ' + cmd + ' ' + args.join(' ')); process.exit(r.status || 1); }
+}
+// Run a project's locally installed electron-builder through node itself.
+// Spawning `npx` fails on Windows (it's npx.cmd, and Node refuses to
+// spawn .cmd files without a shell), so resolve cli.js and use execPath.
+function electronBuilder(cwd, args) {
+  const cli = require.resolve('electron-builder/cli.js', { paths: [cwd] });
+  run(process.execPath, [cli, ...args], { cwd });
 }
 function mkdirp(p) { fs.mkdirSync(p, { recursive: true }); }
 function rimraf(p) { try { fs.rmSync(p, { recursive: true, force: true }); } catch {} }
@@ -36,11 +44,7 @@ function sha512OfFile(p) {
 
 // 1) Build the companion as an unpacked dir with the UDP config.
 log('Building companion (electron-builder --dir)');
-run('npx', [
-  '--yes', 'electron-builder@25.1.8',
-  '--win', 'dir',
-  '--config', 'electron-builder.udp.yml',
-], { cwd: COMPANION });
+electronBuilder(COMPANION, ['--win', 'dir', '--config', 'electron-builder.udp.yml']);
 
 if (!fs.existsSync(UNPACKED_SRC)) {
   console.error('✗ expected unpacked output at ' + UNPACKED_SRC);
@@ -82,11 +86,7 @@ if (SETUP_PKG.version !== COMPANION_PKG.version) {
 // 6) Package the setup exe.
 log('Packaging Nexus Setup installer');
 rimraf(DIST_DIR);
-run('npx', [
-  '--yes', 'electron-builder@25.1.8',
-  '--win',
-  '--config', 'electron-builder.yml',
-], { cwd: ROOT });
+electronBuilder(ROOT, ['--win', '--config', 'electron-builder.yml']);
 
 // 7) Emit latest-udp.yml so electron-updater handoff keeps working.
 log('Emitting latest-udp.yml');
