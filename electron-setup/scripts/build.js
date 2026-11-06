@@ -75,6 +75,31 @@ log('Checking voice encoder (opus) in the packaged companion');
   console.log('  ' + r.stdout.trim());
 }
 
+// 1c) Updater config. electron-updater reads resources/app-update.yml to
+// know where to look for updates, but electron-builder only writes it
+// for its own installer targets (nsis etc.), never for `--win dir`.
+// Without it every installed copy fails its update check before it
+// even contacts the server. Write it from the companion's publish block.
+// No publisherName: the setup exe is unsigned, and a publisherName would
+// make electron-updater reject every unsigned update.
+const PUBLISH = (() => {
+  const cfg = fs.readFileSync(path.join(COMPANION, 'electron-builder.udp.yml'), 'utf8');
+  // [^\n]* rather than .*: a Windows checkout has CRLF and . stops at \r.
+  const block = (cfg.match(/^publish:[^\n]*\n((?:[ \t-][^\n]*\n?)+)/m) || [])[1] || '';
+  const url     = (block.match(/url:\s*(\S+)/) || [])[1];
+  const channel = (block.match(/channel:\s*(\S+)/) || [])[1];
+  if (!url || !channel) { console.error('✗ could not read publish url/channel from electron-builder.udp.yml'); process.exit(1); }
+  return { url, channel };
+})();
+log('Writing app-update.yml (channel ' + PUBLISH.channel + ' → ' + PUBLISH.url + ')');
+fs.writeFileSync(path.join(UNPACKED_SRC, 'resources', 'app-update.yml'), [
+  'provider: generic',
+  'url: ' + PUBLISH.url,
+  'channel: ' + PUBLISH.channel,
+  'updaterCacheDirName: nexus-companion-udp-updater',
+  '',
+].join('\n'));
+
 // 2) Zip the unpacked directory into payload/
 log('Zipping companion payload');
 mkdirp(PAYLOAD_DIR);
@@ -112,8 +137,11 @@ log('Packaging Nexus Setup installer');
 rimraf(DIST_DIR);
 electronBuilder(ROOT, ['--win', '--config', 'electron-builder.yml']);
 
-// 7) Emit latest-udp.yml so electron-updater handoff keeps working.
-log('Emitting latest-udp.yml');
+// 7) Emit the update manifest. Installed apps on channel "<channel>"
+// fetch <url>/<channel>.yml (udp.yml); latest-udp.yml is the same file
+// under its legacy name.
+const CHANNEL_YML = PUBLISH.channel + '.yml';
+log('Emitting ' + CHANNEL_YML + ' (+ latest-udp.yml)');
 const setupExe = fs.readdirSync(DIST_DIR).find(n => n.startsWith('Nexus UDP Setup ') && n.endsWith('.exe'));
 if (!setupExe) {
   console.error('✗ installer exe not found in ' + DIST_DIR);
@@ -133,8 +161,9 @@ const yml = [
   'releaseDate: ' + new Date().toISOString(),
   '',
 ].join('\n');
+fs.writeFileSync(path.join(DIST_DIR, CHANNEL_YML), yml);
 fs.writeFileSync(path.join(DIST_DIR, 'latest-udp.yml'), yml);
 
 console.log('\n✓ Done: ' + path.relative(REPO, setupPath));
-console.log('  update manifest: ' + path.relative(REPO, path.join(DIST_DIR, 'latest-udp.yml')));
-console.log('\nNext: copy both files into backend/releases/ to publish.');
+console.log('  update manifest: ' + path.relative(REPO, path.join(DIST_DIR, CHANNEL_YML)));
+console.log('\nNext: copy the exe and ' + CHANNEL_YML + ' into backend/releases/ to publish.');

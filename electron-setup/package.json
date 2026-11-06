@@ -1,6 +1,6 @@
 {
   "name": "nexus-setup",
-  "version": "0.9.19",
+  "version": "0.9.20",
   "description": "Custom-skinned Windows installer for the Nexus Companion.",
   "private": true,
   "main": "src/main.js",
