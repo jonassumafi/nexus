@@ -663,9 +663,16 @@ ipcMain.handle('nexus:udp:open', (_e, opts) => {
     return { ok: true, ...info };
   } catch (err) { return { ok: false, error: err.message }; }
 });
-ipcMain.handle('nexus:udp:close', () => {
-  try { udpRxUnsub?.(); udpRxUnsub = null; udpVoice.close(); return { ok: true }; }
-  catch (err) { return { ok: false, error: err.message }; }
+// close(sessionId): a stale id (late cleanup from the previous view) is
+// ignored entirely. That includes the RX forwarder, which belongs to the
+// live session; dropping it would leave the new session open but deaf.
+ipcMain.handle('nexus:udp:close', (_e, sessionId) => {
+  try {
+    if (!udpVoice.isCurrent(sessionId)) return { ok: true, ignored: true };
+    udpRxUnsub?.(); udpRxUnsub = null;
+    udpVoice.close(sessionId);
+    return { ok: true };
+  } catch (err) { return { ok: false, error: err.message }; }
 });
 ipcMain.handle('nexus:udp:retune', (_e, opts) => {
   try { udpVoice.retune(opts || {}); return { ok: true }; }

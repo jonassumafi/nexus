@@ -49,7 +49,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // the main process encodes + transmits. See electron/src/udp-voice.js.
   udp: {
     open(opts)   { return ipcRenderer.invoke('nexus:udp:open', opts); },
-    close()      { return ipcRenderer.invoke('nexus:udp:close'); },
+    // sessionId (from open()) is optional; without it, closes whatever is open.
+    close(sessionId) { return ipcRenderer.invoke('nexus:udp:close', sessionId); },
     retune(opts) { return ipcRenderer.invoke('nexus:udp:retune', opts); },
     status()     { return ipcRenderer.invoke('nexus:udp:status'); },
     // ArrayBuffer/Int16Array shuttled over IPC — Electron serializes

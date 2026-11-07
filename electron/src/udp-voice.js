@@ -15,6 +15,7 @@
 // senderBand range because it's strictly unambiguous and cheap.
 
 const dgram = require('node:dgram');
+const crypto = require('node:crypto');
 
 const SAMPLE_RATE  = 48_000;
 const CHANNELS     = 1;
@@ -144,6 +145,9 @@ function open(opts = {}) {
   try { encoder.setBitrate(bitrate); } catch {}
 
   session = {
+    // Returned by open(); close(id) ignores ids that aren't the live
+    // session, so a late cleanup from the previous view can't kill this one.
+    id: crypto.randomUUID(),
     sock,
     encoder,
     decoders: new Map(),  // userId -> { decoder, lastSeen }
@@ -189,7 +193,7 @@ function open(opts = {}) {
     console.error('[udp-voice sock error]', err.message);
   });
 
-  return { host, port, frameSize: FRAME_SIZE, frameBytes: FRAME_BYTES };
+  return { host, port, frameSize: FRAME_SIZE, frameBytes: FRAME_BYTES, sessionId: session.id };
 }
 
 function retune({ tunerId, freq, userId, senderBand } = {}) {
@@ -229,12 +233,22 @@ function keepalive() {
     session.port, session.host, () => {});
 }
 
-function close() {
-  if (!session) return;
+// True if close(sessionId) would act: there's a live session and the id is
+// either omitted (pre-0.9.23 frontends) or matches it.
+function isCurrent(sessionId) {
+  return !!session && (!sessionId || sessionId === session.id);
+}
+
+// close(sessionId) closes only the session that id belongs to; a stale id
+// (from a session open() already replaced) is ignored. No id closes
+// whatever is open. Returns true if a session was closed.
+function close(sessionId) {
+  if (!isCurrent(sessionId)) return false;
   session.closing = true;
   try { clearInterval(session.sweepTimer); } catch {}
   try { session.sock.close(); } catch {}
   session = null;
+  return true;
 }
 
 function status() {
@@ -249,7 +263,7 @@ function status() {
 }
 
 module.exports = {
-  open, close, send, retune, onRx, keepalive, status,
+  open, close, isCurrent, send, retune, onRx, keepalive, status,
   bandStringToByte,
   FRAME_SIZE, FRAME_BYTES, SAMPLE_RATE, WIRE_VERSION,
 };
