@@ -68,7 +68,7 @@ export default function MessagesPopover({ anchorRef, threads = [], meId, onClose
                     <i style={{
                       position: 'absolute', right: -2, bottom: -2,
                       width: 10, height: 10, borderRadius: '50%',
-                      background: isOnline ? 'var(--lime)' : 'var(--fg3)',
+                      background: isOnline ? 'var(--lime)' : 'var(--red)',
                       border: '2px solid var(--bg1)',
                       boxShadow: isOnline ? '0 0 6px var(--lime)' : 'none',
                     }} />

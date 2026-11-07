@@ -145,7 +145,7 @@ export default function DMPane({ meId, peer, messages = [], onClose, onSend, onO
             <i style={{
               display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
               marginRight: 6, verticalAlign: 1,
-              background: isOnline ? 'var(--lime)' : 'var(--fg3)',
+              background: isOnline ? 'var(--lime)' : 'var(--red)',
               boxShadow: isOnline ? '0 0 6px var(--lime)' : 'none',
             }} />
             {isOnline ? (onMission ? 'On a mission' : 'Online') : 'Offline'}

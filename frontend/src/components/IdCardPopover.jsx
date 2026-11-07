@@ -19,8 +19,8 @@ function injectStyles() {
 .idc .idc-hd{display:flex;gap:10px;align-items:center;padding:12px;border-bottom:1px solid var(--rim0);background:var(--bg2)}
 .idc .idc-av{width:56px;height:56px;border:1px solid var(--rim1);background:var(--bg0);overflow:hidden;position:relative;flex:none}
 .idc .idc-av img{width:100%;height:100%;object-fit:cover}
-.idc .idc-dot{position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;background:var(--amber);border:2px solid var(--bg1)}
-.idc .idc-dot.on{background:var(--lime)}
+.idc .idc-dot{position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid var(--bg1)}
+.idc .idc-dot.on{background:var(--lime);box-shadow:0 0 6px var(--lime)}
 .idc .idc-nm{min-width:0}
 .idc .idc-nm b{display:block;font:700 13px Inter;color:var(--fg0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .idc .idc-nm small{display:block;color:var(--fg3);font-size:11px}

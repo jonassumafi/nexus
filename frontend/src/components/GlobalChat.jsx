@@ -622,7 +622,7 @@ function ChatRow({ msg, friendIds, onAvatarClick, presenceById }) {
           <i aria-hidden="true" style={{
             position: 'absolute', right: -1, bottom: -1,
             width: 9, height: 9, borderRadius: '50%',
-            background: isOnline ? 'var(--lime)' : 'var(--fg3)',
+            background: isOnline ? 'var(--lime)' : 'var(--red)',
             border: '2px solid var(--bg1)',
             boxShadow: isOnline ? '0 0 6px var(--lime)' : 'none',
             zIndex: 1,
