@@ -57,7 +57,9 @@ console.log(`Publishing ${exeName} (v${version}, ${(fs.statSync(exePath).size / 
 // ── Upload to staging ─────────────────────────────────────────────────
 const INCOMING = DIR + '/.incoming';
 step('Preparing ' + INCOMING);
-ssh(`mkdir -p ${sh(INCOMING)} && rm -f ${sh(INCOMING)}/*`);
+// No glob here: the host's login shell is zsh, where an unmatched
+// `dir/*` is an error rather than a no-op.
+ssh(`rm -rf ${sh(INCOMING)} && mkdir -p ${sh(INCOMING)}`);
 
 step('Uploading (this takes a minute)');
 const up = child.spawnSync('scp', [...SSH_OPTS, exePath, ymlPath, `${HOST}:${INCOMING}/`], { stdio: 'inherit' });
@@ -76,8 +78,8 @@ console.log('  live: ' + exeName + ' + udp.yml');
 
 // ── Optional cleanup ──────────────────────────────────────────────────
 // Keep the newest two "Nexus UDP Setup <ver>.exe" (current + rollback).
-const listing = ssh(`cd ${sh(DIR)} && ls -1 -- 'Nexus UDP Setup '*.exe 2>/dev/null || true`, { capture: true })
-  .split('\n').map(s => s.trim()).filter(Boolean);
+const listing = ssh(`cd ${sh(DIR)} && ls -1`, { capture: true })
+  .split('\n').map(s => s.trim()).filter(n => n.startsWith('Nexus UDP Setup ') && n.endsWith('.exe'));
 const verOf = n => (n.match(/Setup (\d+)\.(\d+)\.(\d+)\.exe$/) || []).slice(1).map(Number);
 const sorted = listing.filter(n => verOf(n).length === 3)
   .sort((a, b) => { const x = verOf(a), y = verOf(b); return y[0] - x[0] || y[1] - x[1] || y[2] - x[2]; });
