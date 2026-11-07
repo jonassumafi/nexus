@@ -36,6 +36,18 @@ function readSkinFile(filePath) {
   return null;
 }
 
+// Returns Deep Blue unconditionally. Used by scenarios where we WANT
+// brand-consistent paint regardless of what the companion saved:
+// fresh installs (no app to match) and uninstalls (clean-moment).
+function defaultSkin() {
+  return resolveSkin(DEFAULT_SKIN);
+}
+
+// Reads the companion's last-saved skin from userData, falls back to
+// Deep Blue if missing / unreadable / unknown. Used only when the
+// installer is doing an UPDATE over an existing install — the user's
+// app is sitting there in a specific skin and the update flow should
+// visually continue it.
 function loadSavedSkin() {
   for (const name of PRODUCT_NAMES) {
     const p = path.join(userDataFor(name), 'skin.json');
@@ -45,4 +57,4 @@ function loadSavedSkin() {
   return resolveSkin(DEFAULT_SKIN);
 }
 
-module.exports = { loadSavedSkin, userDataFor };
+module.exports = { loadSavedSkin, defaultSkin, userDataFor };

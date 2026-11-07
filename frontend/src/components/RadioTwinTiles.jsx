@@ -16,6 +16,7 @@ import { useRadioConnectionUDP } from '../hooks/useRadioConnectionUDP';
 import { useCommandTunerRx } from '../hooks/useCommandTunerRx';
 import useMyRadio from '../hooks/useMyRadio';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
+import RadioPickerModal from './RadioPickerModal';
 import api from '../services/api';
 
 const PROFILE_FIELDS = [
@@ -157,6 +158,89 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
+// Compact key-remap row shown in the mic strip's gear panel. Click the
+// key badge → it goes to "Press key…" and the next keydown is captured
+// as the new binding. Escape cancels. Rejects overlaps with the other
+// tuner's key so Crew and Command can't share a binding.
+function KeyRemapRow({ label, current, otherKey, onSave }) {
+  const [capturing, setCapturing] = useState(false);
+  const [deny, setDeny] = useState(null);
+  useEffect(() => {
+    if (!capturing) return;
+    const onKey = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.key === 'Escape') { setCapturing(false); return; }
+      const raw = e.key;
+      const up = raw.length === 1 ? raw.toUpperCase() : (raw === 'CapsLock' ? 'CAPSLOCK' : raw.toUpperCase());
+      if (['SHIFT', 'CONTROL', 'ALT', 'META'].includes(up)) return;
+      if (otherKey && up === String(otherKey).toUpperCase()) {
+        setDeny(up); setTimeout(() => setDeny(null), 900);
+        return;
+      }
+      onSave?.(up);
+      setCapturing(false);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [capturing, otherKey, onSave]);
+  return (
+    <label style={{
+      display: 'grid', gridTemplateColumns: '58px 1fr 38px', gap: 6, alignItems: 'center',
+      font: '600 10px Inter', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fg2)',
+    }}>
+      {label}
+      <button
+        type="button"
+        onClick={() => setCapturing(c => !c)}
+        aria-label={`Rebind ${label}`}
+        style={{
+          font: '600 10px Inter', letterSpacing: '0.06em', textTransform: 'uppercase',
+          color: capturing ? 'var(--amber)' : (deny ? 'var(--red)' : 'var(--fg2)'),
+          border: `1px solid ${capturing ? 'var(--amber)' : (deny ? 'var(--red)' : 'var(--rim1)')}`,
+          background: 'color-mix(in srgb, var(--bg0) 60%, #000)',
+          height: 22, borderRadius: 3, cursor: 'pointer', padding: '0 8px',
+          textAlign: 'left',
+        }}
+      >
+        {capturing ? 'Press a key…' : (deny ? `${deny} in use` : (current ? String(current).toUpperCase() : '—'))}
+      </button>
+      <span style={{
+        font: '600 10px Inter', color: 'var(--fg3)', textAlign: 'right',
+      }}>{capturing ? 'ESC' : 'Click'}</span>
+    </label>
+  );
+}
+
+// Compact rig-picker row shown in the mic strip's gear panel. Shows the
+// current rig's label; clicking the button opens the shared
+// RadioPickerModal scoped to the matching tuner.
+function RigPickRow({ label, value, onOpen }) {
+  return (
+    <label style={{
+      display: 'grid', gridTemplateColumns: '58px 1fr 38px', gap: 6, alignItems: 'center',
+      font: '600 10px Inter', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fg2)',
+    }}>
+      {label}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Change ${label}`}
+        title={`Change ${label}`}
+        style={{
+          font: '600 10px Inter', letterSpacing: '0.04em',
+          color: 'var(--fg1)',
+          border: '1px solid var(--rim1)',
+          background: 'color-mix(in srgb, var(--bg0) 60%, #000)',
+          height: 22, borderRadius: 3, cursor: 'pointer', padding: '0 8px',
+          textAlign: 'left',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}
+      >{value}</button>
+      <span style={{ font: '600 10px Inter', color: 'var(--fg3)', textAlign: 'right' }}>▾</span>
+    </label>
+  );
+}
+
 function sh(n) { const s = String(n || ''); return s.length <= 12 ? s : s.slice(0, Math.max(6, Math.ceil(s.length / 2))) + '…'; }
 function initials(n) { const w = String(n || '').replace(/[_-]+/g, ' ').split(' ').filter(Boolean); return (w.length > 1 ? w[0][0] + w[1][0] : (n || '').slice(0, 2)).toUpperCase(); }
 const IC = {
@@ -196,6 +280,10 @@ export default function RadioTwinTiles() {
   });
   const [muted, setMuted] = useState(false);
   const [micOpen, setMicOpen] = useState(false);
+  // Which tuner's rig picker is open: 'right' = Crew, 'left' = Command,
+  // null = closed. One picker at a time; closing by onClose (click outside
+  // or ESC) just sets back to null.
+  const [rigPicker, setRigPicker] = useState(null);
 
   const [crewLocked, setCrewLocked] = useState(() => localStorage.getItem('nexus_crew_locked') === '1');
   const [cmdLocked, setCmdLocked]   = useState(() => localStorage.getItem('nexus_command_locked') === '1');
@@ -361,7 +449,41 @@ export default function RadioTwinTiles() {
             <input type="range" min="0" max="150" step="5" value={rxVolume} onChange={e => setRxVolume(Number(e.target.value))} />
             <b>{rxVolume}%</b>
           </label>
+          <KeyRemapRow
+            label="Crew PTT"
+            current={pttKey}
+            otherKey={cmd.pttKey}
+            onSave={(k) => {
+              setPttKey(k);
+              try { localStorage.setItem('nexus_ptt_key', k); } catch {}
+              try { window.electronAPI?.setPttKey?.(k); } catch {}
+            }}
+          />
+          <KeyRemapRow
+            label="Cmd PTT"
+            current={cmd.pttKey || 'c'}
+            otherKey={pttKey}
+            onSave={(k) => { try { cmd.setPttKey?.(k); } catch {} }}
+          />
+          <RigPickRow
+            label="Crew rig"
+            value={crewRadio?.label || crewRadio?.id || '—'}
+            onOpen={() => setRigPicker('right')}
+          />
+          <RigPickRow
+            label="Cmd rig"
+            value={cmdRadio?.label || cmdRadio?.id || '(inherits)'}
+            onOpen={() => setRigPicker('left')}
+          />
         </div>
+      )}
+
+      {rigPicker && (
+        <RadioPickerModal
+          open
+          tunerId={rigPicker}
+          onClose={() => setRigPicker(null)}
+        />
       )}
 
       {/* Tiles */}

@@ -40,6 +40,30 @@ try {
   // before its window paints. Fire-and-forget; no-op outside Electron.
   try { window.electronAPI?.saveSkin?.(t || 'deepblue'); } catch {}
 } catch {}
+
+// One-time migration: rescale `nexus_rx_volume` so audio loudness is the
+// same after the receive-slider's linear→quadratic curve change. Under
+// the old math the browser-capped audio.volume was `min(1, 1.8 * s/100)`;
+// under the new it's `(s/100)²`. We solve for the new slider that
+// preserves that audio value: s' = 100 * sqrt(min(1, 1.8 * s/100)).
+// Flag-gated so it only runs once per install. If no stored value
+// exists we seed 100 so new installs don't have to move the slider
+// manually to hear a loud enough signal.
+try {
+  if (localStorage.getItem('nexus_rx_volume_v2') !== '1') {
+    const raw = localStorage.getItem('nexus_rx_volume');
+    const old = Number(raw);
+    let next = 100;
+    if (Number.isFinite(old) && old >= 0 && old <= 150) {
+      const oldAudio = Math.min(1, 1.8 * (old / 100));
+      next = Math.round(100 * Math.sqrt(oldAudio));
+      if (!Number.isFinite(next) || next < 0) next = 100;
+      if (next > 150) next = 150;
+    }
+    localStorage.setItem('nexus_rx_volume', String(next));
+    localStorage.setItem('nexus_rx_volume_v2', '1');
+  }
+} catch {}
 // Handles /auth/discord/callback?code=xxx — exchanges code for JWT via backend
 function AuthCallback() {
   const [params] = useSearchParams();

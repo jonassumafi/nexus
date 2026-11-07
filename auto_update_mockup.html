@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nexus Auto-Update Mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  /* Deep Blue defaults (match installer_mockup + global.css skin tokens) */
+  --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A;
+  --rim0:#1A3A50; --rim1:#2A5A7A;
+  --blue:#66AADD; --cyan:#00EEFF; --lime:#44dd88; --red:#ff5544; --amber:#ffbb33;
+  --fg0:color-mix(in srgb,var(--cyan) 12%,#f4f4f4);
+  --fg1:color-mix(in srgb,var(--blue) 60%,#c8c8c8);
+  --fg2:color-mix(in srgb,var(--blue) 42%,#8c8c8c);
+  --fg3:color-mix(in srgb,var(--blue) 22%,#6a6a6a);
+  --inset:color-mix(in srgb,var(--bg0) 60%,#000);
+  --font:Inter,system-ui,sans-serif;
+  --d1:90ms;--d2:160ms;--d3:280ms;--d4:420ms;
+  --out:cubic-bezier(.2,.8,.2,1);--snap:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg0);color:var(--fg0);font:13px/1.5 var(--font);-webkit-font-smoothing:antialiased;padding:24px 16px 60px}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;text-align:inherit}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.w{max-width:1000px;margin:0 auto}
+h1{font:800 22px var(--font);color:var(--cyan);margin-bottom:6px;letter-spacing:.02em}
+.lead{color:var(--fg2);max-width:74ch;margin-bottom:18px}
+.lab{font:700 10px var(--font);letter-spacing:.14em;text-transform:uppercase;color:var(--fg2);margin:0 0 7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chip{padding:6px 12px;border:1px solid var(--rim0);background:var(--bg1);font:600 12px var(--font);color:var(--fg2);transition:background var(--d2),border-color var(--d2),color var(--d2)}
+.chip:hover{color:var(--cyan);border-color:var(--rim1)}
+.chip[aria-pressed=true]{background:var(--bg3);border-color:var(--blue);color:var(--cyan)}
+.chip i{display:inline-block;width:10px;height:10px;margin-right:7px;background:var(--c);vertical-align:-1px;border:1px solid rgba(0,0,0,.4)}
+
+.ctl{display:flex;flex-wrap:wrap;gap:20px 36px;margin-bottom:10px}
+.ctl > div{min-width:0}
+.ctl > div.full{flex-basis:100%}
+
+/* Scene = a simulated desktop corner that holds the live banner */
+.scene{position:relative;height:280px;border:1px solid var(--rim0);background:
+  radial-gradient(120% 90% at 30% 0%,var(--bg2) 0%,var(--bg0) 62%),var(--bg0);
+  overflow:hidden;margin-bottom:22px}
+.scene::before{content:"";position:absolute;inset:0;
+  background:
+   linear-gradient(transparent 0 calc(100% - 28px),var(--bg1) 0) 0 0/100% 100%,
+   repeating-linear-gradient(90deg,transparent 0 59px,rgba(255,255,255,.015) 59px 60px),
+   repeating-linear-gradient(0deg,transparent 0 59px,rgba(255,255,255,.015) 59px 60px);
+  pointer-events:none}
+.scene .tb{position:absolute;left:0;right:0;bottom:0;height:28px;border-top:1px solid var(--rim0);background:var(--bg1);display:flex;align-items:center;gap:10px;padding:0 10px;font:600 10px var(--font);letter-spacing:.12em;color:var(--fg3);z-index:2}
+.scene .tb b{color:var(--cyan);font-weight:800;letter-spacing:.2em}
+.scene .tb .sp{flex:1}
+.scene .fake{position:absolute;top:18px;left:18px;right:18px;bottom:46px;border:1px dashed var(--rim0);display:grid;place-items:center;color:var(--fg3);font:600 10px var(--font);letter-spacing:.2em;text-transform:uppercase}
+
+/* The banner itself — mirrors UpdateBanner.jsx inline styles */
+.banner{
+  position:absolute;right:16px;bottom:44px;z-index:5;
+  max-width:340px;min-width:240px;width:320px;
+  padding:10px;
+  background:linear-gradient(180deg,var(--bg2),var(--bg1));
+  border:1px solid var(--rim1);
+  border-radius:6px;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);
+  font-family:var(--font);
+  color:var(--fg0);
+  font-size:11px;
+  letter-spacing:.03em;
+  display:flex;flex-direction:column;gap:6px;
+  transform-origin:100% 100%;
+  animation:bannerIn var(--d3) var(--out);
+}
+@keyframes bannerIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.banner .t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:700;margin-bottom:2px}
+.banner .m{color:var(--fg2)}
+.banner.ready .m{color:var(--fg0)}
+.banner .row{display:flex;gap:6px;margin-top:2px}
+
+/* progress bar */
+.bar{height:6px;background:var(--bg0);border:1px solid var(--rim0);border-radius:3px;overflow:hidden;position:relative}
+.bar i{display:block;height:100%;width:0;background:var(--cyan);transition:width .2s ease}
+.bar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transform:translateX(-100%);animation:shine 1500ms linear infinite;pointer-events:none}
+@keyframes shine{to{transform:translateX(100%)}}
+
+/* buttons — match .btn / .btn.go from global.css */
+.btn{border:1px solid var(--rim1);background:var(--bg2);color:var(--fg0);font:600 10px var(--font);letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:3px;transition:background var(--d2),border-color var(--d2),color var(--d2),transform var(--d2)}
+.btn:hover{background:var(--bg3);border-color:var(--blue);color:var(--cyan)}
+.btn:active{transform:translateY(1px)}
+.btn.go{background:linear-gradient(180deg,var(--cyan),var(--blue));border-color:var(--cyan);color:var(--bg0);font-size:11px;font-weight:800;padding:4px 12px}
+.btn.go:hover{filter:brightness(1.08)}
+.btn.link{border:0;background:transparent;color:var(--fg2);text-transform:none;letter-spacing:.02em;padding:4px 6px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.btn.link:hover{color:var(--cyan);background:transparent}
+
+/* the "checking" spinner dot */
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cyan);margin-right:6px;vertical-align:1px;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.35;transform:scale(.9)}50%{opacity:1;transform:scale(1.15)}}
+
+/* State blocks (reference grid) */
+h2.s{font:700 12px var(--font);letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rim0)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.card{border:1px solid var(--rim0);background:var(--bg1);padding:14px;position:relative;transition:border-color var(--d2),background var(--d2)}
+.card.on{border-color:var(--cyan);background:linear-gradient(180deg,var(--bg2),var(--bg1));box-shadow:0 0 0 1px color-mix(in srgb,var(--cyan) 30%,transparent) inset}
+.card h3{font:800 10px var(--font);letter-spacing:.2em;text-transform:uppercase;color:var(--fg2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card.on h3{color:var(--cyan)}
+.card h3 .k{font:600 10px ui-monospace,Menlo,monospace;color:var(--fg3);letter-spacing:.06em;text-transform:none}
+.card .mini{height:150px;position:relative;background:
+  repeating-linear-gradient(90deg,transparent 0 29px,rgba(255,255,255,.015) 29px 30px),
+  repeating-linear-gradient(0deg,transparent 0 29px,rgba(255,255,255,.015) 29px 30px),
+  var(--inset);
+  border:1px solid var(--rim0);overflow:hidden}
+.card .mini .banner{right:8px;bottom:8px;width:auto;left:8px;animation:none}
+.card.idle .mini::after{content:"— banner hidden —";position:absolute;inset:0;display:grid;place-items:center;font:600 10px var(--font);letter-spacing:.2em;text-transform:uppercase;color:var(--fg3)}
+
+/* skins */
+.swatch{padding:8px 10px 8px 8px;border:1px solid var(--rim0);background:var(--bg1);display:inline-flex;align-items:center;gap:8px;font:600 11px var(--font);color:var(--fg2);transition:border-color var(--d2),color var(--d2),background var(--d2)}
+.swatch i{width:14px;height:14px;background:var(--c);border:1px solid rgba(0,0,0,.4);display:inline-block}
+.swatch:hover{color:var(--cyan);border-color:var(--rim1)}
+.swatch[aria-pressed=true]{background:var(--bg3);border-color:var(--cyan);color:var(--cyan)}
+.skins{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+
+/* animation inventory table */
+.tw{overflow-x:auto;margin-top:6px}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:12.5px}
+th{font:700 10px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--fg2);text-align:left;padding:7px 10px;border-bottom:1px solid var(--rim1);background:var(--bg1)}
+td{padding:7px 10px;border-bottom:1px solid var(--rim0);vertical-align:top;color:var(--fg1)}
+td code{font:11.5px ui-monospace,Menlo,monospace;color:var(--cyan)}
+
+.note{min-height:20px;margin-top:8px;color:var(--lime);font:600 11px var(--font)}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style></head>
+<body><div class="w">
+
+<h1>Nexus auto-update, live mockup</h1>
+<p class="lead">
+The companion app checks <code style="color:var(--cyan)">nexus-missions.space/api/releases/udp.yml</code> about four seconds after launch. When a newer version exists it downloads silently and shows this small corner card to prompt the install. Use the scenario buttons to cycle every state the banner can reach. The reference grid below shows all five states side-by-side.
+</p>
+
+<div class="ctl">
+ <div><div class="lab">Scenario</div><div class="chips" id="sc"></div></div>
+ <div><div class="lab">Progress</div><div class="chips" id="pg"></div></div>
+ <div class="full"><div class="lab">Skin</div><div class="skins" id="sk"></div></div>
+</div>
+
+<div class="scene" aria-label="Simulated dashboard with update banner in bottom-right">
+  <div class="fake">dashboard surface</div>
+  <div id="live"></div>
+  <div class="tb"><b>NEXUS</b><span>v0.9.23 running</span><span class="sp"></span><span id="scst">state: downloading</span></div>
+</div>
+<div class="note" id="note" role="status"></div>
+
+<h2 class="s">All states, side by side</h2>
+<div class="grid" id="grid">
+  <!-- Idle: banner hidden -->
+  <div class="card idle" data-state="idle">
+    <h3>Idle <span class="k">state=idle | none</span></h3>
+    <div class="mini"></div>
+  </div>
+
+  <!-- Checking: hidden in live app ("too noisy") but shown here for completeness -->
+  <div class="card" data-state="checking">
+    <h3>Checking for update <span class="k">state=checking (hidden in prod)</span></h3>
+    <div class="mini">
+      <div class="banner">
+        <span class="t">Nexus update check</span>
+        <span class="m"><span class="dot"></span>Checking for a newer version…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Downloading -->
+  <div class="card" data-state="downloading">
+    <h3>Downloading <span class="k">state=downloading</span></h3>
+    <div class="mini">
+      <div class="banner">
+        <span class="t">Nexus update downloading</span>
+        <span class="m">v0.9.24 · <span class="pct">42</span>%</span>
+        <div class="bar"><i style="width:42%"></i></div>
+        <div class="row"><button class="btn link">Hide</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ready to install -->
+  <div class="card" data-state="ready">
+    <h3>Ready to install <span class="k">state=ready</span></h3>
+    <div class="mini">
+      <div class="banner ready">
+        <span class="t">Nexus update ready</span>
+        <span class="m">v0.9.24 is downloaded. Install and restart?</span>
+        <div class="row">
+          <button class="btn go">Install now</button>
+          <button class="btn link">Later</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="card" data-state="error">
+    <h3>Error <span class="k">state=error</span></h3>
+    <div class="mini">
+      <div class="banner">
+        <span class="t" style="color:var(--red)">Update error</span>
+        <span class="m">net::ERR_INTERNET_DISCONNECTED while fetching udp.yml</span>
+        <div class="row"><button class="btn link">Dismiss</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="s">Animation inventory</h2>
+<div class="tw"><table>
+<tr><th>Element</th><th>Animation / transition</th><th>Duration · easing</th><th>Trigger</th></tr>
+<tr><td>Banner mount</td><td>Fade + 8px rise + scale 0.98 → 1 from bottom-right origin</td><td>280 ms · <code>cubic-bezier(.2,.8,.2,1)</code></td><td>State transitions from <code>idle</code> to any visible state</td></tr>
+<tr><td>Progress fill</td><td><code>width</code> tween on the cyan bar</td><td>200 ms · <code>ease</code></td><td>Each <code>progress</code> event from electron-updater</td></tr>
+<tr><td>Progress shine</td><td>Linear horizontal sweep of a translucent gradient over the fill</td><td>1500 ms · linear, infinite</td><td>While <code>downloading</code></td></tr>
+<tr><td>Checking dot</td><td>Scale 0.9 ↔ 1.15 + opacity 0.35 ↔ 1</td><td>1200 ms · ease-in-out, infinite</td><td>While <code>checking</code> (prod hides this state)</td></tr>
+<tr><td>Buttons</td><td>Background, border, color transitions on hover; 1px drop on active</td><td>160 ms · default</td><td>Pointer hover / press</td></tr>
+<tr><td>Scenario chips</td><td>Background + border + color transitions on press and hover</td><td>160 ms · default</td><td>Clicking a scenario or skin chip</td></tr>
+<tr><td>Reference card</td><td>Border color + inner glow transition when marked active</td><td>160 ms · default</td><td>Scenario selection highlights the matching card</td></tr>
+<tr><td>All</td><td>Everything above is suppressed under <code>prefers-reduced-motion: reduce</code></td><td>—</td><td>OS accessibility preference</td></tr>
+</table></div>
+
+</div>
+
+<script>
+// ---------- Skin palette (same 9 as installer_mockup) ----------
+// name, blue(--blue), cyan(--cyan), bg0, bg1, bg2, bg3, rim0, rim1
+const SK = [
+ ["Deep Blue",   "#66AADD","#00EEFF","#020C14","#061018","#0A1828","#12263A","#1A3A50","#2A5A7A"],
+ ["Obsidian",    "#b4c2d3","#e4f2ff","#0a0a0c","#101012","#17171a","#202024","#2c2c31","#4a4a52"],
+ ["Ember",       "#e3a655","#ffc766","#0c0806","#130d09","#1c130d","#281a11","#3a2616","#6a4524"],
+ ["Oxide",       "#e2806a","#ffae92","#0e0607","#160a0b","#20100f","#2e1715","#44201c","#7a3a2e"],
+ ["Olive drab",  "#aec86f","#dff48f","#090b06","#0f120a","#171b0f","#212714","#333b1f","#5c6b34"],
+ ["Violet void", "#ae92ee","#e6ceff","#0a0612","#100a1a","#181026","#231738","#34224f","#5b3d8c"],
+ ["Abyss",       "#52c6b3","#80f6e8","#04100f","#081817","#0e2321","#16322f","#1d4642","#2f7a72"],
+ ["Dune",        "#d8bd90","#f3deb4","#100e0c","#181512","#221e19","#2f2922","#403830","#6e6254"],
+ ["Carbon pink", "#ff5fae","#ff8cc6","#030304","#08080a","#0f0f12","#18181c","#25252b","#3e3e47"],
+];
+let SKI = 0;
+
+function applySkin(i){
+  SKI = i;
+  const s = SK[i];
+  const r = document.documentElement.style;
+  r.setProperty('--blue', s[1]);
+  r.setProperty('--cyan', s[2]);
+  r.setProperty('--bg0',  s[3]);
+  r.setProperty('--bg1',  s[4]);
+  r.setProperty('--bg2',  s[5]);
+  r.setProperty('--bg3',  s[6]);
+  r.setProperty('--rim0', s[7]);
+  r.setProperty('--rim1', s[8]);
+  renderSkins();
+}
+
+function renderSkins(){
+  const host = document.getElementById('sk');
+  host.innerHTML = SK.map((s,i)=>(
+    `<button class="swatch" data-k="${i}" aria-pressed="${i===SKI}" style="--c:${s[2]}">`+
+    `<i></i>${s[0]}</button>`
+  )).join('');
+}
+document.getElementById('sk').addEventListener('click', e=>{
+  const b = e.target.closest('[data-k]'); if(!b) return;
+  applySkin(+b.dataset.k);
+  note("Skin set to "+SK[SKI][0]);
+});
+
+// ---------- Scenario state machine ----------
+const STATES = [
+  {k:'idle',        label:'Idle (hidden)'},
+  {k:'checking',    label:'Checking'},
+  {k:'downloading', label:'Downloading'},
+  {k:'ready',       label:'Ready to install'},
+  {k:'error',       label:'Error'},
+];
+let cur = 'downloading';
+let pct = 42;
+let timer = null;
+
+function renderScenarioChips(){
+  document.getElementById('sc').innerHTML = STATES.map(s=>(
+    `<button class="chip" data-s="${s.k}" aria-pressed="${s.k===cur}">${s.label}</button>`
+  )).join('');
+  document.getElementById('pg').innerHTML = [0,25,42,78,100,'auto'].map(v=>(
+    `<button class="chip" data-p="${v}" aria-pressed="${(v==='auto'&&timer)||(v!==''&&v!=='auto'&&v===pct&&!timer)}">${v==='auto'?'Auto':v+'%'}</button>`
+  )).join('');
+}
+
+function note(msg){
+  const n = document.getElementById('note');
+  n.textContent = msg || '';
+  if(!msg) return;
+  clearTimeout(note._t);
+  note._t = setTimeout(()=>{ if(n.textContent===msg) n.textContent=''; }, 2200);
+}
+
+function renderBanner(){
+  const live = document.getElementById('live');
+  document.getElementById('scst').textContent = 'state: '+cur;
+  // highlight matching reference card
+  document.querySelectorAll('#grid .card').forEach(c=>{
+    c.classList.toggle('on', c.dataset.state===cur);
+  });
+  if(cur==='idle'){ live.innerHTML=''; return; }
+  if(cur==='checking'){
+    live.innerHTML = `<div class="banner" role="status">
+      <span class="t">Nexus update check</span>
+      <span class="m"><span class="dot"></span>Checking for a newer version…</span>
+    </div>`;
+    return;
+  }
+  if(cur==='downloading'){
+    const p = Math.max(0,Math.min(100,Math.round(pct)));
+    live.innerHTML = `<div class="banner" role="status">
+      <span class="t">Nexus update downloading</span>
+      <span class="m">v0.9.24 · <b style="color:var(--cyan);font-variant-numeric:tabular-nums">${p}</b>%</span>
+      <div class="bar"><i style="width:${p}%"></i></div>
+      <div class="row"><button class="btn link" data-act="hide">Hide</button></div>
+    </div>`;
+    return;
+  }
+  if(cur==='ready'){
+    live.innerHTML = `<div class="banner ready" role="status">
+      <span class="t">Nexus update ready</span>
+      <span class="m">v0.9.24 is downloaded. Install and restart?</span>
+      <div class="row">
+        <button class="btn go" data-act="install">Install now</button>
+        <button class="btn link" data-act="later">Later</button>
+      </div>
+    </div>`;
+    return;
+  }
+  if(cur==='error'){
+    live.innerHTML = `<div class="banner" role="status">
+      <span class="t" style="color:var(--red)">Update error</span>
+      <span class="m">net::ERR_INTERNET_DISCONNECTED while fetching udp.yml</span>
+      <div class="row"><button class="btn link" data-act="dismiss">Dismiss</button></div>
+    </div>`;
+    return;
+  }
+}
+
+function setState(k){
+  cur = k;
+  if(k!=='downloading') stopAuto();
+  renderScenarioChips();
+  renderBanner();
+}
+
+function setPct(v){
+  if(v==='auto'){ startAuto(); return; }
+  stopAuto();
+  pct = +v;
+  if(cur!=='downloading') cur='downloading';
+  renderScenarioChips();
+  renderBanner();
+}
+
+function startAuto(){
+  stopAuto();
+  if(cur!=='downloading'){ cur='downloading'; }
+  pct = 0;
+  renderScenarioChips();
+  renderBanner();
+  timer = setInterval(()=>{
+    pct += 2 + Math.random()*4;
+    if(pct >= 100){
+      pct = 100;
+      renderBanner();
+      stopAuto();
+      setTimeout(()=>{
+        cur = 'ready';
+        renderScenarioChips();
+        renderBanner();
+        note('Download finished — now waiting on user');
+      }, 450);
+      return;
+    }
+    // update only the fill + text, avoid remounting banner each tick
+    const el = document.querySelector('#live .banner .bar i');
+    const tx = document.querySelector('#live .banner .m b');
+    if(el) el.style.width = Math.round(pct)+'%';
+    if(tx) tx.textContent = Math.round(pct);
+  }, 260);
+}
+function stopAuto(){ if(timer){ clearInterval(timer); timer=null; } }
+
+// clicks
+document.getElementById('sc').addEventListener('click', e=>{
+  const b = e.target.closest('[data-s]'); if(!b) return;
+  setState(b.dataset.s);
+});
+document.getElementById('pg').addEventListener('click', e=>{
+  const b = e.target.closest('[data-p]'); if(!b) return;
+  setPct(b.dataset.p==='auto' ? 'auto' : +b.dataset.p);
+});
+document.getElementById('live').addEventListener('click', e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const act = b.dataset.act;
+  if(act==='hide' || act==='later' || act==='dismiss'){
+    setState('idle');
+    note(act==='hide' ? 'Banner hidden — still downloading in background'
+       : act==='later' ? 'Later: hidden until next version arrives (localStorage dismiss)'
+       : 'Error dismissed');
+  } else if(act==='install'){
+    note('installNow() → electron-updater quits and installs');
+  }
+});
+
+// init
+applySkin(0);
+renderScenarioChips();
+renderBanner();
+</script>
+</body></html>

@@ -106,6 +106,16 @@ function Companion() {
   const [pttKey, setPttKeyState] = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
   const [micSensitivity, setMicSensitivity] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
+  // Incoming playback volume — shared with the rest of the app via
+  // localStorage. main.jsx runs a one-time migration that seeds this
+  // to 100 for new installs and rescales legacy pre-quadratic values.
+  const [rxVolume, setRxVolume] = useState(() => {
+    const v = Number(localStorage.getItem('nexus_rx_volume'));
+    return Number.isFinite(v) && v >= 0 && v <= 150 ? v : 100;
+  });
+  useEffect(() => {
+    try { localStorage.setItem('nexus_rx_volume', String(rxVolume)); } catch {}
+  }, [rxVolume]);
   const [crewLocked, setCrewLocked] = useState(false);
   const [crewPowered, setCrewPowered] = useState(true);
   const [commandLocked, setCommandLocked] = useState(false);
@@ -125,6 +135,13 @@ function Companion() {
   useEffect(() => { crew.setSrsRadioSpec?.(myRadio?.spec || null); }, [myRadio, crew.setSrsRadioSpec]);
   useEffect(() => { crew.setSrsRadioBand?.(myRadio?.band || 'VHF'); }, [myRadio, crew.setSrsRadioBand]);
   useEffect(() => { crew.setMuted?.(isMuted); }, [isMuted, crew.setMuted]);
+  // Push the incoming volume into both hooks so the slider actually
+  // governs peer loudness in Companion view, not just UI state.
+  useEffect(() => {
+    const v = rxVolume / 100;
+    crew.setRxVolume?.(v);
+    command.setRxVolume?.(v);
+  }, [rxVolume, crew.setRxVolume, command.setRxVolume]);
   useEffect(() => { crew.setMicSensitivity?.(micSensitivity); }, [micSensitivity, crew.setMicSensitivity]);
 
   // Command tuner
@@ -489,12 +506,22 @@ function Companion() {
             </div>
 
             <SharedMicStrip
+              compact
               getLevel={crew.getInputLevel}
               sensitivity={micSensitivity}
               setSensitivity={setMicSensitivity}
-              rxVolume={null}
-              setRxVolume={null}
+              rxVolume={rxVolume}
+              setRxVolume={setRxVolume}
               isActive={!isMuted}
+              isMuted={isMuted}
+              onToggleMute={() => setIsMuted(m => !m)}
+              peersCount={(() => {
+                // Combined unique operators across both tuners.
+                const ids = new Set();
+                for (const p of (crew.peers || []))    if (p?.socketId || p?.userId) ids.add(String(p.socketId || p.userId));
+                for (const p of (command.peers || [])) if (p?.socketId || p?.userId) ids.add(String(p.socketId || p.userId));
+                return ids.size;
+              })()}
             />
 
             <div style={{

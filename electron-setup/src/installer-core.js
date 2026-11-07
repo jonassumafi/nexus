@@ -536,11 +536,11 @@ async function runUninstall({
   }
   const productName = regQuery(REG_ROOT, 'DisplayName') || PRODUCT_NAME;
 
-  onStep({ name: 'stopping Nexus', status: 'start' });
+  onStep({ name: 'closing Nexus processes', status: 'start' });
   await killNexus({ dirs: [existing.path] });
-  onStep({ name: 'stopping Nexus', status: 'ok' });
+  onStep({ name: 'closing Nexus processes', status: 'ok' });
 
-  onStep({ name: 'removing files', status: 'start' });
+  onStep({ name: 'clearing installed files', status: 'start' });
   // Remove only what we installed, then the folder itself if that left
   // it empty. Never rimraf InstallLocation wholesale: with /D= it can be
   // a folder the user also keeps other things in.
@@ -569,25 +569,25 @@ async function runUninstall({
   } else {
     rmdirIfEmpty(existing.path);
   }
-  onStep({ name: 'removing files', status: 'ok' });
+  onStep({ name: 'clearing installed files', status: 'ok' });
 
-  onStep({ name: 'removing shortcuts', status: 'start' });
+  onStep({ name: 'removing Start Menu and desktop shortcuts', status: 'start' });
   // Current and pre-0.9.22 names, whichever this install has.
   for (const n of new Set([productName, PRODUCT_NAME, ...LEGACY_PRODUCT_NAMES])) {
     for (const d of desktopDirs()) { try { fs.unlinkSync(path.join(d, `${n}.lnk`)); } catch {} }
     try { fs.unlinkSync(path.join(startMenuDir(), 'Startup', `${n}.lnk`)); } catch {}
   }
   try { rimraf(path.join(startMenuDir(), 'Nexus Interstellar Traffic System')); } catch {}
-  onStep({ name: 'removing shortcuts', status: 'ok' });
+  onStep({ name: 'removing Start Menu and desktop shortcuts', status: 'ok' });
 
-  onStep({ name: 'removing uninstall entry', status: 'start' });
+  onStep({ name: 'deregistering uninstall entry', status: 'start' });
   regDelete(REG_ROOT);
-  onStep({ name: 'removing uninstall entry', status: 'ok' });
+  onStep({ name: 'deregistering uninstall entry', status: 'ok' });
 
   if (keepSettings) {
-    onStep({ name: 'keeping your settings', status: 'ok' });
+    onStep({ name: 'preserving your settings and skins', status: 'ok' });
   } else {
-    onStep({ name: 'removing settings', status: 'start' });
+    onStep({ name: 'clearing settings and skins', status: 'start' });
     const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
     // This build's settings only; 'nexus-companion' belongs to the
     // separate non-UDP companion and must survive. The packaged app's
@@ -596,7 +596,7 @@ async function runUninstall({
     for (const name of ['nexus-companion-udp', 'Nexus Companion UDP']) {
       rimraf(path.join(appData, name));
     }
-    onStep({ name: 'removing settings', status: 'ok' });
+    onStep({ name: 'clearing settings and skins', status: 'ok' });
   }
 }
 

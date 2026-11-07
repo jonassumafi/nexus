@@ -7,7 +7,7 @@ const { app, BrowserWindow, ipcMain, dialog, clipboard, shell } = require('elect
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { loadSavedSkin } = require('./skin-loader');
+const { loadSavedSkin, defaultSkin } = require('./skin-loader');
 const core = require('./installer-core');
 
 // ─── CLI parsing ──────────────────────────────────────────────────────
@@ -30,7 +30,24 @@ if (!gotLock) { app.quit(); process.exit(0); }
 
 // ─── Skin applied before window.show() ───────────────────────────────
 // Resolved once at launch and frozen for the lifetime of the installer.
-const skin = loadSavedSkin();
+//
+// Scenario matrix:
+//   fresh install  → defaultSkin() (Deep Blue; no app yet to match)
+//   update         → loadSavedSkin() (continues the app's current look)
+//   uninstall      → loadSavedSkin() (last skin they chose; consistent
+//                     with how the running app looks right up until
+//                     the moment they remove it)
+//
+// Auto-updates run with --silent (no window), so the skin here doesn't
+// affect them. The app's own saved skin lives in Chromium's localStorage
+// inside userData and is untouched by any installer action.
+const skin = (() => {
+  try {
+    const existing = core.detectInstall();
+    if (existing && existing.exists) return loadSavedSkin();
+  } catch {}
+  return defaultSkin();
+})();
 
 // ─── Silent mode (no window) ─────────────────────────────────────────
 

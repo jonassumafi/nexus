@@ -29,6 +29,20 @@ import { getRadioChrome } from '../utils/radioChrome';
 const TUNER_ID = 'left';
 const COMMAND_CUE = CUE_SETS?.sets?.command || null;
 
+// Command uses a double-chime on PTT engage + release so the channel is
+// audibly more prominent than Crew (which uses a single click). 110 ms
+// between beeps reads as "beep-beep" without sounding sluggish. Both
+// the transmitter AND the receivers hear the same cadence.
+const DOUBLE_CHIME_GAP_MS = 110;
+function playCommandKeyUp(rc) {
+  try { rc?.playKeyUp(COMMAND_CUE); } catch {}
+  setTimeout(() => { try { rc?.playKeyUp(COMMAND_CUE); } catch {} }, DOUBLE_CHIME_GAP_MS);
+}
+function playCommandKeyDown(rc) {
+  try { rc?.playKeyDown(COMMAND_CUE); } catch {}
+  setTimeout(() => { try { rc?.playKeyDown(COMMAND_CUE); } catch {} }, DOUBLE_CHIME_GAP_MS);
+}
+
 export function useCommandTunerRx(opts = {}) {
   const {
     voiceProfile,
@@ -416,7 +430,7 @@ export function useCommandTunerRx(opts = {}) {
     // without competing with Crew's atmospheric bed when both are hot.
     try {
       const rc = getRadioChrome(audioCtxRef.current);
-      rc?.playKeyUp(COMMAND_CUE);
+      playCommandKeyUp(rc);
       rc?.setBedActive(true, 0.35, 'command-tx');
     } catch {}
     if (filterChainRef.current) {
@@ -432,7 +446,7 @@ export function useCommandTunerRx(opts = {}) {
     }
     try {
       const rc = getRadioChrome(audioCtxRef.current);
-      rc?.playKeyDown(COMMAND_CUE);
+      playCommandKeyDown(rc);
       rc?.setBedActive(false, 0, 'command-tx');
     } catch {}
     setTimeout(() => {
@@ -559,13 +573,36 @@ export function useCommandTunerRx(opts = {}) {
 
     const onPttStart = (payload) => {
       if (!matches(payload)) return;
-      setTransmittingIds(prev => prev.includes(payload.socketId) ? prev : [...prev, payload.socketId]);
+      setTransmittingIds(prev => {
+        if (prev.includes(payload.socketId)) return prev;
+        // RX-side chime so listeners hear the same keyup click the
+        // transmitter heard. Only fires on the FIRST peer going live
+        // (0 → 1) so overlapping speakers don't stack clicks. Matches
+        // the Crew UDP side's behavior at useRadioConnectionUDP.js's
+        // receive handler.
+        if (prev.length === 0 && !isPTTActive) {
+          try {
+            const rc = getRadioChrome(audioCtxRef.current);
+            playCommandKeyUp(rc);
+          } catch {}
+        }
+        return [...prev, payload.socketId];
+      });
       // No local bed on Command tuner — see startPTT for the reasoning.
     };
 
     const onPttStop = (payload) => {
       if (!matches(payload)) return;
-      setTransmittingIds(prev => prev.filter(id => id !== payload.socketId));
+      setTransmittingIds(prev => {
+        const next = prev.filter(id => id !== payload.socketId);
+        if (next.length === 0 && prev.length > 0 && !isPTTActive) {
+          try {
+            const rc = getRadioChrome(audioCtxRef.current);
+            playCommandKeyDown(rc);
+          } catch {}
+        }
+        return next;
+      });
     };
 
     socket.on('radio:room-peers',    onRoomPeers);

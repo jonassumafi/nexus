@@ -2523,6 +2523,7 @@ export default function Dashboard() {
   });
   const [showBugReport, setShowBugReport]   = useState(false);
   const [showRadioPicker, setShowRadioPicker] = useState(false);
+  const [showCommandRadioPicker, setShowCommandRadioPicker] = useState(false);
   // Mirror of the Electron shell's window state so the Pin / Radio-only
   // Banner buttons reflect reality (user may toggle via keyboard or via
   // another window's control).
@@ -2911,7 +2912,8 @@ export default function Dashboard() {
     }}>
       <TitleBar title="NEXUS" subtitle="Dashboard" />
       <BugReportModal open={showBugReport} onClose={() => setShowBugReport(false)} />
-      <RadioPickerModal open={showRadioPicker} onClose={() => setShowRadioPicker(false)} />
+      <RadioPickerModal open={showRadioPicker} onClose={() => setShowRadioPicker(false)} tunerId="right" />
+      <RadioPickerModal open={showCommandRadioPicker} onClose={() => setShowCommandRadioPicker(false)} tunerId="left" />
       <WhatsNewSplash />
       <UpdateBanner />
       <GlobalChat
@@ -3081,6 +3083,7 @@ export default function Dashboard() {
           anchorRef={settingsBtnRef}
           onClose={() => setSettingsPopoverOpen(false)}
           onOpenRadioPicker={() => setShowRadioPicker(true)}
+          onOpenCommandRadioPicker={() => setShowCommandRadioPicker(true)}
         />
       )}
 
