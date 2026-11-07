@@ -527,12 +527,20 @@ export function useRadioConnectionUDP({
 
     clearInterval(keepaliveTimerRef.current);
     keepaliveTimerRef.current = null;
+    // Capture the session id BEFORE the awaits + clear the ref. If a
+    // joinFrequency re-enters this hook before the async cleanup
+    // finishes, it will update udpSessionIdRef to the NEW session's id;
+    // a late `close(udpSessionIdRef.current)` would then kill the new
+    // session using its own id (defeating the stale-id check). Reading
+    // the ref synchronously here freezes the id we're actually closing.
+    const sid = udpSessionIdRef.current;
+    udpSessionIdRef.current = null;
     (async () => {
       try { await udpTxRef.current?.close?.(); } catch {}
       udpTxRef.current = null;
       try { udpRxRef.current?.close?.(); } catch {}
       udpRxRef.current = null;
-      try { if (hasUdp) await window.electronAPI.udp.close(udpSessionIdRef.current); } catch {}
+      try { if (hasUdp) await window.electronAPI.udp.close(sid); } catch {}
     })();
 
     cleanupAllPeers();
@@ -826,10 +834,15 @@ export function useRadioConnectionUDP({
         }
       } catch {}
       clearInterval(keepaliveTimerRef.current);
+      // Same capture-before-await discipline as leaveFrequency. A
+      // re-entrant joinFrequency during unmount would otherwise swap
+      // the ref to the new session's id before this async close runs.
+      const sid = udpSessionIdRef.current;
+      udpSessionIdRef.current = null;
       (async () => {
         try { await udpTxRef.current?.close?.(); } catch {}
         try { udpRxRef.current?.close?.(); } catch {}
-        try { if (hasUdp) await window.electronAPI.udp.close(udpSessionIdRef.current); } catch {}
+        try { if (hasUdp) await window.electronAPI.udp.close(sid); } catch {}
       })();
       for (const a of Object.values(peerAudiosRef.current)) {
         try { a.pause(); a.srcObject = null; } catch {}
