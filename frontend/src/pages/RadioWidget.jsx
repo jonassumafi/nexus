@@ -88,8 +88,25 @@ export default function RadioWidget() {
       fontFamily: 'var(--font)',
       overflow: 'hidden',
     }}>
+      {/* Body background becomes a drag region so the whole radio-only
+          window can be moved by grabbing any empty area — not just the
+          30px title bar. Interactive elements inside RadioOverlay
+          (buttons, inputs, selects, the frequency display) explicitly
+          override back to no-drag below so they still take clicks. */}
+      <style>{`
+        .rw-drag { -webkit-app-region: drag; }
+        .rw-drag button,
+        .rw-drag input,
+        .rw-drag select,
+        .rw-drag textarea,
+        .rw-drag a,
+        .rw-drag [role="button"],
+        .rw-drag [contenteditable="true"],
+        .rw-drag .rm-ov-disp,
+        .rw-drag .rm-ov-bar { -webkit-app-region: no-drag; }
+      `}</style>
       <TitleBar title="NEXUS" subtitle="Radio" extras={extras} compact />
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div className="rw-drag" style={{ flex: 1, minHeight: 0 }}>
         <RadioOverlay />
       </div>
     </div>

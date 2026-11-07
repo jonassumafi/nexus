@@ -352,7 +352,13 @@ function switchMode(nextMode) {
 
   const m = MODES[currentMode];
   const state = loadState();
-  mainWindow.setResizable(currentMode === 'full');
+  // All modes are user-resizable (and draggable). The per-mode minSize
+  // keeps shrinking the companion / radio-only windows to a floor that
+  // still renders their layout. Full mode gets maximized below and the
+  // user drags it via the OS; companion / radio windows get their
+  // frameless drag region from the renderer's title bar.
+  mainWindow.setResizable(true);
+  mainWindow.setMovable(true);
   mainWindow.setMinimumSize(m.minSize.width, m.minSize.height);
 
   if (currentMode === 'full') {
@@ -737,6 +743,41 @@ function createTray() {
   } catch (err) {
     console.error('[main] tray failed:', err.message);
   }
+}
+
+// ─── Single-instance guard ───────────────────────────────────────────────
+// Prevents the "two Nexus windows open and each thinks it's the only one"
+// situation. First launch takes the lock; any subsequent launch (double-
+// click on the desktop shortcut while the app is already running, auto-
+// start firing while the user has it open, etc.) exits immediately after
+// signalling the first instance to show/focus its window.
+//
+// Also fixes the knock-on Discord re-login prompt: without the lock, the
+// second Electron process couldn't share Chromium's LevelDB profile with
+// the first, so its localStorage read came back empty and it bounced to
+// the login gate.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+  process.exit(0);
+}
+app.on('second-instance', () => {
+  // If the primary is on its way out (tray Quit, auto-update restart),
+  // don't try to show a window that's about to be destroyed.
+  if (isQuitting) return;
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (!mainWindow.isVisible()) mainWindow.show();
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+});
+
+// Windows AppUserModelId — groups all Nexus taskbar entries, shortcuts,
+// and jump lists under one identity. Without this, a shortcut launch
+// and an auto-start launch can appear as two separate apps in the
+// taskbar even when they're the same process — which looked like "two
+// instances" to users even when the single-instance lock was holding.
+if (process.platform === 'win32') {
+  try { app.setAppUserModelId('space.nexus-missions.companion-udp'); } catch {}
 }
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────

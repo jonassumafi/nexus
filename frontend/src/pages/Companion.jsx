@@ -329,12 +329,26 @@ function Companion() {
 
   // ── Render ──────────────────────────────────────────────────────
   return (
-    <div style={{
+    <div className="cmp-drag" style={{
       width: '100%', height: '100%',
       display: 'flex', flexDirection: 'column',
       fontFamily: 'var(--font)', color: 'var(--fg1)',
       background: 'var(--bg0)', overflow: 'hidden',
     }}>
+      {/* Companion body = drag region. Interactive elements below still
+          get clicks because they override back to no-drag via the rule
+          below. Lets the user grab any empty area to move the window,
+          not just the 30px titlebar. */}
+      <style>{`
+        .cmp-drag { -webkit-app-region: drag; }
+        .cmp-drag button,
+        .cmp-drag input,
+        .cmp-drag select,
+        .cmp-drag textarea,
+        .cmp-drag a,
+        .cmp-drag [role="button"],
+        .cmp-drag [contenteditable="true"] { -webkit-app-region: no-drag; }
+      `}</style>
       <TitleBar subtitle="Companion" compact />
 
       {/* Dedicated toolbar band below the titlebar — the 324px window

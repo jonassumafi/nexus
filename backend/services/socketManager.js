@@ -294,18 +294,28 @@ function init(socketIo) {
       } catch {}
 
       // Detect simultaneous transmission on this frequency — if any
-      // other socket in this room is already transmitting, broadcast
-      // a collision event to EVERYONE on the freq (including the
-      // transmitters themselves so they hear the clash too).
-      const activeTxers = pttActiveByFreq.get(room);
-      if (activeTxers && activeTxers.size > 0 && !activeTxers.has(socket.id)) {
+      // OTHER user is already transmitting, broadcast a collision
+      // event to EVERYONE on the freq (including the transmitters
+      // themselves so they hear the clash too).
+      //
+      // Dedupe by userId, not socket.id: reconnects, refreshes and
+      // mode switches all mint a new socket.id. If the previous
+      // socket's cleanup hadn't fired yet when the new socket emits
+      // ptt-start, a socket-id-based check saw the stale entry as "a
+      // different transmitter" and fired a self-collision. userId
+      // stays stable across the reconnect, so the user is correctly
+      // identified as already-transmitting and no phantom collision
+      // is emitted.
+      const activeUsers = pttActiveByFreq.get(room);
+      const meId = String(socket.userId || '');
+      if (activeUsers && activeUsers.size > 0 && !activeUsers.has(meId)) {
         io.to(room).emit('radio:collision', {
           frequency,
-          transmitters: [...activeTxers, socket.id],
+          transmitters: [...activeUsers, meId],
         });
       }
-      if (!activeTxers) pttActiveByFreq.set(room, new Set([socket.id]));
-      else activeTxers.add(socket.id);
+      if (!activeUsers) pttActiveByFreq.set(room, new Set([meId]));
+      else activeUsers.add(meId);
 
       socket.to(room).emit('radio:ptt-start', {
         userId: socket.userId,
@@ -323,7 +333,7 @@ function init(socketIo) {
       const room = `freq_${frequency}:${tuner}`;
       const active = pttActiveByFreq.get(room);
       if (active) {
-        active.delete(socket.id);
+        active.delete(String(socket.userId || ''));
         if (active.size === 0) pttActiveByFreq.delete(room);
       }
       socket.to(room).emit('radio:ptt-stop', {
@@ -361,7 +371,7 @@ function init(socketIo) {
         // triggers phantom collisions.
         const active = pttActiveByFreq.get(room);
         if (active) {
-          active.delete(socket.id);
+          active.delete(String(socket.userId || ''));
           if (active.size === 0) pttActiveByFreq.delete(room);
         }
         socket.to(room).emit('radio:peer-left', {
