@@ -77,6 +77,11 @@ export function useRadioConnectionUDP({
   // UDP wiring refs
   const udpTxRef         = useRef(null);
   const udpRxRef         = useRef(null);
+  // Session-ID token returned by udp.open(). Passed back to udp.close()
+  // so a late unmount cleanup from the PREVIOUS view can't kill the
+  // session the CURRENT view just opened. The main process ignores
+  // close(id) when id doesn't match the live session.
+  const udpSessionIdRef  = useRef(null);
   const keepaliveTimerRef = useRef(null);
   // userId -> HTMLAudioElement
   const peerAudiosRef    = useRef({});
@@ -413,7 +418,7 @@ export function useRadioConnectionUDP({
     // Open the UDP session with the current page hostname as relay host.
     const userId = meRef.current?._id ? String(meRef.current._id) : 'anonymous';
     try {
-      await window.electronAPI.udp.open({
+      const result = await window.electronAPI.udp.open({
         userId,
         freq: f,
         tunerId: 'right',
@@ -421,6 +426,10 @@ export function useRadioConnectionUDP({
         port: UDP_PORT,
         senderBand: bandStringToByte(srsBandRef.current),
       });
+      // 0.9.23+ main returns { ok, sessionId, ... }; older builds return
+      // undefined. Falsy sessionId → close() falls back to today's
+      // no-arg behavior, which stays compatible with pre-0.9.23 shells.
+      udpSessionIdRef.current = result && result.sessionId ? result.sessionId : null;
     } catch (err) {
       console.error('[RadioUDP] udp.open failed:', err);
     }
@@ -523,7 +532,7 @@ export function useRadioConnectionUDP({
       udpTxRef.current = null;
       try { udpRxRef.current?.close?.(); } catch {}
       udpRxRef.current = null;
-      try { if (hasUdp) await window.electronAPI.udp.close(); } catch {}
+      try { if (hasUdp) await window.electronAPI.udp.close(udpSessionIdRef.current); } catch {}
     })();
 
     cleanupAllPeers();
@@ -820,7 +829,7 @@ export function useRadioConnectionUDP({
       (async () => {
         try { await udpTxRef.current?.close?.(); } catch {}
         try { udpRxRef.current?.close?.(); } catch {}
-        try { if (hasUdp) await window.electronAPI.udp.close(); } catch {}
+        try { if (hasUdp) await window.electronAPI.udp.close(udpSessionIdRef.current); } catch {}
       })();
       for (const a of Object.values(peerAudiosRef.current)) {
         try { a.pause(); a.srcObject = null; } catch {}
