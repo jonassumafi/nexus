@@ -34,6 +34,10 @@ const MARKER_FILE = '.nexus-install.json';
 // keeps working after the downloaded installer (or electron-updater's
 // cached copy) is deleted.
 const UNINSTALLER = 'Uninstall Nexus.exe';
+// Display name: exe, shortcuts, Windows Settings entry. Renamed from
+// "Nexus Companion UDP" in 0.9.22; the old name is cleaned up on update.
+const PRODUCT_NAME = 'Nexus';
+const LEGACY_PRODUCT_NAMES = ['Nexus Companion UDP'];
 
 // ─── Paths ────────────────────────────────────────────────────────────
 
@@ -109,19 +113,39 @@ function detectInstall() {
 
 // ─── Process gating ───────────────────────────────────────────────────
 
-async function isNexusRunning() {
-  const r = await runAsync('tasklist', ['/FI', 'IMAGENAME eq Nexus Companion*', '/FO', 'CSV', '/NH']);
-  return /Nexus Companion/i.test(r.stdout);
+// Since v0.9.22 the app is plain "Nexus.exe". That name is not unique —
+// other software (e.g. the Winstep Nexus dock) runs as Nexus.exe — so a
+// Nexus.exe only counts as ours when it runs from one of our install dirs.
+// The pre-0.9.22 names are unique and always count.
+const LEGACY_EXES = ['Nexus Companion UDP.exe', 'Nexus Companion.exe'];
+async function nexusPids(dirs = []) {
+  const roots = dirs.filter(Boolean).map(d => path.resolve(d).toLowerCase() + path.sep);
+  const names = ['Nexus.exe', ...LEGACY_EXES].map(n => `Name='${n}'`).join(' OR ');
+  const r = await runAsync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+    `Get-CimInstance Win32_Process -Filter "${names}" | ForEach-Object { "$($_.ProcessId)|$($_.Name)|$($_.ExecutablePath)" }`]);
+  const pids = [];
+  for (const line of String(r.stdout || '').split(/\r?\n/)) {
+    const [pid, name, exe] = line.trim().split('|');
+    if (!pid || !name) continue;
+    const legacy = LEGACY_EXES.some(n => n.toLowerCase() === name.toLowerCase());
+    const ours = exe && roots.some(root => exe.toLowerCase().startsWith(root));
+    if (legacy || ours) pids.push(pid);
+  }
+  return pids;
+}
+async function isNexusRunning(dirs) {
+  return (await nexusPids(dirs)).length > 0;
 }
 // taskkill returns as soon as termination is requested; the processes
 // (Electron runs several) hold file locks until they've actually exited.
 // Since close-to-tray, "closed" Nexus is usually still running, so wait
 // for it to be gone before touching its files.
-async function killNexus({ timeoutMs = 15000 } = {}) {
-  await runAsync('taskkill', ['/F', '/T', '/IM', 'Nexus Companion UDP.exe']);
-  await runAsync('taskkill', ['/F', '/T', '/IM', 'Nexus Companion.exe']);
+async function killNexus({ dirs = [], timeoutMs = 15000 } = {}) {
+  for (const pid of await nexusPids(dirs)) {
+    await runAsync('taskkill', ['/F', '/T', '/PID', pid]);
+  }
   const deadline = Date.now() + timeoutMs;
-  while (await isNexusRunning()) {
+  while (await isNexusRunning(dirs)) {
     if (Date.now() > deadline) throw new Error('Nexus is still running and could not be closed — quit it from the tray and try again');
     await new Promise(r => setTimeout(r, 250));
   }
@@ -249,9 +273,24 @@ function startMenuDir() {
   const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
   return path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs');
 }
+// The desktop the user actually sees. Windows 11 often redirects it to
+// OneDrive (C:\Users\<u>\OneDrive\Desktop); USERPROFILE\Desktop then
+// exists but isn't shown, so shortcuts put there were invisible. The
+// User Shell Folders key holds the real path (REG_EXPAND_SZ, e.g.
+// %USERPROFILE%\OneDrive\Desktop).
+let cachedDesktop = null;
 function desktopDir() {
-  // USERPROFILE\Desktop is the non-redirected per-user location.
-  return path.join(process.env.USERPROFILE || os.homedir(), 'Desktop');
+  if (cachedDesktop) return cachedDesktop;
+  const fallback = path.join(process.env.USERPROFILE || os.homedir(), 'Desktop');
+  const raw = regQuery('HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders', 'Desktop');
+  const expanded = raw && raw.replace(/%([^%]+)%/g, (m, v) => process.env[v] ?? m);
+  cachedDesktop = (expanded && !expanded.includes('%') && fs.existsSync(expanded)) ? expanded : fallback;
+  return cachedDesktop;
+}
+// Everywhere a Nexus desktop shortcut may be: the real desktop, plus
+// USERPROFILE\Desktop where installers before 0.9.22 put it.
+function desktopDirs() {
+  return [...new Set([desktopDir(), path.join(process.env.USERPROFILE || os.homedir(), 'Desktop')])];
 }
 
 // ─── Extraction with per-entry progress ───────────────────────────────
@@ -285,13 +324,27 @@ async function runInstall({
   cancel          = cancelHandle(),
 } = {}) {
   const manifest    = readManifest();
-  const productName = manifest.productName || 'Nexus Companion UDP';
+  const productName = manifest.productName || PRODUCT_NAME;
   const version     = manifest.version     || '0.0.0';
   const exeName     = manifest.exeName     || `${productName}.exe`;
   const stagingDir  = path.join(installDir, STAGING_DIR);
   const backupDir   = path.join(installDir, BACKUP_DIR);
   const existing    = detectInstall();
   const isUpdate    = !!existing;
+  const procDirs    = [installDir, existing && existing.path];
+
+  // Shortcuts the user already has, under the current or a pre-0.9.22
+  // name. An update keeps them (re-pointed and renamed) instead of
+  // dropping them: silent/auto updates pass createDesktop/startWithLogin
+  // false, which used to delete the user's choice.
+  const lnkNames     = [productName, ...LEGACY_PRODUCT_NAMES].map(n => n + '.lnk');
+  const hadLnk       = (dir) => lnkNames.some(n => fs.existsSync(path.join(dir, n)));
+  const startupDir   = path.join(startMenuDir(), 'Startup');
+  createDesktop  = createDesktop  || (isUpdate && desktopDirs().some(hadLnk));
+  startWithLogin = startWithLogin || (isUpdate && hadLnk(startupDir));
+  const removeOldLnks = (dir) => {
+    for (const n of LEGACY_PRODUCT_NAMES) { try { fs.unlinkSync(path.join(dir, n + '.lnk')); } catch {} }
+  };
   const finalExe    = path.join(installDir, exeName);
   const dirExisted  = fs.existsSync(installDir);
   let zip = null, payloadNames = new Set();
@@ -345,7 +398,7 @@ async function runInstall({
     // Step 2
     if (isUpdate) {
       onStep({ name: steps[1], status: 'start' });
-      if (await isNexusRunning()) await killNexus();
+      if (await isNexusRunning(procDirs)) await killNexus({ dirs: procDirs });
       onStep({ name: steps[1], status: 'ok' });
     } else {
       onStep({ name: steps[1], status: 'start' });
@@ -406,7 +459,15 @@ async function runInstall({
     const smDir = path.join(startMenuDir(), 'Nexus Interstellar Traffic System');
     ensureDir(smDir);
     await makeShortcut(path.join(smDir, `${productName}.lnk`), finalExe, '', installDir, finalExe, productName);
+    removeOldLnks(smDir); // pre-0.9.22 "Nexus Companion UDP" shortcut
     onStep({ name: steps[5], status: 'ok' });
+
+    // Old-name shortcuts point at an exe the update just removed.
+    desktopDirs().forEach(removeOldLnks);
+    // A pre-0.9.22 build put its desktop shortcut in %USERPROFILE%\Desktop,
+    // which may not be the visible desktop; move ours to the real one.
+    for (const d of desktopDirs()) if (d !== desktopDir()) { try { fs.unlinkSync(path.join(d, productName + ".lnk")); } catch {} }
+    removeOldLnks(startupDir);
 
     // Step 7 — Desktop shortcut (optional)
     if (createDesktop) {
@@ -473,10 +534,10 @@ async function runUninstall({
     onStep({ name: 'no install found', status: 'warn' });
     return;
   }
-  const productName = regQuery(REG_ROOT, 'DisplayName') || 'Nexus Companion UDP';
+  const productName = regQuery(REG_ROOT, 'DisplayName') || PRODUCT_NAME;
 
   onStep({ name: 'stopping Nexus', status: 'start' });
-  await killNexus();
+  await killNexus({ dirs: [existing.path] });
   onStep({ name: 'stopping Nexus', status: 'ok' });
 
   onStep({ name: 'removing files', status: 'start' });
@@ -511,9 +572,12 @@ async function runUninstall({
   onStep({ name: 'removing files', status: 'ok' });
 
   onStep({ name: 'removing shortcuts', status: 'start' });
-  try { fs.unlinkSync(path.join(desktopDir(), `${productName}.lnk`)); } catch {}
+  // Current and pre-0.9.22 names, whichever this install has.
+  for (const n of new Set([productName, PRODUCT_NAME, ...LEGACY_PRODUCT_NAMES])) {
+    for (const d of desktopDirs()) { try { fs.unlinkSync(path.join(d, `${n}.lnk`)); } catch {} }
+    try { fs.unlinkSync(path.join(startMenuDir(), 'Startup', `${n}.lnk`)); } catch {}
+  }
   try { rimraf(path.join(startMenuDir(), 'Nexus Interstellar Traffic System')); } catch {}
-  try { fs.unlinkSync(path.join(startMenuDir(), 'Startup', `${productName}.lnk`)); } catch {}
   onStep({ name: 'removing shortcuts', status: 'ok' });
 
   onStep({ name: 'removing uninstall entry', status: 'start' });

@@ -16,7 +16,7 @@ npm run build
 That does, in order:
 1. Builds the companion as an unpacked directory (`electron/dist/win-unpacked`).
 2. Zips it into `payload/nexus-companion.zip` + writes `payload/manifest.json`.
-3. Packages `dist/Nexus UDP Setup <version>.exe` (portable single-file).
+3. Packages `dist/Nexus Setup <version>.exe` (portable single-file).
 4. Emits `dist/latest-udp.yml` so `electron-updater` handoff keeps working.
 
 Publish by copying both files into `backend/releases/`.
@@ -37,7 +37,8 @@ Silent install exit codes: `0` success, `1` error, `2` canceled.
 * Start Menu shortcut in `Nexus Interstellar Traffic System\`.
 * Optional desktop shortcut.
 * `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Nexus` so
-  Windows Settings lists "Nexus Companion UDP".
+  Windows Settings lists "Nexus" (renamed from "Nexus Companion UDP" in
+  0.9.22; updates rename the old shortcuts too).
 * Never writes outside the install folder, the shortcut locations
   above, and the HKCU uninstall key.
 
@@ -78,7 +79,7 @@ certificate (EV preferred) and set `win.certificateFile` /
 * Silent install (`--silent`) + silent uninstall (`--silent --uninstall`).
 * `/D=` custom path.
 * Cancel mid-extraction (Esc or Cancel link) — rollback clean.
-* Hold a handle on `Nexus Companion UDP.exe` during update — expect
+* Hold a handle on `Nexus.exe` during update — expect
   Failed screen with log tail + Retry/Copy log.
 * Nine saved skins, in `skin.json`:
   `deepblue, obsidian, ember, oxide, olive, violet, abyss, dune, carbon`.

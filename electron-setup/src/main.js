@@ -99,7 +99,7 @@ ipcMain.handle('setup:get-context', () => {
     defaultDir: core.getDefaultInstallDir(),
     manifest: m,
     version: m.version || '0.0.0',
-    productName: m.productName || 'Nexus Companion UDP',
+    productName: m.productName || 'Nexus',
     // Windows Settings → Uninstall launches us with --uninstall (no
     // --silent); the renderer opens straight on the uninstall screen.
     uninstallRequested: flags.uninstall,
@@ -156,7 +156,7 @@ ipcMain.handle('setup:launch-app', () => {
   const existing = core.detectInstall();
   if (!existing || !existing.path) return false;
   const m = core.readManifest();
-  const exe = path.join(existing.path, m.exeName || 'Nexus Companion UDP.exe');
+  const exe = path.join(existing.path, m.exeName || 'Nexus.exe');
   if (!fs.existsSync(exe)) return false;
   shell.openPath(exe).catch(() => {});
   return true;

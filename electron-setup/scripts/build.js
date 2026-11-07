@@ -111,12 +111,12 @@ zip.writeZip(zipPath);
 
 // 3) Find the companion exe name inside the unpacked dir.
 const exeMatch = fs.readdirSync(UNPACKED_SRC).find(n => n.toLowerCase().endsWith('.exe'));
-const exeName  = exeMatch || 'Nexus Companion UDP.exe';
+const exeName  = exeMatch || 'Nexus.exe';
 
 // 4) Write manifest.json so the installer knows what it's carrying.
 const size = fs.statSync(zipPath).size;
 const manifest = {
-  productName: 'Nexus Companion UDP',
+  productName: 'Nexus',
   version:     COMPANION_PKG.version,
   exeName,
   size,
@@ -142,7 +142,7 @@ electronBuilder(ROOT, ['--win', '--config', 'electron-builder.yml']);
 // under its legacy name.
 const CHANNEL_YML = PUBLISH.channel + '.yml';
 log('Emitting ' + CHANNEL_YML + ' (+ latest-udp.yml)');
-const setupExe = fs.readdirSync(DIST_DIR).find(n => n.startsWith('Nexus UDP Setup ') && n.endsWith('.exe'));
+const setupExe = fs.readdirSync(DIST_DIR).find(n => n.startsWith('Nexus Setup ') && n.endsWith('.exe'));
 if (!setupExe) {
   console.error('✗ installer exe not found in ' + DIST_DIR);
   process.exit(1);

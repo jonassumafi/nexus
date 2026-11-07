@@ -77,9 +77,10 @@ ssh(`cd ${sh(DIR)} && mv -f .incoming/${sh(exeName)} . && mv -f .incoming/udp.ym
 console.log('  live: ' + exeName + ' + udp.yml');
 
 // ── Optional cleanup ──────────────────────────────────────────────────
-// Keep the newest two "Nexus UDP Setup <ver>.exe" (current + rollback).
+// Keep the newest two installers (current + rollback). Named "Nexus Setup
+// <ver>.exe" since 0.9.22, "Nexus UDP Setup <ver>.exe" before; both count.
 const listing = ssh(`cd ${sh(DIR)} && ls -1`, { capture: true })
-  .split('\n').map(s => s.trim()).filter(n => n.startsWith('Nexus UDP Setup ') && n.endsWith('.exe'));
+  .split('\n').map(s => s.trim()).filter(n => /^Nexus (UDP )?Setup \d+\.\d+\.\d+\.exe$/.test(n));
 const verOf = n => (n.match(/Setup (\d+)\.(\d+)\.(\d+)\.exe$/) || []).slice(1).map(Number);
 const sorted = listing.filter(n => verOf(n).length === 3)
   .sort((a, b) => { const x = verOf(a), y = verOf(b); return y[0] - x[0] || y[1] - x[1] || y[2] - x[2]; });

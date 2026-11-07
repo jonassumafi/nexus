@@ -15,6 +15,6 @@ win:
   target: portable
   icon: ../electron/build/icon.ico
   publisherName: "Nexus Interstellar Traffic System"
-  artifactName: "Nexus UDP Setup ${version}.${ext}"
+  artifactName: "Nexus Setup ${version}.${ext}"
 portable:
-  artifactName: "Nexus UDP Setup ${version}.${ext}"
+  artifactName: "Nexus Setup ${version}.${ext}"
