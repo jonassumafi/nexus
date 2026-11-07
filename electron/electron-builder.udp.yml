@@ -1,10 +1,18 @@
 extends: null
 appId: space.nexus-missions.companion-udp
-productName: "Nexus Companion UDP"
+# Display name only: the exe (Nexus.exe), shortcuts and Windows Settings
+# entry. v0.9.22 renamed it from "Nexus Companion UDP" now that UDP is the
+# standard build.
+productName: "Nexus"
 # extraMetadata overrides package.json fields in the shipped app. Changing
 # the "name" field is how main.js's `app.getName().includes("UDP")` check
 # actually reports true at runtime — productName alone doesn't flow into
 # app.getName().
+#
+# KEEP name, appId and the publish channel as they are: name is also the
+# settings folder (%APPDATA%\nexus-companion-udp: logins, skins, PTT keys),
+# appId groups taskbar icons, and channel "udp" is the udp.yml every
+# installed copy checks for updates. Renaming any of them strands users.
 extraMetadata:
   name: nexus-companion-udp
 npmRebuild: false
@@ -27,8 +35,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: "Nexus Companion UDP"
-  uninstallDisplayName: "Nexus Companion UDP — UDP voice test build"
+  shortcutName: "Nexus"
+  uninstallDisplayName: "Nexus"
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico

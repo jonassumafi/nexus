@@ -188,7 +188,8 @@ function createWindow() {
     hasShadow: true,
     backgroundColor: '#020C14',
     autoHideMenuBar: true,
-    title: 'Nexus Companion',
+    // Shown in the taskbar, Alt+Tab and Task Manager.
+    title: `Nexus ${app.getVersion()}`,
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     // Frameless — the custom <TitleBar /> component drawn by the renderer
     // owns the drag region and the min / max / close controls. v0.6.3
@@ -321,6 +322,8 @@ function createWindow() {
     persistBounds();
   });
   mainWindow.on('unmaximize', persistBounds);
+  // Keep "Nexus <version>" instead of each page's own <title>.
+  mainWindow.on('page-title-updated', (e) => e.preventDefault());
 }
 
 // Compute initial window bounds for a mode, clamping to primary display.
