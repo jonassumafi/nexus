@@ -862,8 +862,13 @@ app.whenReady().then(() => {
   // First check 4s after launch (lets the renderer mount its IPC listeners),
   // then every 10 min while running. Unpacked dev builds no-op internally.
   const runCheck = () => {
-    try { autoUpdater.checkForUpdates(); }
-    catch (err) { console.warn('[updater] check failed:', err?.message); }
+    // Nothing to learn while an update is downloading or already
+    // downloaded, and a check that fails then (offline, server restart)
+    // emits 'error', which flips the renderer's Downloading/Ready card
+    // to Failed even though the update is fine.
+    if (updatePhase !== 'idle') return;
+    autoUpdater.checkForUpdates()
+      .catch((err) => console.warn('[updater] check failed:', err?.message));
   };
   setTimeout(runCheck, 4000);
   setInterval(runCheck, 10 * 60 * 1000);
@@ -876,6 +881,9 @@ app.whenReady().then(() => {
 // The renderer shows a small banner using these channels. The main process
 // is the source of truth; IPC is one-way (main → renderer) for status +
 // progress, and two-way for user actions ("install now", "later").
+// 'idle' | 'downloading' | 'downloaded'. Gates the periodic re-check.
+let updatePhase = 'idle';
+
 autoUpdater.on('checking-for-update', () => {
   mainWindow?.webContents.send('nexus:update:checking');
 });
@@ -898,6 +906,7 @@ autoUpdater.on('download-progress', (p) => {
   });
 });
 autoUpdater.on('update-downloaded', (info) => {
+  updatePhase = 'downloaded';
   mainWindow?.webContents.send('nexus:update:ready', {
     version: info?.version,
     releaseNotes: info?.releaseNotes,
@@ -909,6 +918,8 @@ autoUpdater.on('error', (err) => {
 });
 
 ipcMain.handle('nexus:update:checkNow', async () => {
+  // Same reasoning as runCheck: don't re-check over an active update.
+  if (updatePhase !== 'idle') return { ok: true, version: null, skipped: updatePhase };
   try {
     const result = await autoUpdater.checkForUpdates();
     return { ok: true, version: result?.updateInfo?.version || null };
@@ -919,10 +930,14 @@ ipcMain.handle('nexus:update:checkNow', async () => {
 ipcMain.handle('nexus:update:download', async () => {
   // Kicks off the manual download. autoDownload is false, so without this
   // the user would be stuck at "update available" forever.
+  if (updatePhase === 'downloaded') return { ok: true };
+  updatePhase = 'downloading';
   try {
     await autoUpdater.downloadUpdate();
     return { ok: true };
   } catch (err) {
+    // Failed download: allow checks (and a retry) again.
+    if (updatePhase === 'downloading') updatePhase = 'idle';
     return { ok: false, error: err?.message };
   }
 });
