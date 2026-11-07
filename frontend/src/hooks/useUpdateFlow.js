@@ -193,9 +193,13 @@ export default function useUpdateFlow() {
     }));
 
     offs.push(api.on('error', (e) => {
-      // Offline periodic checks: don't show a card if nothing was active.
+      // Only a failed *download* flips the card to Failed. Offline/
+      // transient errors while sitting on Available or Ready (including
+      // the 0.9.25 shell's periodic re-checks, which skip while ready)
+      // leave those surfaces alone — the download itself hasn't gone
+      // wrong. Idle errors (no active surface) never open a card.
       setState((st) => {
-        if (st === 'downloading' || st === 'available' || st === 'ready') {
+        if (st === 'downloading') {
           setSurface('update');
           setErr(e?.message || 'Update error');
           return 'failed';
