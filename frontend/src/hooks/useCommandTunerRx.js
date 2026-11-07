@@ -29,18 +29,16 @@ import { getRadioChrome } from '../utils/radioChrome';
 const TUNER_ID = 'left';
 const COMMAND_CUE = CUE_SETS?.sets?.command || null;
 
-// Command uses a double-chime on PTT engage + release so the channel is
-// audibly more prominent than Crew (which uses a single click). 110 ms
-// between beeps reads as "beep-beep" without sounding sluggish. Both
-// the transmitter AND the receivers hear the same cadence.
-const DOUBLE_CHIME_GAP_MS = 110;
+// Command uses a double-ding pre-chirp so the channel is audibly more
+// prominent than Crew (which uses a single click). The repeat is
+// scheduled inside playPreChord using the cue set's repeat + gapMs
+// fields — don't call playKeyUp twice from here or the two sequences
+// overlap.
 function playCommandKeyUp(rc) {
   try { rc?.playKeyUp(COMMAND_CUE); } catch {}
-  setTimeout(() => { try { rc?.playKeyUp(COMMAND_CUE); } catch {} }, DOUBLE_CHIME_GAP_MS);
 }
 function playCommandKeyDown(rc) {
   try { rc?.playKeyDown(COMMAND_CUE); } catch {}
-  setTimeout(() => { try { rc?.playKeyDown(COMMAND_CUE); } catch {} }, DOUBLE_CHIME_GAP_MS);
 }
 
 export function useCommandTunerRx(opts = {}) {

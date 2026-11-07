@@ -11,15 +11,17 @@
     },
     "command": {
       "name": "Command",
-      "description": "SELCAL-style 2-tone chord preceding a crisper click — flags priority traffic so you can tell the Command channel apart from Crew at a glance.",
+      "description": "Two single-tone dings (ding-ding) preceding the click — flags priority traffic so you can tell the Command channel apart from Crew at a glance.",
       "pre": {
         "kind": "chord",
-        "freqs": [1250, 1850],
-        "ms": 420,
-        "gain": 0.32,
-        "attackMs": 8,
-        "releaseMs": 90,
-        "waveform": "sine"
+        "freqs": [1500],
+        "ms": 130,
+        "gain": 0.38,
+        "attackMs": 6,
+        "releaseMs": 60,
+        "waveform": "sine",
+        "repeat": 2,
+        "gapMs": 170
       },
       "up":   ["/sounds/radio/RADIO_TRANS_START.wav"],
       "down": ["/sounds/radio/RADIO_TRANS_END.wav"],

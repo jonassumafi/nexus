@@ -138,13 +138,6 @@ function Companion() {
   useEffect(() => { crew.setSrsRadioSpec?.(myRadio?.spec || null); }, [myRadio, crew.setSrsRadioSpec]);
   useEffect(() => { crew.setSrsRadioBand?.(myRadio?.band || 'VHF'); }, [myRadio, crew.setSrsRadioBand]);
   useEffect(() => { crew.setMuted?.(isMuted); }, [isMuted, crew.setMuted]);
-  // Push the incoming volume into both hooks so the slider actually
-  // governs peer loudness in Companion view, not just UI state.
-  useEffect(() => {
-    const v = rxVolume / 100;
-    crew.setRxVolume?.(v);
-    command.setRxVolume?.(v);
-  }, [rxVolume, crew.setRxVolume, command.setRxVolume]);
   useEffect(() => { crew.setMicSensitivity?.(micSensitivity); }, [micSensitivity, crew.setMicSensitivity]);
 
   // Command tuner
@@ -155,6 +148,18 @@ function Companion() {
     otherPttKey: pttKey,
     locked: commandLocked,
   });
+
+  // Push the incoming volume into both hooks so the slider actually
+  // governs peer loudness in Companion view, not just UI state. Must sit
+  // below both hook calls — referencing `command` in the deps array
+  // before its declaration above was the TDZ crash ("Cannot access
+  // 'command' before initialization") that broke every Companion switch
+  // since 0.9.24.
+  useEffect(() => {
+    const v = rxVolume / 100;
+    crew.setRxVolume?.(v);
+    command.setRxVolume?.(v);
+  }, [rxVolume, crew.setRxVolume, command.setRxVolume]);
 
   // Persist pttKey helper
   const setPttKey = useCallback((k) => {

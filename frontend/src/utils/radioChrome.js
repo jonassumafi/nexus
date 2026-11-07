@@ -278,43 +278,57 @@ function buildChrome(ctx) {
  */
 async function playPreChord(ctx, dest, spec) {
   try {
-    const now = ctx.currentTime;
     const durSec   = Math.max(0.05, (spec.ms || 400) / 1000);
     const peak     = Math.max(0.01, Math.min(0.8, spec.gain ?? 0.3));
     const atkSec   = Math.max(0.001, (spec.attackMs  ?? 8)  / 1000);
     const relSec   = Math.max(0.005, (spec.releaseMs ?? 80) / 1000);
     const waveform = spec.waveform || 'sine';
+    const freqs    = spec.freqs || [1250, 1850];
+    const repeat   = Math.max(1, spec.repeat | 0 || 1);
+    const gapSec   = Math.max(0, (spec.gapMs || 0) / 1000);
 
-    // Shared envelope so both tones share phase of attack/sustain/release.
-    const bus = ctx.createGain();
-    bus.gain.setValueAtTime(0, now);
-    bus.gain.linearRampToValueAtTime(peak,   now + atkSec);
-    bus.gain.setValueAtTime(peak, now + durSec - relSec);
-    bus.gain.linearRampToValueAtTime(0.0001, now + durSec);
-    bus.connect(dest);
+    // Schedule each repeat relative to ctx.currentTime so timing is sample-
+    // accurate (setTimeout drift would mush "ding-ding" into "diiing").
+    const startNow = ctx.currentTime;
+    const strideSec = durSec + gapSec;
 
-    const oscs = [];
-    for (const f of (spec.freqs || [1250, 1850])) {
-      const osc = ctx.createOscillator();
-      osc.type = waveform;
-      osc.frequency.value = f;
-      // Per-tone gain divides so the sum doesn't clip at the bus.
-      const perToneGain = ctx.createGain();
-      perToneGain.gain.value = 1 / Math.max(1, spec.freqs?.length || 2);
-      osc.connect(perToneGain);
-      perToneGain.connect(bus);
-      osc.start(now);
-      osc.stop(now + durSec + 0.02);
-      oscs.push({ osc, perToneGain });
+    for (let i = 0; i < repeat; i++) {
+      const t0 = startNow + i * strideSec;
+      // Shared envelope per ding so all tones in the chord share phase.
+      const bus = ctx.createGain();
+      bus.gain.setValueAtTime(0, t0);
+      bus.gain.linearRampToValueAtTime(peak, t0 + atkSec);
+      bus.gain.setValueAtTime(peak, t0 + durSec - relSec);
+      bus.gain.linearRampToValueAtTime(0.0001, t0 + durSec);
+      bus.connect(dest);
+
+      const oscs = [];
+      for (const f of freqs) {
+        const osc = ctx.createOscillator();
+        osc.type = waveform;
+        osc.frequency.value = f;
+        const perToneGain = ctx.createGain();
+        perToneGain.gain.value = 1 / Math.max(1, freqs.length);
+        osc.connect(perToneGain);
+        perToneGain.connect(bus);
+        osc.start(t0);
+        osc.stop(t0 + durSec + 0.02);
+        oscs.push({ osc, perToneGain });
+      }
+
+      // Free each ding's nodes once it has finished.
+      setTimeout(() => {
+        for (const { osc, perToneGain } of oscs) {
+          try { osc.disconnect(); perToneGain.disconnect(); } catch {}
+        }
+        try { bus.disconnect(); } catch {}
+      }, (durSec + 0.05) * 1000 + i * strideSec * 1000);
     }
 
-    // Resolve shortly after the release ends so the caller can chain a click.
-    await new Promise((r) => setTimeout(r, (durSec * 1000) + 10));
-    // Tidy up — oscillators auto-stop; disconnect to free GC.
-    for (const { osc, perToneGain } of oscs) {
-      try { osc.disconnect(); perToneGain.disconnect(); } catch {}
-    }
-    try { bus.disconnect(); } catch {}
+    // Resolve after the full sequence so the caller can chain a click
+    // AFTER the last ding — not mashed on top of it.
+    const totalMs = (durSec + (repeat - 1) * strideSec) * 1000 + 10;
+    await new Promise((r) => setTimeout(r, totalMs));
   } catch {
     /* synthesis failure is non-fatal — the click still plays */
   }
