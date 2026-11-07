@@ -8,6 +8,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 
 const socketManager = require('./services/socketManager');
+const { syncLandingHtml, watchReleases } = require('./services/landingHtml');
 const { seedPlatformConfig, migratePlatformConfig } = require('./utils/seed');
 const { seedMissions, seedActivityEvents } = require('./utils/seedMissions');
 const { startScheduler } = require('./jobs/scheduler');
@@ -104,6 +105,8 @@ mongoose.connect(process.env.MONGODB_URI)
     await seedActivityEvents();
     socketManager.init(io);
     startScheduler();
+    syncLandingHtml();
+    watchReleases();
 
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {
