@@ -60,7 +60,6 @@ export default function useUpdateFlow() {
   const [errorMessage, setErr]      = useState(null);
   const [entries, setEntries]       = useState([]);
   const [previousVersion, setPrev]  = useState(null);
-  const [hasMore, setHasMore]       = useState(false);
 
   // So we can delay a card's appearance while PTT is held.
   const pendingAvailableRef = useRef(null);
@@ -88,7 +87,6 @@ export default function useUpdateFlow() {
       { id: 138, version: null,    date: '2026-11-05', tag: 'better', text: 'Faster roster loading on large channels' },
     ];
     setEntries(fakeEntries);
-    setHasMore(true);
     setVersion('1.4.2');
     setPrev('1.4.1');
     setPct(62);
@@ -136,14 +134,12 @@ export default function useUpdateFlow() {
 
       if (versionChanged && trimmed.length > 0) {
         setEntries(trimmed);
-        setHasMore(unseen.length > 5);
         setPrev(lastVer);
         setVersion(appVersion);
         setSurface('whatsnew');
         setState('new');
       } else if (!versionChanged && trimmed.length > 0) {
         setEntries(trimmed);
-        setHasMore(unseen.length > 5);
         setSurface('fixes');
         setState('fixes');
       } else if (versionChanged) {
@@ -248,7 +244,7 @@ export default function useUpdateFlow() {
 
   return {
     surface, state, version, pct, bytes, totalBytes,
-    errorMessage, entries, previousVersion, hasMore,
+    errorMessage, entries, previousVersion,
     onDownload, onInstall, onRetry, onClose,
   };
 }

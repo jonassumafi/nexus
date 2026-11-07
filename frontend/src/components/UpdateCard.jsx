@@ -15,7 +15,7 @@ const TAG_LABEL = { new: 'New', better: 'Better', fix: 'Fix' };
 const TAG_COLOR = { new: 'var(--lime, #44dd88)', better: 'var(--acc2, #00eeff)', fix: 'var(--amber, #ffbb33)' };
 const TAG_CLASS = { new: 'n', better: 'i', fix: 'f' };
 
-export default function UpdateCard({ flow, compact = false, historyUrl = null }) {
+export default function UpdateCard({ flow, compact = false }) {
   const { surface, state } = flow;
 
   // Lock Escape for required update surfaces. Closeable surfaces handle
@@ -80,8 +80,6 @@ export default function UpdateCard({ flow, compact = false, historyUrl = null })
               kind="new"
               version={flow.version}
               entries={flow.entries}
-              hasMore={flow.hasMore}
-              historyUrl={historyUrl}
               onClose={flow.onClose}
             />
           )}
@@ -89,8 +87,6 @@ export default function UpdateCard({ flow, compact = false, historyUrl = null })
             <ListBody
               kind="fixes"
               entries={flow.entries}
-              hasMore={flow.hasMore}
-              historyUrl={historyUrl}
               onClose={flow.onClose}
             />
           )}
@@ -189,7 +185,7 @@ function FailedBody({ version, message, onRetry }) {
   );
 }
 
-function ListBody({ kind, version, entries, hasMore, historyUrl, onClose }) {
+function ListBody({ kind, version, entries, onClose }) {
   const eyebrow = kind === 'new'
     ? { className: 'nx-uc-eb nx-uc-eb--g', text: version ? `Updated to ${version}` : 'Updated' }
     : { className: 'nx-uc-eb', text: 'Fixes since your last visit' };
@@ -213,11 +209,6 @@ function ListBody({ kind, version, entries, hasMore, historyUrl, onClose }) {
           </li>
         ))}
       </ul>
-      {hasMore && historyUrl && (
-        <div className="nx-uc-c nx-uc-c--center">
-          <a className="nx-uc-link" href={historyUrl} target="_blank" rel="noreferrer">Older changes</a>
-        </div>
-      )}
       {footer && <div className="nx-uc-c">{footer}</div>}
       <button className="nx-uc-btn nx-uc-btn--p" onClick={onClose} autoFocus>{btnText}</button>
     </div>
@@ -360,12 +351,4 @@ const CSS = `
 .nx-uc-tag--i { color: var(--acc2, #00EEFF); border-color: color-mix(in srgb, var(--acc2, #00EEFF) 45%, transparent); }
 .nx-uc--sm .nx-uc-tag { width: 52px; }
 
-.nx-uc-link {
-  color: var(--fg2, #8a98a4);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  font: 500 12px Inter, system-ui, sans-serif;
-  cursor: pointer;
-}
-.nx-uc-link:hover { color: var(--fg0, #f2f6f8); }
 `;
