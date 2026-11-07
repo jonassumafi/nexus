@@ -92,17 +92,34 @@ function loadState() {
   try {
     const raw = fs.readFileSync(STATE_PATH(), 'utf8');
     const s = JSON.parse(raw);
+    // Pin is remembered per mode. Before v0.9.21 one `pinned` flag
+    // applied to every mode, so pinning the radio widget also pinned the
+    // full dashboard: a screen-sized always-on-top window that covered
+    // everything. Migrate that flag to the compact modes only.
+    const pm = (s.pinnedModes && typeof s.pinnedModes === 'object') ? s.pinnedModes
+      : { full: false, companion: !!s.pinned, radio: !!s.pinned };
     return {
       mode: ['full', 'companion', 'radio'].includes(s.mode) ? s.mode : 'full',
       pinned: !!s.pinned,
+      pinnedModes: { full: !!pm.full, companion: !!pm.companion, radio: !!pm.radio },
       full:      s.full      || {},
       companion: s.companion || {},
       radio:     s.radio     || {},
       radioExpanded: !!s.radioExpanded,
     };
   } catch {
-    return { mode: 'full', pinned: false, full: {}, companion: {}, radio: {}, radioExpanded: false };
+    return { mode: 'full', pinned: false, pinnedModes: { full: false, companion: false, radio: false },
+      full: {}, companion: {}, radio: {}, radioExpanded: false };
   }
+}
+
+// Apply the current mode's pin preference to the window.
+function applyPin() {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  const on = !!loadState().pinnedModes[currentMode];
+  // See createWindow for the level choice ('floating').
+  try { mainWindow.setAlwaysOnTop(on, 'floating'); } catch {}
+  return on;
 }
 
 function saveState(partial) {
@@ -179,7 +196,7 @@ function createWindow() {
     // every control is explicitly no-drag, nothing is overlayed on top
     // of app content.
     frame: false,
-    alwaysOnTop: state.pinned,
+    alwaysOnTop: !!state.pinnedModes.full,
     // v0.8.0 — all modes resizable. Companion + radio were previously
     // locked; users wanted to drag them larger / smaller to fit their
     // overlay layout. The minSize per mode still enforces a sane floor.
@@ -199,7 +216,14 @@ function createWindow() {
     },
   });
 
-  if (state.pinned) {
+  // Restore a maximized full window as maximized (the on('maximize')
+  // handler snaps it flush to the work area) rather than as a normal
+  // window at the raw maximized bounds, which opened offset by -8px.
+  if (state.full && state.full.maximized) {
+    try { mainWindow.maximize(); } catch {}
+  }
+
+  if (state.pinnedModes.full) {
     // Pin level: 'floating' (not 'screen-saver').
     //
     // 'screen-saver' is the highest window level and will visually
@@ -263,8 +287,10 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
+    // Fresh state, not createWindow's snapshot: this fires again on every
+    // mode switch, and the pin button must show the new mode's pin.
     mainWindow.webContents.send('nexus:window-state', {
-      pinned: state.pinned,
+      pinned: !!loadState().pinnedModes[currentMode],
       compact: false,
       mode: currentMode,
       radioExpanded,
@@ -292,7 +318,9 @@ function createWindow() {
       const display = screen.getDisplayNearestPoint(mainWindow.getBounds());
       mainWindow.setBounds(display.workArea);
     } catch {}
+    persistBounds();
   });
+  mainWindow.on('unmaximize', persistBounds);
 }
 
 // Compute initial window bounds for a mode, clamping to primary display.
@@ -304,14 +332,28 @@ function computeBounds(mode, state) {
     : m.size;
 
   const area = screen.getPrimaryDisplay().workArea;
-  const w = Number.isFinite(saved.width)  ? saved.width  : size.width;
-  const h = Number.isFinite(saved.height) ? saved.height : size.height;
+  let w = Number.isFinite(saved.width)  ? saved.width  : size.width;
+  let h = Number.isFinite(saved.height) ? saved.height : size.height;
   let x = Number.isFinite(saved.x) ? saved.x : undefined;
   let y = Number.isFinite(saved.y) ? saved.y : undefined;
+
+  // A "normal" size that fills the screen is a maximized rect saved by
+  // pre-0.9.21 builds. Fall back to the default size, centered (the
+  // maximized flag, if set, maximizes it properly after creation).
+  if (w >= area.width && h >= area.height) {
+    w = size.width; h = size.height; x = undefined; y = undefined;
+  }
+  w = Math.min(w, area.width);
+  h = Math.min(h, area.height);
 
   // Keep the window at least mostly inside the display.
   if (x !== undefined && (x < area.x - 100 || x > area.x + area.width - 100)) x = undefined;
   if (y !== undefined && (y < area.y - 100 || y > area.y + area.height - 100)) y = undefined;
+  // No usable saved position → center on the work area.
+  if (x === undefined || y === undefined) {
+    x = Math.round(area.x + (area.width - w) / 2);
+    y = Math.round(area.y + (area.height - h) / 2);
+  }
 
   return { x, y, width: w, height: h };
 }
@@ -319,13 +361,18 @@ function computeBounds(mode, state) {
 // Persist current window bounds for the active mode.
 function persistBounds() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  const b = mainWindow.getBounds();
+  // While maximized, getBounds() is the maximized rect (-8,-8 + 16px on
+  // Windows); saving that as a normal size made the next launch open a
+  // misaligned screen-sized window. Save the normal (restored) bounds and
+  // a maximized flag instead.
+  const maximized = (() => { try { return mainWindow.isMaximized(); } catch { return false; } })();
+  const b = maximized ? mainWindow.getNormalBounds() : mainWindow.getBounds();
   const s = loadState();
   const key = currentMode;
   // v0.8.0 — persist width/height for every mode (companion + radio are
   // now user-resizable). Each mode remembers its own dimensions.
   const nextModeBounds = {
-    ...s[key], x: b.x, y: b.y, width: b.width, height: b.height,
+    ...s[key], x: b.x, y: b.y, width: b.width, height: b.height, maximized,
   };
   saveState({ [key]: nextModeBounds });
 }
@@ -343,10 +390,18 @@ function persistBounds() {
 // switch, which looked like the window had warped away. Centering on
 // switch gives the user a predictable starting point they can then
 // drag wherever they want.
-function switchMode(nextMode) {
+//
+// v0.9.21: full mode no longer force-maximizes. A maximized window can't
+// be dragged, and combined with pin it made the dashboard feel stuck. It
+// comes back maximized only if the user left it maximized, otherwise at
+// its last normal size. Pin is applied per mode (applyPin).
+//
+// opts.force re-applies placement even when already in nextMode (tray
+// "Reset layout" while in full mode used to do nothing).
+function switchMode(nextMode, opts = {}) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (!MODES[nextMode] || nextMode === currentMode) return;
-  persistBounds();
+  if (!MODES[nextMode] || (nextMode === currentMode && !opts.force)) return;
+  if (nextMode !== currentMode) persistBounds();
   currentMode = nextMode;
   saveState({ mode: currentMode });
 
@@ -362,11 +417,16 @@ function switchMode(nextMode) {
   mainWindow.setMinimumSize(m.minSize.width, m.minSize.height);
 
   if (currentMode === 'full') {
-    // Un-maximize briefly so setSize takes effect for the fallback case,
-    // then maximize — the on('maximize') handler snaps to the exact
-    // workArea so there's no overshoot past the top edge.
+    // Restore the last normal size/position (computeBounds rejects stale
+    // screen-sized values and centers when there's none), then maximize
+    // only if the user left it maximized — the on('maximize') handler
+    // snaps that flush to the work area.
+    const b = computeBounds('full', state);
     try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
-    try { mainWindow.maximize(); } catch {}
+    mainWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height }, true);
+    if (state.full && state.full.maximized) {
+      try { mainWindow.maximize(); } catch {}
+    }
   } else {
     // Companion + radio: resize to the mode's default size (or whatever
     // the user last resized this mode to) and center on the active
@@ -386,6 +446,7 @@ function switchMode(nextMode) {
       mainWindow.setPosition(cx, cy);
     } catch {}
   }
+  applyPin();
   // Clear cache on mode switch too, so any mid-session frontend deploy is
   // picked up without a full app relaunch.
   session.defaultSession.clearCache()
@@ -520,11 +581,11 @@ ipcMain.handle('nexus:setPttKeys', (_e, bindings) => {
 
 ipcMain.handle('nexus:togglePin', () => {
   if (!mainWindow) return false;
+  // Pin belongs to the current mode only (see loadState).
   const next = !mainWindow.isAlwaysOnTop();
-  // See comment in createMainWindow for level choice ('floating').
-  mainWindow.setAlwaysOnTop(next, 'floating');
-  saveState({ pinned: next });
-  return next;
+  const pinnedModes = { ...loadState().pinnedModes, [currentMode]: next };
+  saveState({ pinnedModes });
+  return applyPin();
 });
 
 ipcMain.handle('nexus:setOpacity', (_e, v) => {
@@ -731,8 +792,11 @@ function createTray() {
       { label: 'Show window', click: () => { try { mainWindow?.show(); mainWindow?.focus(); } catch {} } },
       { label: 'Reset layout', click: () => {
           try {
-            saveState({ mode: 'full', full: {}, companion: {}, radio: {}, radioExpanded: false });
-            switchMode('full');
+            // Also unpins every mode: a pinned window is the usual reason
+            // someone reaches for "Reset layout".
+            saveState({ mode: 'full', full: {}, companion: {}, radio: {}, radioExpanded: false,
+              pinned: false, pinnedModes: { full: false, companion: false, radio: false } });
+            switchMode('full', { force: true });
           } catch {}
         } },
       { type: 'separator' },
