@@ -416,7 +416,14 @@ export function useRadioConnectionUDP({
     try { getRadioChrome(audioCtxRef.current)?.setChannel?.(f); } catch {}
 
     // Open the UDP session with the current page hostname as relay host.
-    const userId = meRef.current?._id ? String(meRef.current._id) : 'anonymous';
+    // Dashboard hydrates `me` via /auth/me and gets _id; Radio-only and
+    // Companion read `me` from the JWT payload which only has `id`. Accept
+    // either so the UDP session joins with a real userId and peers aren't
+    // tracked as "anonymous" on view switches — that was the mode-switch
+    // voice-silence bug (two peers with same body, different userIds →
+    // new <audio> element → autoplay failed, old stream stayed muted).
+    const meId = meRef.current?._id || meRef.current?.id || null;
+    const userId = meId ? String(meId) : 'anonymous';
     try {
       const result = await window.electronAPI.udp.open({
         userId,
