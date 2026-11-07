@@ -26,6 +26,8 @@ const bugReportRoutes = require('./routes/bugReport');
 const chatRoutes = require('./routes/chat');
 const friendRoutes = require('./routes/friends');
 const dmRoutes = require('./routes/dms');
+const changelogRoutes = require('./routes/changelog');
+const releaseInfoRoutes = require('./routes/releaseInfo');
 
 const app = express();
 const server = http.createServer(app);
@@ -67,6 +69,8 @@ app.use('/api/bug-report', bugReportRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/dms', dmRoutes);
+app.use('/api/changelog', changelogRoutes);
+app.use('/api/release-info', releaseInfoRoutes);
 
 // Expose `io` for routes that need to compute presence hints without
 // going through the socketManager singleton.

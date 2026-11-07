@@ -85,6 +85,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ─── Auto-updater ──────────────────────────────────────────────────────
   update: {
     checkNow()   { return ipcRenderer.invoke('nexus:update:checkNow'); },
+    download()   { return ipcRenderer.invoke('nexus:update:download'); },
     installNow() { return ipcRenderer.invoke('nexus:update:installNow'); },
     on(eventName, handler) {
       const channels = {

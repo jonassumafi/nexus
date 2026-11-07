@@ -36,9 +36,9 @@ function readSkinFile(filePath) {
   return null;
 }
 
-// Returns Deep Blue unconditionally. Used by scenarios where we WANT
-// brand-consistent paint regardless of what the companion saved:
-// fresh installs (no app to match) and uninstalls (clean-moment).
+// Returns Deep Blue unconditionally. Used for fresh installs, where no
+// companion skin has been saved yet. Uninstalls go through loadSavedSkin
+// instead so the last-chosen skin carries through the exit.
 function defaultSkin() {
   return resolveSkin(DEFAULT_SKIN);
 }

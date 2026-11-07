@@ -260,15 +260,15 @@ footer p{max-width:70ch}
 @media (max-width:900px){.hero2 .wrap,.why{grid-template-columns:minmax(0,1fr)}.st4{grid-template-columns:repeat(2,1fr)}.sp4:nth-child(3){border-left:0}.sp4:nth-child(n+3){border-top:1px solid var(--rim0)}}
 @media (max-width:620px){.st4{grid-template-columns:1fr}.sp4{border-left:0!important;border-top:1px solid var(--rim0)}.sp4:first-child{border-top:0}}
 </style></head><body>
-<header class="nav g"><div class="wrap"><a class="brand" href="#top" aria-label="Nexus Communications"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 10H9V54H20M44 10H55V54H44" fill="none" stroke="var(--acc)" stroke-width="5" stroke-linecap="square"/><path d="M24 22L36 32L24 42" fill="none" stroke="var(--acc2)" stroke-width="5" stroke-linecap="square"/><rect x="38" y="40" width="10" height="5" fill="var(--acc2)"/></svg><div><b>NEXUS</b><span>COMMUNICATIONS</span></div></a><span class="sp"></span><a class="nl" href="#why">Why</a><a class="nl" href="#radio">Radio</a><a class="nl" href="#features">Features</a><a class="btn sm" href="/api/releases/Nexus%20Setup%200.9.22.exe" download data-dl>Download</a></div></header>
+<header class="nav g"><div class="wrap"><a class="brand" href="#top" aria-label="Nexus Communications"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M20 10H9V54H20M44 10H55V54H44" fill="none" stroke="var(--acc)" stroke-width="5" stroke-linecap="square"/><path d="M24 22L36 32L24 42" fill="none" stroke="var(--acc2)" stroke-width="5" stroke-linecap="square"/><rect x="38" y="40" width="10" height="5" fill="var(--acc2)"/></svg><div><b>NEXUS</b><span>COMMUNICATIONS</span></div></a><span class="sp"></span><a class="nl" href="#why">Why</a><a class="nl" href="#radio">Radio</a><a class="nl" href="#features">Features</a><a class="btn sm" href="/api/releases/Nexus%20Setup%200.9.24.exe" download data-dl>Download</a></div></header>
 <main id="top">
 <section class="hero g"><div class="wrap">
  <div>
   <div class="eye">Mission management and crew radio app</div>
   <h1>Find missions and crews in the Verse <em>on the same wavelength.</em></h1>
   <p class="lede">Nexus Communications allows you to advertise your mission to prospective crewmates and fill every seat aboard your ship. Then talk to them as if they were really on board.</p>
-  <div class="cta"><a class="btn" href="/api/releases/Nexus%20Setup%200.9.22.exe" download data-dl><svg viewBox="0 0 24 24"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>Download for Windows</a><a class="ghost" href="#why">See what it does</a></div>
-  <p class="meta"><i></i>Version 0.9.22 &nbsp;&middot;&nbsp; Windows 10 and 11 &nbsp;&middot;&nbsp; 183 MB</p>
+  <div class="cta"><a class="btn" href="/api/releases/Nexus%20Setup%200.9.24.exe" download data-dl><svg viewBox="0 0 24 24"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>Download for Windows</a><a class="ghost" href="#why">See what it does</a></div>
+  <p class="meta"><i></i>Version <span data-dl-version>0.9.24</span> &nbsp;&middot;&nbsp; Windows 10 and 11 &nbsp;&middot;&nbsp; <span data-dl-size>183</span> MB</p>
  </div>
  <div>
   <div class="pn" id="pn" aria-label="Interactive radio preview">
@@ -376,8 +376,8 @@ footer p{max-width:70ch}
 <section class="fin g" id="get"><div class="wrap" style="position:relative">
  <div class="lab" style="justify-content:center">Get Nexus</div>
  <h2>Gather your crew. Get on the radio.</h2>
-  <div class="cta"><a class="btn" href="/api/releases/Nexus%20Setup%200.9.22.exe" download data-dl><svg viewBox="0 0 24 24"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>Download for Windows</a></div>
- <div class="sys"><span>Version 0.9.22</span><span>Windows 10 and 11</span><span>183 MB</span></div>
+  <div class="cta"><a class="btn" href="/api/releases/Nexus%20Setup%200.9.24.exe" download data-dl><svg viewBox="0 0 24 24"><path d="M12 3v13M6 11l6 6 6-6M4 21h16"/></svg>Download for Windows</a></div>
+ <div class="sys"><span>Version <span data-dl-version>0.9.24</span></span><span>Windows 10 and 11</span><span><span data-dl-size>183</span> MB</span></div>
  <p class="first">Note: this app is in alpha testing. Windows may flag it as a virus or malware, but the file is clean and free of viruses. If you receive a Windows Defender alert, choose More info, then Run anyway.</p>
 </div></section>
 </main>
@@ -494,5 +494,12 @@ function rsRunIncoming(){
 rsRunIncoming();
 rsMeter();
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}})},{threshold:.15});[].forEach.call(document.querySelectorAll(".rv"),function(n){io.observe(n)});
-document.addEventListener("click",function(e){if(e.target.closest("[data-dl]"))toast("Downloading Nexus Setup 0.9.22.exe (183 MB)")});
+var DL={version:"0.9.24",filename:"Nexus Setup 0.9.24.exe",url:"/api/releases/Nexus%20Setup%200.9.24.exe",sizeMB:183};
+fetch("/api/release-info/latest").then(function(r){return r.ok?r.json():null}).then(function(d){
+  if(!d)return;DL=d;
+  [].forEach.call(document.querySelectorAll("[data-dl]"),function(a){a.setAttribute("href",d.url)});
+  [].forEach.call(document.querySelectorAll("[data-dl-version]"),function(n){n.textContent=d.version});
+  [].forEach.call(document.querySelectorAll("[data-dl-size]"),function(n){n.textContent=d.sizeMB});
+}).catch(function(){});
+document.addEventListener("click",function(e){if(e.target.closest("[data-dl]"))toast("Downloading "+DL.filename+" ("+DL.sizeMB+" MB)")});
 </script></body></html>

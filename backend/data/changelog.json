@@ -1,0 +1,22 @@
+[
+  { "id": 142, "version": "0.9.24", "date": "2026-11-07",
+    "tag": "new", "text": "Compact mic strip with inline Outgoing / Incoming sliders, PTT rebind, and rig picker in Radio-only and Companion views" },
+  { "id": 141, "version": "0.9.24", "date": "2026-11-07",
+    "tag": "new", "text": "Installer and uninstaller now follow your chosen skin so updates feel continuous" },
+  { "id": 140, "version": "0.9.24", "date": "2026-11-07",
+    "tag": "better", "text": "Command channel gets a double keyup chime so transmissions stand out from Crew" },
+  { "id": 139, "version": "0.9.23", "date": "2026-11-06",
+    "tag": "fix", "text": "Companion-view Crew radio no longer goes silent after switching modes (UDP session race)" },
+  { "id": 138, "version": "0.9.23", "date": "2026-11-06",
+    "tag": "fix", "text": "Receive-volume slider now feels linear across its full range" },
+  { "id": 137, "version": "0.9.23", "date": "2026-11-06",
+    "tag": "better", "text": "Tuned frequencies survive switching between Full, Companion and Radio-only" },
+  { "id": 136, "version": "0.9.22", "date": "2026-11-06",
+    "tag": "new", "text": "App renamed to Nexus; previous Companion settings and logins carry over" },
+  { "id": 135, "version": "0.9.22", "date": "2026-11-06",
+    "tag": "fix", "text": "Stay signed in with Discord for about six months instead of a week" },
+  { "id": 134, "version": null, "date": "2026-11-05",
+    "tag": "better", "text": "Direct messages show presence dots and an unread badge on the Messages button" },
+  { "id": 133, "version": null, "date": "2026-11-05",
+    "tag": "fix", "text": "Deep Blue skin paints cards correctly again (friends drawer no longer appears translucent)" }
+]

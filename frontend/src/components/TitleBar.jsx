@@ -30,6 +30,13 @@ export default function TitleBar({
   // controls — they eat 132px of a 324px row. `compact` drops them to
   // 32px so the brand + version pill stay visible.
   compact = false,
+  // Optional slot rendered just before the version chip — used by the
+  // Radio-only view to park the small update pill next to the brand.
+  brandTrailing = null,
+  // When true, hide the version chip. Radio-only view toggles this on
+  // when the green "Install and restart" pill is showing, so the 260 px
+  // window doesn't overflow.
+  hideVersion = false,
 }) {
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
   const [maximized, setMaximized] = useState(false);
@@ -96,7 +103,12 @@ export default function TitleBar({
             {subtitle}
           </span>
         )}
-        {version && (
+        {brandTrailing && (
+          <span style={{ ...NODRAG, display: 'inline-flex', alignItems: 'center', marginLeft: 2 }}>
+            {brandTrailing}
+          </span>
+        )}
+        {version && !hideVersion && (
           <span
             title={`Nexus Companion v${version} — compare with your friend's number when debugging`}
             style={{

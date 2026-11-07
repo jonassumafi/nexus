@@ -26,8 +26,8 @@ import useMyRadio from '../hooks/useMyRadio';
 import RadioRigBadge from '../components/RadioRigBadge';
 import RadioPickerModal from '../components/RadioPickerModal';
 import BugReportModal from '../components/BugReportModal';
-import WhatsNewSplash from '../components/WhatsNewSplash';
-import UpdateBanner from '../components/UpdateBanner';
+import UpdateCard from '../components/UpdateCard';
+import useUpdateFlow from '../hooks/useUpdateFlow';
 import GlobalChat, { useChatUnread } from '../components/GlobalChat';
 import MissionBoardV2 from '../components/MissionBoardV2';
 import Banner, { AnchoredPopover } from '../components/Banner';
@@ -2561,6 +2561,7 @@ export default function Dashboard() {
   const powerBtnRef                         = useRef(null);
   const friends                             = useFriends();
   const dms                                 = useDMs(me?._id);
+  const updateFlow                          = useUpdateFlow();
   const [dmPeer, setDmPeer]                 = useState(null);
   const { count: chatUnread, markSeen: markChatSeen } = useChatUnread();
   const [missionListCollapsed, setMissionListCollapsed] = useState(() => {
@@ -2914,8 +2915,7 @@ export default function Dashboard() {
       <BugReportModal open={showBugReport} onClose={() => setShowBugReport(false)} />
       <RadioPickerModal open={showRadioPicker} onClose={() => setShowRadioPicker(false)} tunerId="right" />
       <RadioPickerModal open={showCommandRadioPicker} onClose={() => setShowCommandRadioPicker(false)} tunerId="left" />
-      <WhatsNewSplash />
-      <UpdateBanner />
+      <UpdateCard flow={updateFlow} />
       <GlobalChat
         open={chatOpen}
         onOpenChange={setChatOpen}

@@ -43,12 +43,11 @@ function urlFor(path) {
 }
 
 // electron-updater config:
-//   • autoDownload=true so a new version is pulled in the background and
-//     the user just has to click "Install now" when prompted
-//   • autoInstallOnAppQuit=false — we want the user to see the splash,
-//     opt into the restart, not get surprise-installed on next quit
+//   • autoDownload=false — nothing is pulled until the renderer calls
+//     nexus:update:download (user clicks Download / pill)
+//   • autoInstallOnAppQuit=false — the user opts into the restart
 //   • allowPrerelease=false — stable channel only
-autoUpdater.autoDownload = true;
+autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.allowPrerelease = false;
 autoUpdater.logger = {
@@ -860,13 +859,14 @@ app.whenReady().then(() => {
   startKeyHook();
   registerSafeMode();
   createTray();
-  // Wait a bit before checking for updates so the window + renderer are
-  // ready to receive IPC events. Running during Dev (unpacked) is a no-op
-  // because electron-updater refuses to update unpacked apps.
-  setTimeout(() => {
+  // First check 4s after launch (lets the renderer mount its IPC listeners),
+  // then every 10 min while running. Unpacked dev builds no-op internally.
+  const runCheck = () => {
     try { autoUpdater.checkForUpdates(); }
-    catch (err) { console.warn('[updater] initial check failed:', err?.message); }
-  }, 4000);
+    catch (err) { console.warn('[updater] check failed:', err?.message); }
+  };
+  setTimeout(runCheck, 4000);
+  setInterval(runCheck, 10 * 60 * 1000);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -912,6 +912,16 @@ ipcMain.handle('nexus:update:checkNow', async () => {
   try {
     const result = await autoUpdater.checkForUpdates();
     return { ok: true, version: result?.updateInfo?.version || null };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+});
+ipcMain.handle('nexus:update:download', async () => {
+  // Kicks off the manual download. autoDownload is false, so without this
+  // the user would be stuck at "update available" forever.
+  try {
+    await autoUpdater.downloadUpdate();
+    return { ok: true };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

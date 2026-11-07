@@ -7,12 +7,16 @@ import { useEffect, useState } from 'react';
 import TitleBar from '../components/TitleBar';
 import RadioTwinTiles from '../components/RadioTwinTiles';
 import OpacityIcon from '../components/OpacityIcon';
+import UpdatePill from '../components/UpdatePill';
+import useUpdateFlow from '../hooks/useUpdateFlow';
 
 export default function RadioWidget() {
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
   const [pinned,  setPinned]  = useState(false);
   const [opacity, setOpacity] = useState(1);
   const [opacityOpen, setOpacityOpen] = useState(false);
+  const [updatePillGreen, setUpdatePillGreen] = useState(false);
+  const updateFlow = useUpdateFlow();
 
   // Hydrate pin + opacity from Electron main-process truth.
   useEffect(() => {
@@ -106,7 +110,14 @@ export default function RadioWidget() {
         .rw-drag .rm-ov-disp,
         .rw-drag .rm-ov-bar { -webkit-app-region: no-drag; }
       `}</style>
-      <TitleBar title="NEXUS" subtitle="Radio" extras={extras} compact />
+      <TitleBar
+        title="NEXUS"
+        subtitle="Radio"
+        extras={extras}
+        compact
+        brandTrailing={<UpdatePill flow={updateFlow} onGreenChange={setUpdatePillGreen} />}
+        hideVersion={updatePillGreen}
+      />
       <div className="rw-drag" style={{ flex: 1, minHeight: 0 }}>
         <RadioTwinTiles />
       </div>

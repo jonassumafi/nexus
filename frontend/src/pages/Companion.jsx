@@ -23,6 +23,8 @@ import { resolveAvatar, initialsOf } from '../utils/avatar';
 import formatModel from '../utils/formatShipModel';
 import api from '../services/api';
 import TitleBar from '../components/TitleBar';
+import UpdateCard from '../components/UpdateCard';
+import useUpdateFlow from '../hooks/useUpdateFlow';
 import FreqTuneInput from '../components/FreqTuneInput';
 import SharedMicStrip from '../components/SharedMicStrip';
 import RadioPickerModal from '../components/RadioPickerModal';
@@ -90,6 +92,7 @@ const initialTransport = (() => {
 function Companion() {
   const { user: jwtUser } = useAuthContext();
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
+  const updateFlow = useUpdateFlow();
 
   // Full operator record
   const [me, setMe] = useState(null);
@@ -367,6 +370,7 @@ function Companion() {
         .cmp-drag [contenteditable="true"] { -webkit-app-region: no-drag; }
       `}</style>
       <TitleBar subtitle="Companion" compact />
+      <UpdateCard flow={updateFlow} compact />
 
       {/* Dedicated toolbar band below the titlebar — the 324px window
           can't fit mode switchers + version chips + window controls on

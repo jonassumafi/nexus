@@ -38,9 +38,11 @@ if (!gotLock) { app.quit(); process.exit(0); }
 //                     with how the running app looks right up until
 //                     the moment they remove it)
 //
-// Auto-updates run with --silent (no window), so the skin here doesn't
-// affect them. The app's own saved skin lives in Chromium's localStorage
-// inside userData and is untouched by any installer action.
+// Auto-updates reopen this installer with the window shown — the
+// companion calls quitAndInstall(false, …), not --silent — so the skin
+// loaded here paints the update screen. loadSavedSkin() reads the
+// companion's last-chosen skin from userData, keeping the update
+// visually continuous with the running app.
 const skin = (() => {
   try {
     const existing = core.detectInstall();
