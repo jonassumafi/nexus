@@ -2435,8 +2435,12 @@ function ShipRegistryView({ shipThumbs, me }) {
     (s.ship_name || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  // Transition only applied while a fade is actually in flight — leaving
+  // the `transition` property declared permanently promotes this div to
+  // its own GPU layer in Chromium, which was the main cause of the
+  // "burned in" ghost when switching away from Ship Registry.
   return (
-    <div style={{ height: '100%', opacity: fading ? 0 : 1, transition: 'opacity 0.2s ease' }}>
+    <div style={{ height: '100%', opacity: fading ? 0 : 1, transition: fading ? 'opacity 0.2s ease' : undefined }}>
       {phase === 'boot' && <RegistryBoot onComplete={handleBootDone} />}
       {phase === 'registry' && (
         <div style={{
@@ -3042,7 +3046,8 @@ export default function Dashboard() {
         bugBtnRef={bugBtnRef}
         powerBtnRef={powerBtnRef}
         messagesBtnRef={messagesBtnRef}
-        onOpenMessages={() => { dms.refresh(); setMessagesPopoverOpen(o => !o); }}
+        messagesUnread={dms.unreadCount}
+        onOpenMessages={() => { dms.refresh(); dms.markAllSeen(); setMessagesPopoverOpen(o => !o); }}
         onOpenSkin={() => setSkinPopoverOpen(o => !o)}
         onOpenSettings={() => setSettingsPopoverOpen(o => !o)}
         onOpenBug={() => setBugPopoverOpen(true)}
@@ -3161,7 +3166,7 @@ export default function Dashboard() {
           peer={dmPeer}
           presenceById={(() => { const m = {}; for (const f of friends.friends) m[String(f.userId)] = { online: !!f.online, on_mission: !!f.on_mission }; return m; })()}
           messages={dms.messagesByPeer[String(dmPeer.userId)] || []}
-          onOpen={(p) => dms.setOpenPeer(p.userId)}
+          onOpen={(p) => { dms.setOpenPeer(p.userId); dms.markSeen(p.userId); }}
           onClose={() => { dms.setOpenPeer(null); setDmPeer(null); }}
           onSend={(peerId, body) => dms.send(peerId, body)}
         />
@@ -3316,7 +3321,11 @@ export default function Dashboard() {
         </div>
 
         {/* Center: Mission detail OR Ship Registration */}
-        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+        {/* isolation:isolate gives each mounted child its own compositor
+            scope so Chromium tears down the GPU layer cleanly on tab
+            swap — fixes the "ship registry stays faded behind the
+            mission view" ghost. */}
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, isolation: 'isolate' }}>
           {createMissionMode ? (
             <CreateMission
               me={me}

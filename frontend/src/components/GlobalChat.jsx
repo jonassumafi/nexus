@@ -19,6 +19,7 @@ import api from '../services/api';
 import { useSocketContext } from '../context/SocketContext';
 import { playKeystroke, preloadKeystroke } from '../utils/keystrokeSfx';
 import FriendMarkerIcon from './FriendMarkerIcon';
+import OpacityIcon from './OpacityIcon';
 
 const UNREAD_KEY  = 'nexus_chat_last_seen_ts';
 const RECT_KEY    = 'nexus_chat_popover_rect';
@@ -29,13 +30,36 @@ const MIN_W = 300, MIN_H = 240;
 const DEFAULT_W = 380, DEFAULT_H = 460;
 
 function readRect() {
-  try { return JSON.parse(localStorage.getItem(RECT_KEY) || 'null'); } catch { return null; }
+  try {
+    const r = JSON.parse(localStorage.getItem(RECT_KEY) || 'null');
+    if (!r) return null;
+    // Validate against the current viewport. If the stored rect was saved
+    // on a different monitor / resolution and is now off-screen, drop it
+    // so the default-centered position wins — fixes the "chat is stuck
+    // behind the window / can't click it" symptom some users hit after
+    // changing their display setup.
+    const vw = (typeof window !== 'undefined' && window.innerWidth)  || 1920;
+    const vh = (typeof window !== 'undefined' && window.innerHeight) || 1080;
+    const w = Number.isFinite(r.width)  ? r.width  : DEFAULT_W;
+    const h = Number.isFinite(r.height) ? r.height : DEFAULT_H;
+    const inset = 40;
+    const minVisible = 120;
+    if (Number.isFinite(r.left) && (r.left < -w + minVisible || r.left > vw - minVisible)) return null;
+    if (Number.isFinite(r.top)  && (r.top  < 0 || r.top  > vh - minVisible))                return null;
+    if (w < MIN_W || h < MIN_H || w > vw + inset || h > vh + inset) return null;
+    return r;
+  } catch { return null; }
 }
 function writeRect(r) {
   try { localStorage.setItem(RECT_KEY, JSON.stringify(r)); } catch {}
 }
+// Floor opacity at 0.4 — low enough to see through, high enough that the
+// chat stays legible and clickable. Earlier floor of 0.15 let users drag
+// the slider to a point where the panel appeared only as a faded ghost
+// and was effectively unclickable.
+const OPACITY_MIN = 0.4;
 function readOpacity() {
-  try { const v = Number(localStorage.getItem(OPACITY_KEY)); return v >= 0.15 && v <= 1 ? v : 1; } catch { return 1; }
+  try { const v = Number(localStorage.getItem(OPACITY_KEY)); return v >= OPACITY_MIN && v <= 1 ? v : 1; } catch { return 1; }
 }
 function writeOpacity(v) {
   try { localStorage.setItem(OPACITY_KEY, String(v)); } catch {}
@@ -300,6 +324,13 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
         color: 'var(--fg1)',
         overflow: 'hidden',
         opacity,
+        // isolation + translateZ pins the panel to its own compositor
+        // layer with a deterministic Z position. Without these,
+        // Chromium on high-DPI (4K + Windows display scaling) can place
+        // the opacity-promoted layer behind the main app, making the
+        // chat look faded AND swallow clicks.
+        isolation: 'isolate',
+        transform: 'translateZ(0)',
       };
 
   return (
@@ -328,8 +359,9 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
         <HeaderBtn
           onClick={() => setOpacityPanelOpen(o => !o)}
           title={`Opacity: ${Math.round(opacity * 100)}%`}
+          style={{ color: 'var(--amber)' }}
         >
-          🔆
+          <OpacityIcon />
         </HeaderBtn>
 
         {isPopout && electron && (
@@ -380,7 +412,7 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
           <span style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.1em' }}>OPACITY</span>
           <input
             type="range"
-            min={15} max={100} step={5}
+            min={40} max={100} step={5}
             value={Math.round(opacity * 100)}
             onChange={e => setOpacity(Number(e.target.value) / 100)}
             style={{ flex: 1, accentColor: 'var(--cyan)' }}

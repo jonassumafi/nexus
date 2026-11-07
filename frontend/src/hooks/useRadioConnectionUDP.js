@@ -294,13 +294,17 @@ export function useRadioConnectionUDP({
     if (peerAudiosRef.current[userId]) return;
     const audio = new Audio();
     audio.autoplay = true;
-    // HTML <audio>.volume is clamped to 0..1 by the browser, so the old
-     //   Math.min(3, 1.8 * clamped)
-     // silently maxed the volume for any slider value >= 0.56 — the
-     // slider appeared to "do nothing" above that point and listeners
-     // reported eardrum-blowing playback. 1.0 = browser unity; let the
-     // user's slider map directly to that range.
-    try { audio.volume = Math.max(0, Math.min(1, rxVolumeRef.current ?? 1.0)); } catch {}
+    // Quadratic response curve — audio.volume is linear amplitude, but
+     // human loudness perception is roughly logarithmic, so a linear
+     // slider felt WAY too hot at the low end (users reported having
+     // to hold the slider around 10 % to not blow ears). Squaring the
+     // slider value (0..1.5 input → 0..1 output after browser cap)
+     // gives a gentle bottom end and keeps the top unchanged:
+     //   slider 30 % → 0.09 volume (roughly matches old "10 %")
+     //   slider 100 % → 1.0 volume (unity)
+     //   slider 150 % → clips to 1.0 (same as 100 %)
+    const rvQ = (rxVolumeRef.current ?? 1.0) ** 2;
+    try { audio.volume = Math.max(0, Math.min(1, rvQ)); } catch {}
     try { audio.srcObject = stream; } catch {}
     if (outputDeviceIdRef.current && typeof audio.setSinkId === 'function') {
       audio.setSinkId(outputDeviceIdRef.current).catch(() => {});
@@ -460,6 +464,32 @@ export function useRadioConnectionUDP({
     } catch {}
   }, [socket, hasUdp, ensureMicAndChain, cleanupAllPeers, onUdpPeer]);
 
+  // Auto-restore the last tuned frequency on mount. The save side at the
+  // end of joinFrequency has been writing to localStorage all along, but
+  // nothing was reading it back — so switching full ↔ companion ↔ radio
+  // modes lost the frequency every time. Re-join when socket + spec + udp
+  // are all ready, once. autoTunedRef guards against repeat rejoins while
+  // the hook stays mounted but deps shuffle.
+  const autoTunedRef = useRef(false);
+  useEffect(() => {
+    if (autoTunedRef.current) return;
+    if (!socket || !hasUdp) return;
+    if (currentFreqRef.current) return; // already tuned this session
+    let saved = null;
+    try {
+      const raw = localStorage.getItem(TUNE_LS_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch {}
+    if (!saved || !saved.freq) return;
+    autoTunedRef.current = true;
+    // Schedule after a tick so the srsSpec effect at mount has a chance
+    // to set the current rig's band byte before the first UDP open.
+    const id = setTimeout(() => {
+      try { joinFrequency(saved.freq, saved.missionId || null); } catch {}
+    }, 150);
+    return () => clearTimeout(id);
+  }, [socket, hasUdp, joinFrequency]);
+
   const teardownAudioChain = useCallback(() => {
     try { filteredStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
     try { filterChainRef.current?.dispose(); } catch {}
@@ -576,7 +606,7 @@ export function useRadioConnectionUDP({
     const clamped = Math.max(0, Math.min(1.5, Number(v) || 0));
     rxVolumeRef.current = clamped;
     for (const a of Object.values(peerAudiosRef.current)) {
-      try { a.volume = Math.max(0, Math.min(1, clamped)); } catch {}
+      try { a.volume = Math.max(0, Math.min(1, clamped ** 2)); } catch {}
     }
   }, []);
 

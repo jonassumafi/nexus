@@ -524,6 +524,25 @@ export function useRadioConnection({
     } catch {}
   }, [socket, ensureMicAndChain, cleanupAllPeers]);
 
+  // Auto-restore saved frequency on mount (mode switches used to drop it).
+  const autoTunedRef = useRef(false);
+  useEffect(() => {
+    if (autoTunedRef.current) return;
+    if (!socket) return;
+    if (currentFreqRef.current) return;
+    let saved = null;
+    try {
+      const raw = localStorage.getItem(TUNE_LS_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch {}
+    if (!saved || !saved.freq) return;
+    autoTunedRef.current = true;
+    const id = setTimeout(() => {
+      try { joinFrequency(saved.freq, saved.missionId || null); } catch {}
+    }, 150);
+    return () => clearTimeout(id);
+  }, [socket, joinFrequency]);
+
   const teardownAudioChain = useCallback(() => {
     // Stop the outgoing (filtered) stream tracks so any RTCRtpSender
     // already holding them sees ended tracks.

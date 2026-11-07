@@ -92,7 +92,9 @@ export function useCommandTunerRx(opts = {}) {
   useEffect(() => {
     volumeRef.current = volume;
     try { localStorage.setItem('nexus_command_volume', String(volume)); } catch {}
-    const scaled = Math.max(0, Math.min(3, 1.8 * volume));
+    // Quadratic curve — see the ontrack handler below for the same math
+    // + rationale. Slider 30 % ≈ old 10 %; 100 % = unity.
+    const scaled = Math.max(0, Math.min(1, volume ** 2));
     for (const a of Object.values(peerAudiosRef.current)) {
       try { a.volume = scaled; } catch {}
     }
@@ -265,7 +267,13 @@ export function useCommandTunerRx(opts = {}) {
       const stream = e.streams[0];
       const audio = new Audio();
       audio.autoplay = true;
-      try { audio.volume = Math.max(0, Math.min(2, 1.8 * (volumeRef.current ?? 1.0))); } catch {}
+      // Match useRadioConnectionUDP's quadratic curve: linear amplitude
+      // × perceived-loudness mismatch made the slider feel way too hot
+      // at the low end. Squaring gives slider 30 % ≈ old 10 %, 100 % = unity.
+      // (Also removed the old 1.8× multiplier that silently maxed playback
+      // above ~56 % of the slider range.)
+      const vQ = (volumeRef.current ?? 1.0) ** 2;
+      try { audio.volume = Math.max(0, Math.min(1, vQ)); } catch {}
       try { audio.srcObject = stream; } catch {}
       if (outputDeviceId && typeof audio.setSinkId === 'function') {
         audio.setSinkId(outputDeviceId).catch(() => {});
@@ -361,6 +369,23 @@ export function useCommandTunerRx(opts = {}) {
     try { new Audio('/sounds/freq_connect.mp3').play().catch(() => {}); } catch {}
     try { localStorage.setItem('nexus_command_tune', f); } catch {}
   }, [socket, cleanupAllPeers, ensureMicAndChain]);
+
+  // Auto-restore the last tuned command frequency on mount. Save path
+  // at the end of joinFrequency has been writing nexus_command_tune
+  // all along; nothing was reading it, so mode switches dropped the
+  // tune. Re-join once the socket is ready.
+  const autoTunedRef = useRef(false);
+  useEffect(() => {
+    if (autoTunedRef.current) return;
+    if (!socket) return;
+    if (currentFreqRef.current) return;
+    let f = null;
+    try { f = localStorage.getItem('nexus_command_tune'); } catch {}
+    if (!f) return;
+    autoTunedRef.current = true;
+    const id = setTimeout(() => { try { joinFrequency(f); } catch {} }, 150);
+    return () => clearTimeout(id);
+  }, [socket, joinFrequency]);
 
   const leaveFrequency = useCallback(() => {
     if (lockedRef.current) return;

@@ -119,7 +119,16 @@ function open(opts = {}) {
   if (!OpusEncoder) {
     throw new Error('Opus encoder not available (prebuild load failed)');
   }
-  if (session) throw new Error('UDP voice session already open');
+  // Any existing session gets closed first. Previously this threw
+  // "UDP voice session already open", which broke the Crew (UDP) radio
+  // when switching between full dashboard and companion views: the
+  // Dashboard's unmount cleanup fires async, so by the time it got to
+  // `udp.close()` the Companion page had already loaded and called
+  // `udp.open()` → session was still non-null → throw → silent failure.
+  // Nobody could TX or RX on Crew while Command (WebRTC) kept working.
+  if (session) {
+    try { close(); } catch {}
+  }
   const {
     host    = '127.0.0.1',
     port    = 41234,

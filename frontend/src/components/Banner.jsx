@@ -96,6 +96,7 @@ export default function Banner({
   // admin popovers
   settingsBtnRef, bugBtnRef, powerBtnRef, skinBtnRef, messagesBtnRef,
   onOpenSettings, onOpenBug, onOpenDisconnect, onOpenSkin, onOpenMessages,
+  messagesUnread,
   // misc
   bannerRef,
 }) {
@@ -152,10 +153,11 @@ export default function Banner({
         ref={messagesBtnRef}
         className="nb"
         style={{ position: 'relative' }}
-        aria-label="Messages"
+        aria-label={`Messages${messagesUnread > 0 ? `, ${messagesUnread} unread` : ''}`}
         onClick={onOpenMessages}
       >
         <I name="mail" /> Messages
+        <Badge n={messagesUnread} />
       </button>
 
       <div className="sep" />

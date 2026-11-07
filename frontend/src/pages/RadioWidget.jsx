@@ -5,7 +5,8 @@
 
 import { useEffect, useState } from 'react';
 import TitleBar from '../components/TitleBar';
-import RadioOverlay from '../components/RadioOverlay';
+import RadioTwinTiles from '../components/RadioTwinTiles';
+import OpacityIcon from '../components/OpacityIcon';
 
 export default function RadioWidget() {
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
@@ -37,7 +38,7 @@ export default function RadioWidget() {
       <ExtraBtn title="Full dashboard" onClick={() => electron?.setMode?.('full')}>⊞</ExtraBtn>
       <ExtraBtn title="Companion"      onClick={() => electron?.setMode?.('companion')}>▬</ExtraBtn>
       <div style={{ position: 'relative' }}>
-        <ExtraBtn title={`Opacity: ${Math.round(opacity * 100)}%`} onClick={() => setOpacityOpen(o => !o)}>◐</ExtraBtn>
+        <ExtraBtn title={`Opacity: ${Math.round(opacity * 100)}%`} onClick={() => setOpacityOpen(o => !o)} tint="amber"><OpacityIcon /></ExtraBtn>
         {opacityOpen && (
           <div
             onMouseLeave={() => setOpacityOpen(false)}
@@ -107,13 +108,19 @@ export default function RadioWidget() {
       `}</style>
       <TitleBar title="NEXUS" subtitle="Radio" extras={extras} compact />
       <div className="rw-drag" style={{ flex: 1, minHeight: 0 }}>
-        <RadioOverlay />
+        <RadioTwinTiles />
       </div>
     </div>
   );
 }
 
-function ExtraBtn({ children, title, onClick, active = false }) {
+function ExtraBtn({ children, title, onClick, active = false, tint }) {
+  // tint="amber" paints the icon in --amber for opacity controls — matches
+  // the global-chat opacity button so every "adjust translucency" affordance
+  // in the app shares the same color language.
+  const tintColor = tint === 'amber'
+    ? 'var(--amber)'
+    : active ? 'var(--cyan)' : 'var(--fg1)';
   return (
     <button
       onClick={onClick}
@@ -122,7 +129,7 @@ function ExtraBtn({ children, title, onClick, active = false }) {
         width: 24, height: 22, padding: 0,
         border: '1px solid transparent',
         background: active ? 'color-mix(in srgb, var(--cyan) 22%, transparent)' : 'transparent',
-        color: active ? 'var(--cyan)' : 'var(--fg1)',
+        color: tintColor,
         borderRadius: 4, cursor: 'pointer',
         fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         WebkitAppRegion: 'no-drag',
