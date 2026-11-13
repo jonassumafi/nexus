@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import useMyRadio from '../hooks/useMyRadio';
+import RadioSymbol from '../data/radioSymbols';
 
 export default function RadioPickerModal({ open, onClose, tunerId = 'right' }) {
   const { radio, refetch } = useMyRadio({ tunerId });
@@ -136,17 +137,22 @@ export default function RadioPickerModal({ open, onClose, tunerId = 'right' }) {
           <div style={{
             padding: '10px 14px',
             borderBottom: '1px solid var(--rim0)',
-            background: 'color-mix(in srgb, var(--cyan) 6%, var(--bg1))',
+            background: 'color-mix(in srgb, var(--acc2) 5%, var(--bg1))',
           }}>
-            <div style={{ fontSize: 10, color: 'var(--fg2)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 10, color: 'var(--acc2)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
               Current rig
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg0)', marginTop: 2 }}>
-              <span style={{ color: 'var(--cyan)', marginRight: 8 }}>{radio.band}</span>
-              {radio.label}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+              <span style={{ color: 'var(--acc2)', display: 'inline-flex', flex: 'none' }}>
+                <RadioSymbol id={radio.id} size={22} />
+              </span>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg0)', display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <span style={{ color: 'var(--acc2)', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>{radio.band}</span>
+                <span>{radio.label}</span>
+              </div>
             </div>
             {radio.blurb && (
-              <div style={{ fontSize: 11, color: 'var(--fg2)', marginTop: 3, lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 3, lineHeight: 1.4 }}>
                 {radio.blurb}
               </div>
             )}
@@ -186,40 +192,58 @@ export default function RadioPickerModal({ open, onClose, tunerId = 'right' }) {
                         onClick={() => pickRadio(m.id)}
                         disabled={switching || isCurrent}
                         style={{
+                          display: 'grid',
+                          gridTemplateColumns: '34px 1fr',
+                          gap: 10,
+                          alignItems: 'center',
                           textAlign: 'left',
-                          padding: '8px 10px',
+                          padding: '9px 10px',
                           background: isCurrent
-                            ? 'color-mix(in srgb, var(--cyan) 14%, var(--bg2))'
+                            ? 'color-mix(in srgb, var(--acc2) 9%, var(--bg2))'
                             : 'var(--bg2)',
-                          border: `1px solid ${isCurrent ? 'var(--cyan)' : 'var(--rim0)'}`,
+                          border: `1px solid ${isCurrent ? 'var(--acc2)' : 'var(--rim0)'}`,
                           borderRadius: 5,
                           cursor: isCurrent ? 'default' : 'pointer',
                           color: 'var(--fg0)',
                           fontFamily: 'inherit',
                           opacity: switching && !isCurrent ? 0.5 : 1,
+                          position: 'relative',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                          <span style={{
-                            fontSize: 10,
-                            color: 'var(--cyan)',
-                            letterSpacing: '0.1em',
-                            fontWeight: 700,
-                            minWidth: 36,
-                          }}>{m.band}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600 }}>{m.label}</span>
-                          {isCurrent && (
+                        <span style={{
+                          width: 34, height: 34,
+                          display: 'grid', placeItems: 'center',
+                          borderRadius: 5,
+                          background: 'color-mix(in srgb, var(--bg0) 80%, #000)',
+                          border: '1px solid var(--rim0)',
+                          color: 'var(--acc2)',
+                          flex: 'none',
+                        }}>
+                          <RadioSymbol id={m.id} size={20} />
+                        </span>
+                        <span style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
                             <span style={{
-                              marginLeft: 'auto', fontSize: 10, color: 'var(--cyan)',
-                              letterSpacing: '0.1em',
-                            }}>CURRENT</span>
+                              fontSize: 11,
+                              color: 'var(--acc2)',
+                              letterSpacing: '0.04em',
+                              fontWeight: 700,
+                              minWidth: 38,
+                            }}>{m.band}</span>
+                            <span style={{ fontSize: 14, fontWeight: 700 }}>{m.label}</span>
+                            {isCurrent && (
+                              <span style={{
+                                marginLeft: 'auto', fontSize: 10, color: 'var(--acc2)',
+                                letterSpacing: '0.1em', fontWeight: 700,
+                              }}>CURRENT</span>
+                            )}
+                          </div>
+                          {m.blurb && (
+                            <div style={{
+                              fontSize: 12, color: 'var(--fg2)', marginTop: 2, lineHeight: 1.4,
+                            }}>{m.blurb}</div>
                           )}
-                        </div>
-                        {m.blurb && (
-                          <div style={{
-                            fontSize: 11, color: 'var(--fg2)', marginTop: 2, lineHeight: 1.35,
-                          }}>{m.blurb}</div>
-                        )}
+                        </span>
                       </button>
                     );
                   })}

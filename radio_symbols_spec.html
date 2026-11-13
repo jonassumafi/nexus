@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio Symbols Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:dark;--bg0:#020C14;--bg1:#061018;--bg2:#0A1828;--bg3:#12263A;--rim0:#1A3A50;--rim1:#2A5A7A;--acc:#66AADD;--acc2:#00EEFF;--lime:#44FF88;--red:#FF5544;--amber:#FFBB33;
+--t1:color-mix(in srgb,var(--acc) 28%,#fff);--t2:color-mix(in srgb,var(--acc) 62%,#fff);--t3:color-mix(in srgb,var(--acc) 88%,#fff);--inset:color-mix(in srgb,var(--bg0) 80%,#000)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg0);color:var(--t1);font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:28px max(20px,env(safe-area-inset-left,0px)) 64px;max-width:1080px;margin:0 auto}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+h1{font:700 24px/1.2 Inter}h2{font:700 11px Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin:30px 0 12px}
+.lead{color:var(--t2);max-width:82ch;margin-top:8px;font-size:13.5px}
+.sk{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}.sk button{display:flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--rim0);background:var(--bg1);font:500 12px Inter;color:var(--t2);border-radius:4px}.sk button[aria-pressed=true]{color:var(--t1);border-color:var(--acc2);background:var(--bg3)}.sk i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.gl{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;display:block;flex:none}
+.main{display:grid;grid-template-columns:minmax(0,410px) minmax(0,1fr);gap:34px;align-items:start}
+@media(max-width:820px){.main{grid-template-columns:minmax(0,1fr)}}
+/* picker */
+.pk{border:1px solid var(--rim0);border-radius:8px;background:linear-gradient(180deg,var(--bg1),var(--bg0));overflow:hidden}
+.pk-h{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--rim0)}
+.pk-h b{font:700 11px/1.5 Inter;letter-spacing:.14em;text-transform:uppercase;width:92px;flex:none}
+.pb{padding:7px 10px;border:1px solid var(--rim1);border-radius:4px;background:linear-gradient(180deg,var(--bg3),var(--bg2));font:600 11.5px Inter;color:var(--t1)}
+.cur{padding:12px;border-bottom:1px solid var(--rim0);background:color-mix(in srgb,var(--acc2) 5%,var(--bg1))}
+.cur small{font:600 10px Inter;letter-spacing:.12em;text-transform:uppercase;color:var(--acc2);display:block;margin-bottom:6px}
+.cur .n{display:flex;align-items:center;gap:10px;font:700 15px Inter}.cur .n .gl{font-size:22px;color:var(--acc2)}.cur .n em{font:700 11px Inter;font-style:normal;color:var(--acc2);letter-spacing:.04em}
+.cur p{font-size:12px;color:var(--t2);margin-top:3px}
+.list{max-height:560px;overflow:auto;padding:0 12px 12px}
+.list h3{font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin:16px 0 8px}
+.rw{display:grid;grid-template-columns:34px 38px minmax(0,1fr);gap:10px;align-items:center;width:100%;padding:9px 10px;margin-bottom:6px;border:1px solid var(--rim0);border-radius:5px;background:var(--bg2);position:relative}
+.rw:hover{border-color:var(--rim1)}
+.rw.on{border-color:var(--acc2);background:color-mix(in srgb,var(--acc2) 9%,var(--bg2))}
+.rw.on::after{content:"CURRENT";position:absolute;right:10px;top:9px;font:700 10px Inter;letter-spacing:.1em;color:var(--acc2)}
+.tile{width:34px;height:34px;display:grid;place-items:center;border-radius:5px;background:var(--inset);border:1px solid var(--rim0);color:var(--acc2);font-size:20px}
+.rw .bd{font:700 11px Inter;letter-spacing:.04em;color:var(--acc2)}
+.rw .nm{font:700 14px Inter;color:var(--t1)}.rw .ds{font-size:12px;color:var(--t2);line-height:1.4;margin-top:1px}
+/* strip demo */
+.demo{position:sticky;top:18px}
+.game{height:220px;border-radius:8px;border:1px solid var(--rim0);position:relative;overflow:hidden;background:radial-gradient(120px 90px at 22% 70%,#3a5a7a55,transparent),radial-gradient(260px 160px at 70% 120%,#7a4a2a66,transparent),radial-gradient(1.2px 1.2px at 12% 22%,#fff9,transparent),radial-gradient(1px 1px at 38% 48%,#fff8,transparent),radial-gradient(1.4px 1.4px at 61% 18%,#fffa,transparent),linear-gradient(160deg,#070d14,#13202e 60%,#1d1a1c)}
+.ov{position:absolute;top:12px;right:14px;display:flex;gap:4px;opacity:.9}
+.chip{display:flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:4px;background:rgba(2,12,20,.78);border:1px solid color-mix(in srgb,var(--rim0) 85%,transparent);white-space:nowrap}
+.chip .led{width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime)}
+.chip .gl{font-size:15px;stroke-width:2;color:var(--t2)}
+.chip .lab{font:600 9px Inter;letter-spacing:.09em;text-transform:uppercase;color:var(--t2)}
+.chip .fr{font:700 12px Inter;font-variant-numeric:tabular-nums;color:var(--acc2);letter-spacing:.03em}
+.ladder{display:flex;align-items:flex-end;gap:22px;margin-top:14px;padding:14px;border:1px solid var(--rim0);border-radius:8px;background:var(--bg1);color:var(--acc2)}
+.ladder div{display:flex;flex-direction:column;align-items:center;gap:6px;font:500 10px Inter;color:var(--t3)}
+.rules{padding-left:18px;font-size:12.5px;color:var(--t2);display:grid;gap:8px}.rules b{color:var(--t1)}
+pre{white-space:pre-wrap;word-break:break-all;font:11px/1.5 ui-monospace,Consolas,monospace;color:var(--t2);background:var(--inset);border:1px solid var(--rim0);border-radius:6px;padding:12px;max-height:340px;overflow:auto}
+.note{font-size:12.5px;color:var(--t2);margin-top:10px;max-width:60ch}.note b{color:var(--t1);font-weight:600}
+/* sheet */
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.sc{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--rim0);border-radius:6px;background:var(--bg2)}
+.sc .tile{width:44px;height:44px;font-size:28px}
+.sc b{font:700 13px Inter;display:block}.sc small{font:500 10.5px Inter;color:var(--acc2);letter-spacing:.04em}.sc p{font-size:11.5px;color:var(--t2);line-height:1.4;margin-top:2px}
+</style></head><body>
+<h1>Radio Symbols, Spec</h1>
+<p class="lead">Spec and mockup in one file for the 20 radio profiles in the radio type picker. Each profile gets one single color line symbol that takes its color from the skin accent, so it follows all nine skins. Symbols appear only in the picker. They are not used on the strip chips. Pick a skin, then click any radio to see the picker update.</p>
+<div class="sk" id="sk"></div>
+<div class="main" style="margin-top:22px">
+ <div class="pk"><div class="pk-h"><b>Switch Command Radio</b><span class="pb">Inherit primary</span><span class="pb">Random reroll</span><span class="pb">Close</span></div>
+  <div class="cur" id="cur"></div><div class="list" id="list"></div></div>
+ <div class="demo">
+  <h2 style="margin-top:0">Rules</h2>
+  <ol class="rules">
+   <li><b>Where.</b> Only in the radio type picker. Each row gets a 34 px tile on its left holding a 20 px symbol, and the Current rig header shows the symbol at 22 px before the band tag. Nowhere else, including the strip chips and the roster.</li>
+   <li><b>Drawing.</b> 24 unit viewBox, 1.7 stroke, round caps and joins, no fills except small dots, all in currentColor.</li>
+   <li><b>Color.</b> The symbol uses acc2. The tile uses an inset well (bg0 mixed 80 percent with black) and a rim0 border. The selected row uses an acc2 border and a 9 percent acc2 tint. No hardcoded colors.</li>
+   <li><b>Unique.</b> One symbol per profile, even when names share a word (the two Patrols differ).</li>
+   <li><b>No padlock.</b> Reserved for the locked indicator on the radios.</li>
+   <li><b>Static.</b> No animation and no hover effect on the symbols.</li>
+   <li><b>Fallback.</b> A profile with no symbol shows the dashed circle at the end of the sheet. Match symbols by profile id, and never fail if one is missing.</li>
+  </ol>
+  <h2>Size check</h2>
+  <div class="ladder" id="ladder"></div>
+ </div>
+</div>
+<h2>All 20 symbols, plus fallback</h2>
+<div class="sheet" id="sheet"></div>
+<script>
+const G=(p)=>`<svg class="gl" viewBox="0 0 24 24">${p}</svg>`;
+const F='fill="currentColor" stroke="none"';
+const R=[
+['Personal / Handheld',[
+['VX-131 Transit','UHF','Short-range transit unit, muted treble.','<path d="M5 6l6 6-6 6M12 6l6 6-6 6"/>','Two forward chevrons for a short hop, always moving.'],
+['VX-27 Scoutlink','UHF','Lightweight scout handheld, tight bandwidth, loud carrier.',`<circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v5M12 16.5v5M2.5 12h5M16.5 12h5"/><circle cx="12" cy="12" r="1.2" ${F}/>`,'Crosshair for a tight scouting link.'],
+['VX-51 Fieldmaster','VHF','Field-grade handheld, mid-brightness voice.','<path d="M3 19.5L12 5l9 14.5zM9.5 19.5L12 14l2.5 5.5"/>','Field tent.'],
+['KR-852 Steppe','UHF','Steppe-service handheld. Dry and immediate.','<path d="M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0M12 6v2.5M4.5 9.5L6.3 11M19.5 9.5L17.7 11"/>','Sun on a flat, dry horizon.'],
+['KR-6K Veteran','HF','Veteran handheld, nostalgic 1960s voicing.','<path d="M5 9l7-5 7 5M5 14l7-5 7 5M5 19l7-5 7 5"/>','Service stripes for the old hand.']]],
+['Ship-fit',[
+['VX-134 Patrol','VHF','Patrol-class rig, balanced warmth.','<path d="M12 3l7.5 3v6c0 4.6-3.2 7.6-7.5 9-4.3-1.4-7.5-4.4-7.5-9V6z"/>','Shield for the patrol class.'],
+['UV-164 Guard','UHF','Guard-channel broadcast, dense mid-range, prominent sidechain compression.',`<circle cx="12" cy="12" r="1.6" ${F}/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.5 5.5a9.2 9.2 0 0 0 0 13M18.5 5.5a9.2 9.2 0 0 1 0 13"/>`,'Waves pushing outward on a guard channel.'],
+['VX-186 Hauler','VHF','Civilian hauler fit-standard, forgiving dynamics.','<path d="M3 7.5L12 3.5l9 4v9l-9 4-9-4zM3 7.5l9 4 9-4M12 11.5v9"/>','Cargo crate.'],
+['DX-201 Secure','KY58','Secure-voice rig with crypto discipline. Bright, bit-crushed, cryptomap static.',`<circle cx="7.5" cy="12" r="3.8"/><path d="M11.3 12H21M17.5 12v3.5M14.5 12v2.5"/>`,'Key for crypto discipline.'],
+['KR-5 Baklan','VHF','Soviet-pattern cockpit rig. Narrow midband, aggressive peak.','<path d="M12 3l2.7 5.8 6.3.7-4.7 4.3 1.3 6.2L12 17l-5.6 3 1.3-6.2L3 9.5l6.3-.7z"/>','Five point star for the Soviet pattern.'],
+['KR-1A Jadro','KY58','Secure cockpit set with distinctive compression curve + cryptomap bed.',`<circle cx="12" cy="12" r="2" ${F}/><ellipse cx="12" cy="12" rx="9" ry="3.6"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)"/>`,'Atom, since jadro means core.'],
+['KR-800 Flight','VHF','Flight-standard transceiver, tight presence.','<path d="M21 3.5L3 10.5l7 2.8 2.8 7.2zM10 13.3L21 3.5"/>','Paper plane for the flight standard.'],
+['KR-828 Line','UHF','Line-of-sight pattern, mid-forward voicing.',`<circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/><path d="M7.2 12h9.6"/>`,'Two points joined by a straight line.'],
+['KR-832M Military','VHF','Military-pattern voice, deliberate saturation.','<path d="M2.5 12H6V6h3.5v12H13V6h3.5v12H20v-6h1.5"/>','Clipped square wave for deliberate saturation.'],
+['KR-862 Scout','VHF','Scout cockpit rig, bright articulation.','<path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/>','Eye for bright articulation.'],
+['KR-863 Patrol','VHF','Patrol fitment, moderate compression.',`<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.5-6.5"/><circle cx="12" cy="12" r="1" ${F}/>`,'Radar sweep.'],
+['KR-864 Border','UHF','Border-service variant, heavier low-end.','<path d="M4 20V8l2-2 2 2v12M10 20V8l2-2 2 2v12M16 20V8l2-2 2 2v12M3 12h18M3 16h18"/>','Picket fence line for border service.']]],
+['Broadcast',[
+['MX-210 Interop','VHF','Multi-band interop broadcaster. Clean body, assertive compression.','<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/>','Two overlapping rings for multi band interop.'],
+['MX-220 Datalink','FM','Data-capable broadcast rig, warm high-end.','<path d="M4 8h15M15.5 4.5L19 8l-3.5 3.5M20 16H5M8.5 12.5L5 16l3.5 3.5"/>','Opposed arrows for two way data.'],
+['MX-222 Dispatch','VHF','Dispatch-grade broadcast, high clarity.','<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3.5" y="13.5" width="4" height="6" rx="1.5"/><rect x="16.5" y="13.5" width="4" height="6" rx="1.5"/><path d="M20 19.5c0 1.8-1.8 2.5-5 2.5"/>','Headset for dispatch.']]]];
+const ALL=R.flatMap(g=>g[1].map(r=>({n:r[0],b:r[1],d:r[2],i:G(r[3]),w:r[4]})));
+let cmd=ALL.findIndex(r=>r.n==='KR-828 Line');const crew=ALL.findIndex(r=>r.n==='VX-51 Fieldmaster');
+const $=id=>document.getElementById(id);
+function draw(){const c=ALL[cmd];
+ $('cur').innerHTML=`<small>Current rig</small><div class="n">${c.i}<em>${c.b}</em>${c.n}</div><p>${c.d}</p>`;
+ let k=0;$('list').innerHTML=R.map(g=>`<h3>${g[0]}</h3>`+g[1].map(()=>{const i=k++,r=ALL[i];return `<button class="rw ${i===cmd?'on':''}" data-i="${i}"><span class="tile">${r.i}</span><span class="bd">${r.b}</span><span><div class="nm">${r.n}</div><div class="ds">${r.d}</div></span></button>`}).join('')).join('');
+ $('ladder').innerHTML=[16,20,24,34].map(s=>`<div><span style="font-size:${s}px;display:block">${c.i}</span>${s}px</div>`).join('');}
+$('list').addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(!b)return;const y=$('list').scrollTop;cmd=+b.dataset.i;draw();$('list').scrollTop=y});
+$('sheet').innerHTML=ALL.map(r=>`<div class="sc"><span class="tile">${r.i}</span><span><b>${r.n}</b><small>${r.b}</small><p>${r.w}</p></span></div>`).join('');
+const slug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+$('sheet').insertAdjacentHTML('beforeend',`<div class="sc"><span class="tile"><svg class="gl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg></span><span><b>Fallback</b><small>NO SYMBOL</small><p>Shown when a profile has none.</p></span></div>`);
+document.body.insertAdjacentHTML('beforeend','<h2>Icon source</h2><pre id="src"></pre>');
+document.getElementById('src').textContent=ALL.map(r=>slug(r.n)+'\n'+r.i.replace('class="gl" ','')).join('\n\n')+'\n\nfallback\n<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg>';
+const SK={'Deep Blue':['#020C14','#061018','#0A1828','#12263A','#1A3A50','#2A5A7A','#66AADD','#00EEFF'],Obsidian:['#0a0a0c','#101012','#17171a','#202024','#2c2c31','#4a4a52','#b4c2d3','#e4f2ff'],Ember:['#0c0806','#130d09','#1c130d','#281a11','#3a2616','#6a4524','#e3a655','#ffc766'],Oxide:['#0e0607','#160a0b','#20100f','#2e1715','#44201c','#7a3a2e','#e2806a','#ffae92'],'Olive Drab':['#090b06','#0f120a','#171b0f','#212714','#333b1f','#5c6b34','#aec86f','#dff48f'],'Violet Void':['#0a0612','#100a1a','#181026','#231738','#34224f','#5b3d8c','#ae92ee','#e6ceff'],Abyss:['#04100f','#081817','#0e2321','#16322f','#1d4642','#2f7a72','#52c6b3','#80f6e8'],Dune:['#100e0c','#181512','#221e19','#2f2922','#403830','#6e6254','#d8bd90','#f3deb4'],Carbon:['#030304','#08080a','#0f0f12','#18181c','#25252b','#3e3e47','#ff5fae','#ff8cc6']};
+const V=['--bg0','--bg1','--bg2','--bg3','--rim0','--rim1','--acc','--acc2'];
+$('sk').innerHTML=Object.entries(SK).map(([n,v],i)=>`<button data-s="${n}" aria-pressed="${i===0}"><i style="--c:${v[7]}"></i>${n}</button>`).join('');
+$('sk').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;SK[b.dataset.s].forEach((c,i)=>document.documentElement.style.setProperty(V[i],c));[...$('sk').children].forEach(x=>x.setAttribute('aria-pressed',x===b))});
+draw();
+</script></body></html>
