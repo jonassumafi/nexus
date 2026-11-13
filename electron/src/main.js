@@ -76,11 +76,13 @@ const MODES = {
   },
   radio: {
     path: '/radio',
-    // v0.9.0 — Command tuner card added below the primary strip. Default
-    // height raised to accommodate; user can still drag taller to see more
-    // peers or shrink to just the primary strip.
-    size: { width: 560, height: 290 },
-    minSize: { width: 420, height: 120 },
+    // v0.9.26 — Radio-only now runs in its own BrowserWindow
+    // (createRadioWindow), transparent + non-resizable, auto-sized
+    // to the overlay via nexus:radio:resize. The values below are
+    // only used as initial defaults; the renderer takes over on
+    // first mount.
+    size: { width: 280, height: 160 },
+    minSize: { width: 240, height: 80 },
   },
 };
 
@@ -112,12 +114,13 @@ function loadState() {
   }
 }
 
-// Apply the current mode's pin preference to the window.
+// Apply the current mode's pin preference to the window hosting the
+// active view. Radio-only has its own BrowserWindow since v0.9.26.
 function applyPin() {
-  if (!mainWindow || mainWindow.isDestroyed()) return false;
   const on = !!loadState().pinnedModes[currentMode];
-  // See createWindow for the level choice ('floating').
-  try { mainWindow.setAlwaysOnTop(on, 'floating'); } catch {}
+  const w  = currentMode === 'radio' ? radioWindow : mainWindow;
+  if (!w || w.isDestroyed()) return false;
+  try { w.setAlwaysOnTop(on, 'floating'); } catch {}
   return on;
 }
 
@@ -150,9 +153,24 @@ function normKey(k) {
 }
 let pttDown = false;
 let mainWindow = null;
+let radioWindow = null;
 let keyboard = null;
 let currentMode = 'full';
 let radioExpanded = false;
+
+// Return the webContents of whichever window currently hosts the
+// active renderer. Radio-only lives in its own window since v0.9.26;
+// Full + Companion share mainWindow. Used for IPC broadcasts (PTT
+// events, update-flow events, window-state pushes).
+function activeWebContents() {
+  if (currentMode === 'radio' && radioWindow && !radioWindow.isDestroyed()) {
+    return radioWindow.webContents;
+  }
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
+}
+function sendToActive(channel, payload) {
+  try { activeWebContents()?.send(channel, payload); } catch {}
+}
 
 // ─── Window creation ──────────────────────────────────────────────────────
 function createWindow() {
@@ -183,6 +201,10 @@ function createWindow() {
     // Solid chassis — opaque window with a device-like bezel drawn
     // inside by preload CSS. Was transparent in v0.3/v0.4; feedback was
     // "looks like a floating panel, not an app." OS draws the drop shadow.
+    // The Radio-only view runs in its own dedicated BrowserWindow
+    // (transparent + non-resizable) built in createRadioWindow below;
+    // the main window stays solid so Full + Companion keep native
+    // edge-resize on Windows (which a transparent window loses).
     transparent: false,
     hasShadow: true,
     backgroundColor: '#020C14',
@@ -325,6 +347,106 @@ function createWindow() {
   mainWindow.on('page-title-updated', (e) => e.preventDefault());
 }
 
+// ─── Radio-only window (v0.9.26+) ────────────────────────────────────────
+// Radio-only runs in its own transparent, non-resizable BrowserWindow so
+// the HUD paints only its glass panels over the game. mainWindow stays
+// opaque + resizable for Full + Companion (Windows loses native edge
+// resize on transparent windows). Both windows share the same renderer
+// bundle; the udp-voice engine in main process is unaffected by window
+// swaps.
+function createRadioWindow() {
+  const state = loadState();
+  const saved = state.radio || {};
+  const size  = MODES.radio.size;
+
+  // Default: anchor to the top-right of the primary display's work area.
+  const area = screen.getPrimaryDisplay().workArea;
+  const defaultX = area.x + area.width - size.width - 20;
+  const defaultY = area.y + 20;
+
+  let x = Number.isFinite(saved.x) ? saved.x : defaultX;
+  let y = Number.isFinite(saved.y) ? saved.y : defaultY;
+  let w = Number.isFinite(saved.width)  ? saved.width  : size.width;
+  let h = Number.isFinite(saved.height) ? saved.height : size.height;
+
+  // Keep the window at least partly inside any display.
+  const displays = screen.getAllDisplays();
+  const onScreen = displays.some(d => {
+    const a = d.workArea;
+    return x + 20 >= a.x && x + 20 <= a.x + a.width &&
+           y + 20 >= a.y && y + 20 <= a.y + a.height;
+  });
+  if (!onScreen) { x = defaultX; y = defaultY; }
+
+  radioWindow = new BrowserWindow({
+    x, y, width: w, height: h,
+    minWidth: MODES.radio.minSize.width,
+    minHeight: MODES.radio.minSize.height,
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    resizable: false,
+    movable: true,
+    alwaysOnTop: !!state.pinnedModes.radio,
+    skipTaskbar: false,
+    autoHideMenuBar: true,
+    title: `Nexus ${app.getVersion()}`,
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      // Same reason as mainWindow: don't let Chromium throttle the
+      // renderer while the player is in-game with focus elsewhere.
+      backgroundThrottling: false,
+    },
+  });
+
+  radioWindow.setAlwaysOnTop(!!state.pinnedModes.radio, 'floating');
+  radioWindow.loadURL(urlFor('/radio'));
+
+  radioWindow.on('move', persistRadioBounds);
+  radioWindow.on('closed', () => { radioWindow = null; });
+
+  // Close-to-tray parity with mainWindow: X hides, actual quit only
+  // happens via tray or isQuitting.
+  radioWindow.on('close', (e) => {
+    if (!isQuitting) { e.preventDefault(); radioWindow.hide(); }
+  });
+
+  radioWindow.on('page-title-updated', (e) => e.preventDefault());
+
+  radioWindow.webContents.on('did-finish-load', () => {
+    // Push initial window-state snapshot into the radio renderer.
+    try {
+      radioWindow.webContents.send('nexus:window-state', {
+        pinned: !!loadState().pinnedModes.radio,
+        compact: true,
+        mode: 'radio',
+        radioExpanded: false,
+      });
+    } catch {}
+  });
+
+  // If the Radio-only renderer crashes, don't leave the user with a
+  // phantom tiny transparent window — fall back to Full.
+  radioWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[main] radio renderer gone:', details?.reason, details?.exitCode);
+    try { radioWindow?.destroy(); } catch {}
+    radioWindow = null;
+    try { switchMode('full'); } catch {}
+  });
+}
+
+function persistRadioBounds() {
+  if (!radioWindow || radioWindow.isDestroyed()) return;
+  const b = radioWindow.getBounds();
+  const prev = loadState().radio || {};
+  saveState({ radio: { ...prev, x: b.x, y: b.y, width: b.width, height: b.height } });
+}
+
 // Compute initial window bounds for a mode, clamping to primary display.
 function computeBounds(mode, state) {
   const m = MODES[mode];
@@ -401,28 +523,51 @@ function persistBounds() {
 // opts.force re-applies placement even when already in nextMode (tray
 // "Reset layout" while in full mode used to do nothing).
 function switchMode(nextMode, opts = {}) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
   if (!MODES[nextMode] || (nextMode === currentMode && !opts.force)) return;
-  if (nextMode !== currentMode) persistBounds();
+
+  // ─── To Radio-only ──────────────────────────────────────────────────
+  // Hide the main window (Full/Companion) and bring up the dedicated
+  // transparent radio window. The udp-voice engine in main process is
+  // unaffected; renderer-side hooks reinitialize the same way a
+  // loadURL swap used to.
+  if (nextMode === 'radio') {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (currentMode !== 'radio') persistBounds();
+      try { mainWindow.hide(); } catch {}
+    }
+    currentMode = 'radio';
+    saveState({ mode: 'radio' });
+    if (!radioWindow || radioWindow.isDestroyed()) {
+      createRadioWindow();
+    } else {
+      try { radioWindow.show(); } catch {}
+    }
+    applyPin();
+    return;
+  }
+
+  // ─── To Full or Companion ───────────────────────────────────────────
+  // Coming from radio: hide the radio window, show mainWindow with the
+  // new mode. Otherwise it's a regular Full↔Companion swap on mainWindow.
+  const wasRadio = currentMode === 'radio';
+  if (wasRadio && radioWindow && !radioWindow.isDestroyed()) {
+    try { radioWindow.hide(); } catch {}
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    // Main was closed somehow; rebuild it before loading the new mode.
+    createWindow();
+  }
+  if (!wasRadio) persistBounds();
   currentMode = nextMode;
   saveState({ mode: currentMode });
 
   const m = MODES[currentMode];
   const state = loadState();
-  // All modes are user-resizable (and draggable). The per-mode minSize
-  // keeps shrinking the companion / radio-only windows to a floor that
-  // still renders their layout. Full mode gets maximized below and the
-  // user drags it via the OS; companion / radio windows get their
-  // frameless drag region from the renderer's title bar.
   mainWindow.setResizable(true);
   mainWindow.setMovable(true);
   mainWindow.setMinimumSize(m.minSize.width, m.minSize.height);
 
   if (currentMode === 'full') {
-    // Restore the last normal size/position (computeBounds rejects stale
-    // screen-sized values and centers when there's none), then maximize
-    // only if the user left it maximized — the on('maximize') handler
-    // snaps that flush to the work area.
     const b = computeBounds('full', state);
     try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
     mainWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height }, true);
@@ -430,11 +575,6 @@ function switchMode(nextMode, opts = {}) {
       try { mainWindow.maximize(); } catch {}
     }
   } else {
-    // Companion + radio: resize to the mode's default size (or whatever
-    // the user last resized this mode to) and center on the active
-    // display. We do not reuse saved x/y here — the user explicitly
-    // asked for centering on switch so they can drag from a known
-    // predictable starting point.
     const saved = state[currentMode] || {};
     const width  = Number.isFinite(saved.width)  ? saved.width  : m.size.width;
     const height = Number.isFinite(saved.height) ? saved.height : m.size.height;
@@ -448,13 +588,21 @@ function switchMode(nextMode, opts = {}) {
       mainWindow.setPosition(cx, cy);
     } catch {}
   }
+  try { mainWindow.show(); } catch {}
   applyPin();
   // Clear cache on mode switch too, so any mid-session frontend deploy is
   // picked up without a full app relaunch.
   session.defaultSession.clearCache()
     .catch(() => {})
     .finally(() => {
-      mainWindow.loadURL(urlFor(MODES[currentMode].path));
+      if (wasRadio) {
+        // Coming back from radio mode — the mainWindow renderer was
+        // showing whatever was loaded when we left. Reload the correct
+        // route so Full↔Companion cache stays consistent.
+        mainWindow.loadURL(urlFor(MODES[currentMode].path));
+      } else {
+        mainWindow.loadURL(urlFor(MODES[currentMode].path));
+      }
     });
 }
 
@@ -503,13 +651,13 @@ function startKeyHook() {
       if (!tunerId || pttDownState[tunerId]) return;
       pttDownState[tunerId] = true;
       pttDown = pttDownState.left || pttDownState.right;
-      mainWindow?.webContents.send('nexus:ptt', { down: true, tunerId });
+      sendToActive('nexus:ptt', { down: true, tunerId });
     };
     const firePttUp = (tunerId) => {
       if (!tunerId || !pttDownState[tunerId]) return;
       pttDownState[tunerId] = false;
       pttDown = pttDownState.left || pttDownState.right;
-      mainWindow?.webContents.send('nexus:ptt', { down: false, tunerId });
+      sendToActive('nexus:ptt', { down: false, tunerId });
     };
 
     uIOhook.on('keydown', (e) => firePttDown(matchTuner(nameFor(e.keycode))));
@@ -566,7 +714,7 @@ ipcMain.handle('nexus:setPttKeys', (_e, bindings) => {
     pttKeys.left = next.left ? String(next.left) : null;
     if (pttDownState.left && pttKeys.left === null) {
       pttDownState.left = false;
-      mainWindow?.webContents.send('nexus:ptt', { down: false, tunerId: 'left' });
+      sendToActive('nexus:ptt', { down: false, tunerId: 'left' });
     }
   }
   if ('right' in next) {
@@ -574,7 +722,7 @@ ipcMain.handle('nexus:setPttKeys', (_e, bindings) => {
     currentPttKey = pttKeys.right || 'v';
     if (pttDownState.right && pttKeys.right === null) {
       pttDownState.right = false;
-      mainWindow?.webContents.send('nexus:ptt', { down: false, tunerId: 'right' });
+      sendToActive('nexus:ptt', { down: false, tunerId: 'right' });
     }
   }
   console.log('[main] PTT keys →', { left: pttKeys.left, right: pttKeys.right });
@@ -582,24 +730,45 @@ ipcMain.handle('nexus:setPttKeys', (_e, bindings) => {
 });
 
 ipcMain.handle('nexus:togglePin', () => {
-  if (!mainWindow) return false;
-  // Pin belongs to the current mode only (see loadState).
-  const next = !mainWindow.isAlwaysOnTop();
+  // Pin belongs to the current mode only (see loadState). Radio-only
+  // has its own window since v0.9.26.
+  const w = currentMode === 'radio' ? radioWindow : mainWindow;
+  if (!w || w.isDestroyed()) return false;
+  const next = !w.isAlwaysOnTop();
   const pinnedModes = { ...loadState().pinnedModes, [currentMode]: next };
   saveState({ pinnedModes });
   return applyPin();
 });
 
 ipcMain.handle('nexus:setOpacity', (_e, v) => {
-  if (!mainWindow) return 1;
+  const w = currentMode === 'radio' ? radioWindow : mainWindow;
+  if (!w || w.isDestroyed()) return 1;
   const value = Math.max(0.3, Math.min(1, Number(v) || 1));
-  try { mainWindow.setOpacity(value); } catch {}
+  try { w.setOpacity(value); } catch {}
   saveState({ opacity: value });
   return value;
 });
 
 ipcMain.handle('nexus:getOpacity', () => {
-  try { return mainWindow?.getOpacity?.() ?? 1; } catch { return 1; }
+  const w = currentMode === 'radio' ? radioWindow : mainWindow;
+  try { return w?.getOpacity?.() ?? 1; } catch { return 1; }
+});
+
+// Radio-only: renderer measures the overlay root and asks main to
+// match the window to it, keeping the top-right corner fixed so growth
+// (long names, opened settings panel) spills leftward + downward.
+ipcMain.handle('nexus:radio:resize', (_e, payload) => {
+  if (!radioWindow || radioWindow.isDestroyed()) return { ok: false };
+  const w = Math.max(MODES.radio.minSize.width,  Math.round(Number(payload?.width)  || 0));
+  const h = Math.max(MODES.radio.minSize.height, Math.round(Number(payload?.height) || 0));
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return { ok: false };
+  const b = radioWindow.getBounds();
+  const right = b.x + b.width;      // keep this pinned
+  const top   = b.y;                // keep this pinned
+  const newX  = right - w;
+  const newY  = top;
+  try { radioWindow.setBounds({ x: newX, y: newY, width: w, height: h }, false); } catch {}
+  return { ok: true };
 });
 
 ipcMain.handle('nexus:setMode', (_e, mode) => {
@@ -620,13 +789,23 @@ ipcMain.handle('nexus:setRadioExpanded', (_e, expanded) => {
   return radioExpanded;
 });
 
-ipcMain.handle('nexus:minimize',  () => mainWindow?.minimize());
+// Min/max/close target whichever window hosts the active view.
+// Radio-only has its own window since v0.9.26 but has no title bar,
+// so these are effectively only used by mainWindow (Full + Companion
+// TitleBars). Still, route by active window so a future UI in Radio-
+// only could call them safely.
+function activeWindow() {
+  if (currentMode === 'radio' && radioWindow && !radioWindow.isDestroyed()) return radioWindow;
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+}
+ipcMain.handle('nexus:minimize',  () => activeWindow()?.minimize());
 ipcMain.handle('nexus:maxToggle', () => {
-  if (!mainWindow) return;
-  if (mainWindow.isMaximized()) mainWindow.unmaximize();
-  else mainWindow.maximize();
+  const w = activeWindow();
+  if (!w) return;
+  if (w.isMaximized()) w.unmaximize();
+  else w.maximize();
 });
-ipcMain.handle('nexus:close', () => mainWindow?.close());
+ipcMain.handle('nexus:close', () => activeWindow()?.close());
 
 // ─── Skin mirror (for the custom installer) ───────────────────────────
 // Renderer's localStorage lives inside Chromium's LevelDB, which the
@@ -798,7 +977,12 @@ function createTray() {
       { label: 'Companion (340×540)', click: () => switchMode('companion') },
       { label: 'Radio-only (compact)', click: () => switchMode('radio') },
       { type: 'separator' },
-      { label: 'Show window', click: () => { try { mainWindow?.show(); mainWindow?.focus(); } catch {} } },
+      { label: 'Show window', click: () => {
+          try {
+            const w = activeWindow();
+            w?.show(); w?.focus();
+          } catch {}
+        } },
       { label: 'Reset layout', click: () => {
           try {
             // Also unpins every mode: a pinned window is the usual reason
@@ -812,7 +996,12 @@ function createTray() {
       { label: 'Quit Nexus', click: () => { isQuitting = true; app.quit(); } },
     ]);
     tray.setContextMenu(menu);
-    tray.on('click', () => { try { mainWindow?.show(); mainWindow?.focus(); } catch {} });
+    tray.on('click', () => {
+      try {
+        const w = activeWindow();
+        w?.show(); w?.focus();
+      } catch {}
+    });
   } catch (err) {
     console.error('[main] tray failed:', err.message);
   }
@@ -838,10 +1027,11 @@ app.on('second-instance', () => {
   // If the primary is on its way out (tray Quit, auto-update restart),
   // don't try to show a window that's about to be destroyed.
   if (isQuitting) return;
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (!mainWindow.isVisible()) mainWindow.show();
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.focus();
+  const w = activeWindow();
+  if (!w) return;
+  if (!w.isVisible()) w.show();
+  if (w.isMinimized()) w.restore();
+  w.focus();
 });
 
 // Windows AppUserModelId — groups all Nexus taskbar entries, shortcuts,
@@ -885,20 +1075,20 @@ app.whenReady().then(() => {
 let updatePhase = 'idle';
 
 autoUpdater.on('checking-for-update', () => {
-  mainWindow?.webContents.send('nexus:update:checking');
+  sendToActive('nexus:update:checking');
 });
 autoUpdater.on('update-available', (info) => {
-  mainWindow?.webContents.send('nexus:update:available', {
+  sendToActive('nexus:update:available', {
     version: info?.version,
     releaseDate: info?.releaseDate,
     releaseNotes: info?.releaseNotes,
   });
 });
 autoUpdater.on('update-not-available', () => {
-  mainWindow?.webContents.send('nexus:update:none');
+  sendToActive('nexus:update:none');
 });
 autoUpdater.on('download-progress', (p) => {
-  mainWindow?.webContents.send('nexus:update:progress', {
+  sendToActive('nexus:update:progress', {
     percent: Math.round(p?.percent || 0),
     bytesPerSecond: p?.bytesPerSecond || 0,
     transferred: p?.transferred || 0,
@@ -907,14 +1097,14 @@ autoUpdater.on('download-progress', (p) => {
 });
 autoUpdater.on('update-downloaded', (info) => {
   updatePhase = 'downloaded';
-  mainWindow?.webContents.send('nexus:update:ready', {
+  sendToActive('nexus:update:ready', {
     version: info?.version,
     releaseNotes: info?.releaseNotes,
   });
 });
 autoUpdater.on('error', (err) => {
   console.warn('[updater] error:', err?.message);
-  mainWindow?.webContents.send('nexus:update:error', { message: err?.message });
+  sendToActive('nexus:update:error', { message: err?.message });
 });
 
 ipcMain.handle('nexus:update:checkNow', async () => {

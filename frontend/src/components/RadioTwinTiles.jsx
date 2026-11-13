@@ -1,13 +1,25 @@
-// Twin-tile radio — the new radio-only overlay layout, from
-// radio_twin_tiles.html. Two side-by-side tiles (Crew + Command) with a
-// shared mic strip on top. Tiles stack vertically under ~300 px.
+// Radio-only overlay — rebuilt from radio_roster_v2.html. Thin skin
+// over the same radio engine the Full + Companion views use; no
+// parallel state, no second copy of radio logic.
 //
-// Hook plumbing is identical to RadioOverlay.jsx (Crew uses the
-// transport-detected useRadioConnection/UDP hook; Command uses
-// useCommandTunerRx), so every existing audio path — PTT key,
-// transmit/receive chrome samples, per-peer voice filter — carries
-// over unchanged. Only the visual layout and the peer-list affordance
-// (chips + roster drawer instead of stacked peer rows) is new.
+// Structure:
+//   • Two chips side-by-side (CREW + CMD), a gear button beside them.
+//     Clicking a chip selects it; always exactly one selected.
+//     Double-click frequency to retune. Wheel over selected chip for
+//     ±0.1 steps. Enter commits, Escape cancels, blur commits.
+//   • Names-only roster right-aligned below the strip. Crew speakers
+//     lime, Command speakers orange; linger 3 s after they stop.
+//   • Red MUTED chip + red hairline beneath the strip when muted.
+//   • Gear → one settings panel (click outside to close):
+//     selected-radio lock/power, incoming/outgoing volume, mic input
+//     device + sensitivity + mute + live meter, radio-type pickers,
+//     opacity slider, Full-view button.
+//
+// Visual rules enforced:
+//   • Skin tokens only (bg0..3, rim0/1, acc, acc2) plus lime/red/amber
+//     and command-orange #ff9340. Never hardcode a skin color.
+//   • Amber = selected chip, acc2 = locked, lime = speaking, orange =
+//     command speaker, red = alerts / muted / double-talk.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../context/AuthContext.jsx';
@@ -24,239 +36,321 @@ const PROFILE_FIELDS = [
   'distortion', 'static_level', 'pitch_shift', 'bit_crush',
 ];
 
-const STYLE_ID = 'radio-twin-tiles-styles';
+const CMD_ORANGE = '#ff9340';
+
+const STYLE_ID = 'radio-overlay-v2-styles';
 function injectStyles() {
   if (typeof document === 'undefined') return;
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
   s.textContent = `
-.rtt {
+:root { --cmd-orange: ${CMD_ORANGE}; }
+
+.rov {
   --under: color-mix(in srgb, var(--bg0) 55%, #000);
   --inset: color-mix(in srgb, var(--bg0) 60%, #000);
-  --out:   cubic-bezier(.2,.8,.2,1);
-  padding: 10px 12px 12px;
-  display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px;
-  background: linear-gradient(180deg, var(--bg1), var(--bg0));
-  height: 100%; box-sizing: border-box; overflow: auto;
+  --t1: color-mix(in srgb, var(--acc2) 12%, #f2f6f8);
+  --t2: color-mix(in srgb, var(--acc) 42%, #8a98a4);
+  position: fixed; top: 0; right: 0;
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 4px; width: max-content; min-width: 260px;
+  padding: 2px 2px 4px 2px;
   font: 14px/1.5 Inter, system-ui, sans-serif;
-  color: color-mix(in srgb, var(--cyan) 12%, #f2f6f8);
+  color: var(--t1);
+  -webkit-app-region: no-drag;
 }
-.rtt .raised { background: linear-gradient(180deg, var(--bg3), var(--bg2));
-  border: 1px solid var(--rim0); border-radius: 4px;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--cyan) 14%, transparent) inset,
-              0 3px 0 var(--under), 0 6px 10px rgba(0,0,0,.35); }
-.rtt .ib { width: 26px; height: 26px; flex: none; display: inline-grid; place-items: center;
-  color: var(--fg2); border: 1px solid var(--rim1); border-radius: 3px;
+
+.rov .glass {
+  background: color-mix(in srgb, var(--bg0) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rim0) 85%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* The strip is the drag handle. Chips, gear, and every panel control
+ * opt back out below. Empty gaps between chips still drag because
+ * the gap belongs to the .strip background. */
+.rov .strip {
+  display: flex; gap: 4px; align-self: stretch; align-items: center;
+  -webkit-app-region: drag;
+}
+.rov .strip .chip,
+.rov .strip .gearb,
+.rov .strip .mute,
+.rov .strip input { -webkit-app-region: no-drag; }
+.rov .sett,
+.rov .roster { -webkit-app-region: no-drag; }
+
+.rov .chip {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 8px; border-radius: 4px;
+  position: relative; white-space: nowrap; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, opacity .2s;
+}
+.rov .chip.sel {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 40%, transparent),
+              0 0 12px color-mix(in srgb, var(--amber) 28%, transparent);
+}
+.rov .chip.sp .fr { color: var(--lime); }
+.rov .chip.cmd .lab { color: var(--cmd-orange); }
+.rov .chip.cmd.sp .fr { color: var(--cmd-orange); }
+.rov .chip.off { opacity: .55; }
+.rov .chip.off .fr { color: var(--t2); }
+.rov .chip.dbl { animation: rov-dbl .4s steps(2) infinite; }
+@keyframes rov-dbl {
+  0%   { border-color: var(--red); box-shadow: 0 0 12px color-mix(in srgb, var(--red) 55%, transparent); }
+  50%  { border-color: var(--rim0); box-shadow: none; }
+}
+.rov .chip.ring { animation: rov-ring .55s ease-out; }
+@keyframes rov-ring {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc2) 85%, transparent); }
+  100% { box-shadow: 0 0 0 9px transparent; }
+}
+
+.rov .led {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--lime); box-shadow: 0 0 6px var(--lime); flex: none;
+}
+.rov .led.off { background: var(--rim1); box-shadow: none; }
+.rov .led.tx  { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+.rov .lab {
+  font: 600 9px Inter; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--t2);
+}
+.rov .fr {
+  font: 700 12px Inter; font-variant-numeric: tabular-nums;
+  color: var(--acc2); letter-spacing: .03em;
+  padding: 0 2px; border-radius: 2px;
+  min-width: 38px; text-align: center;
+}
+.rov .chip.lk .fr { color: var(--t1); }
+
+.rov input.fi {
+  width: 50px; font: 700 12px Inter;
+  color: var(--acc2); background: var(--inset);
+  border: 1px solid var(--amber); border-radius: 2px;
+  outline: none; padding: 0 3px; text-align: center;
+}
+
+.rov .shake { animation: rov-shake .38s; }
+@keyframes rov-shake {
+  20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+
+.rov svg.i { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.rov .lkind { display: none; color: var(--acc2); place-items: center; }
+.rov .chip.lk .lkind { display: inline-grid; }
+.rov .lkind svg { width: 12px; height: 12px; }
+.rov .lkbad { animation: rov-lkbad .5s; }
+@keyframes rov-lkbad {
+  0%, 100% { color: inherit; }
+  30%      { color: var(--red); }
+}
+.rov .lkg .sh { transform-origin: 8px 11px; transition: transform .32s cubic-bezier(.3,1.8,.5,1); }
+.rov .lkg.unl .sh { transform: rotate(-38deg) translate(-1px,-1px); }
+.rov .pop1 { animation: rov-pop .45s cubic-bezier(.3,1.6,.5,1); }
+@keyframes rov-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.5); }
+  100% { transform: scale(1); }
+}
+
+.rov .mute {
+  display: none; align-items: center; gap: 5px;
+  height: 24px; padding: 0 8px; border-radius: 4px;
+  border-color: var(--red); color: var(--red);
+  font: 700 9px Inter; letter-spacing: .09em; flex: none;
+}
+.rov .mute svg { width: 12px; height: 12px; }
+.rov.muted .mute { display: flex; }
+
+.rov .mtr {
+  display: none; height: 2px; background: color-mix(in srgb, var(--red) 75%, transparent);
+  align-self: stretch; border-radius: 1px;
+}
+.rov.muted .mtr { display: block; }
+
+.rov .gearb {
+  width: 24px; height: 24px; border-radius: 4px;
+  align-self: center; display: inline-grid; place-items: center;
+  color: var(--t2);
+  background: color-mix(in srgb, var(--bg0) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rim0) 85%, transparent);
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.rov .gearb svg { width: 12px; height: 12px; }
+.rov .gearb:hover { color: var(--t1); border-color: var(--acc); }
+.rov .gearb.open { color: var(--acc2); border-color: var(--acc2); }
+
+.rov .roster {
+  display: flex; flex-direction: column; gap: 1px;
+  align-self: stretch; min-height: 0;
+}
+.rov .rw {
+  display: flex; align-items: baseline; justify-content: flex-end;
+  gap: 14px; height: 19px; padding: 0 3px;
+  text-shadow: 0 1px 3px #000, 0 0 6px #000;
+  transition: opacity .6s;
+}
+.rov .rw .n { font: 600 12.5px Inter; color: var(--t2); white-space: nowrap; }
+.rov .rw.lit .n {
+  color: var(--lime);
+  text-shadow: 0 0 9px color-mix(in srgb, var(--lime) 65%, transparent), 0 1px 3px #000;
+}
+.rov .rw.cmd.lit .n {
+  color: var(--cmd-orange);
+  text-shadow: 0 0 9px color-mix(in srgb, var(--cmd-orange) 65%, transparent), 0 1px 3px #000;
+}
+.rov .rw.dbl .n { color: var(--red); animation: rov-fl .4s steps(2) infinite; }
+.rov .rw.fade { opacity: 0; }
+@keyframes rov-fl { 50% { opacity: .3; } }
+
+.rov .sett {
+  width: 246px; margin-top: 2px; padding: 9px 10px;
+  border-radius: 6px;
+  color: var(--t1); align-self: stretch;
+}
+.rov .sett h4 {
+  font: 700 10px Inter; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--t1); margin-bottom: 4px;
+}
+.rov .sg { border-top: 1px solid var(--rim0); padding: 7px 0 2px; }
+.rov .sg h5 {
+  font: 700 9px Inter; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--acc); margin-bottom: 5px;
+}
+.rov .sg label {
+  display: grid; grid-template-columns: 70px 1fr; align-items: center;
+  gap: 8px; margin-bottom: 6px;
+  font: 600 10px Inter; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--t2);
+}
+.rov .sg select {
+  width: 100%; font: 500 11.5px Inter;
+  color: var(--t1); background: var(--inset);
+  border: 1px solid var(--rim1); border-radius: 3px;
+  padding: 3px 4px; outline: none;
+}
+.rov .sg input[type=range] {
+  width: 100%; accent-color: var(--acc2); height: 14px;
+}
+.rov .lv { height: 6px; background: var(--inset); border: 1px solid var(--rim0); border-radius: 2px; overflow: hidden; }
+.rov .lv u {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--lime), var(--amber));
+  transition: width .08s;
+}
+
+.rov .ib {
+  width: 24px; height: 22px; flex: none;
+  display: inline-grid; place-items: center;
+  color: var(--t2);
+  border: 1px solid var(--rim1); border-radius: 3px;
   background: linear-gradient(180deg, var(--bg3), var(--bg2));
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--cyan) 16%, transparent) inset, 0 2px 0 var(--under);
-  transition: transform .08s, color .15s, border-color .15s; cursor: pointer; }
-.rtt .ib svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.rtt .ib:hover { color: var(--fg0); border-color: var(--blue); }
-.rtt .ib:active { transform: translateY(2px); }
-.rtt .ib.on { color: var(--cyan); border-color: var(--blue); }
-.rtt .ib.red { color: #fff; border-color: var(--red); background: linear-gradient(180deg, #a8321f, #5e150b); }
-.rtt .lcd { font: 700 17px/1.1 Inter, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: .04em;
-  text-align: center; color: var(--cyan); background: var(--inset); border-radius: 3px;
-  padding: 5px 6px; box-shadow: 0 2px 6px #000 inset; flex: 1; min-width: 0;
-  transition: color .2s; cursor: text; border: 1px solid transparent; }
-.rtt .lcd.lk { cursor: not-allowed; }
-.rtt input.lcd { width: 100%; border: 1px solid var(--blue); outline: none; }
-.rtt .lrow { display: flex; gap: 6px; align-items: center; }
-.rtt .txb { width: 100%; height: 30px; display: flex; align-items: center; justify-content: center; gap: 8px;
-  font: 700 12px Inter; letter-spacing: .03em; text-transform: uppercase; color: var(--fg0);
-  border: 1px solid var(--rim1); border-radius: 4px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--blue) 26%, var(--bg2)), color-mix(in srgb, var(--blue) 12%, var(--bg1)));
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--cyan) 22%, transparent) inset, 0 3px 0 var(--under);
-  user-select: none; touch-action: none; transition: transform .08s, box-shadow .08s, color .15s; cursor: pointer; }
-.rtt .txb:active, .rtt .txb.on { transform: translateY(3px);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--cyan) 22%, transparent) inset, 0 0 0 var(--under); }
-.rtt .txb.on { color: #fff; border-color: var(--red);
-  background: linear-gradient(180deg, #ff6a57, #a63020);
-  box-shadow: 0 0 0 var(--under), 0 0 14px color-mix(in srgb, var(--red) 45%, transparent); }
-.rtt .txb.dis { opacity: .42; transform: none !important;
-  box-shadow: 0 3px 0 var(--under) !important; cursor: not-allowed; }
-.rtt .txb kbd { font: 700 10px Inter; border: 1px solid color-mix(in srgb, var(--fg0) 28%, transparent);
-  background: color-mix(in srgb, var(--bg0) 55%, #000); padding: 0 6px; border-radius: 2px; }
-.rtt .led { width: 8px; height: 8px; border-radius: 50%; background: var(--lime);
-  box-shadow: 0 0 6px var(--lime); flex: none; }
-.rtt .led.off { background: var(--red); box-shadow: 0 0 6px var(--red); }
-.rtt .mic { display: flex; align-items: center; gap: 8px; font: 600 11px Inter;
-  letter-spacing: .05em; text-transform: uppercase; color: var(--fg2); padding: 2px 2px 0; }
-.rtt .mic em { font-style: normal; color: var(--lime); text-transform: none; letter-spacing: .02em; }
-.rtt .mic.mute em { color: var(--red); }
-.rtt .mt { flex: 1; height: 6px; background: var(--inset); border: 1px solid var(--rim0);
-  border-radius: 2px; overflow: hidden; }
-.rtt .mt u { display: block; height: 100%; width: 0;
-  background: linear-gradient(90deg, var(--lime), color-mix(in srgb, var(--lime) 60%, var(--amber)));
-  transition: width .09s linear; }
-.rtt .ms { display: grid; gap: 6px; padding: 8px 10px; background: var(--inset);
-  border: 1px solid var(--rim0); border-radius: 4px; }
-.rtt .ms label { display: grid; grid-template-columns: 58px 1fr 38px; gap: 8px; align-items: center;
-  font: 600 10px Inter; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
-.rtt .ms input { accent-color: var(--cyan); width: 100%; }
-.rtt .ms b { text-align: right; color: var(--fg0); font-variant-numeric: tabular-nums; }
-.rtt .tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: stretch; }
-.rtt .tiles.c1 { grid-template-columns: minmax(0, 1fr); }
-.rtt .tile { padding: 8px; display: grid; gap: 6px; min-width: 0; align-content: start; }
-.rtt .tile.tx { border-color: var(--red); }
-.rtt .tile.tx .lcd { color: var(--red); }
-.rtt .tile.off { opacity: .6; }
-.rtt .tile.off .lcd { color: var(--fg2); }
-.rtt .th2 { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
-.rtt .th2 b { font: 700 12px Inter; letter-spacing: .07em; display: flex; align-items: center; gap: 7px; }
-.rtt .th2 small { display: block; font: 500 10px Inter; color: var(--fg2); margin-top: 1px; }
-.rtt .th2 .led.offc { background: var(--rim1); box-shadow: none; }
-.rtt .cnt { display: flex; align-items: center; gap: 6px;
-  font: 500 10.5px Inter; color: var(--fg2); min-height: 18px; width: 100%;
-  border-radius: 3px; padding: 0 2px; }
-.rtt button.cnt:hover { color: var(--fg0); }
-.rtt .cnt .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--lime); font-weight: 600; }
-.rtt .cnt .car { margin-left: auto; font-size: 9px; opacity: .7; transition: transform .16s; }
-.rtt .cnt[aria-expanded=true] .car { transform: rotate(180deg); }
-.rtt .cnt i.d { width: 6px; height: 6px; border-radius: 50%; background: var(--lime); flex: none; }
-.rtt .cnt i.air { width: 6px; height: 6px; border-radius: 50%; background: var(--red);
-  box-shadow: 0 0 6px var(--red); flex: none; }
-.rtt .chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 22px; align-content: flex-start; }
-.rtt .chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
-  padding: 2px 7px; border-radius: 3px; border: 1px solid var(--rim0); background: var(--inset);
-  font: 500 11px/1.45 Inter; color: var(--fg0);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rtt .chip.sp { border-color: var(--lime);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--lime) 25%, transparent); }
-.rtt .eq { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; flex: none; }
-.rtt .eq i { width: 2px; background: var(--lime); animation: rtt-eq .7s ease-in-out infinite; }
-.rtt .eq i:nth-child(2) { animation-delay: .18s; }
-.rtt .eq i:nth-child(3) { animation-delay: .36s; }
-@keyframes rtt-eq { 0%, 100% { height: 2px; } 50% { height: 10px; } }
-.rtt .more { font: 600 10.5px Inter; color: var(--cyan); padding: 2px 7px;
-  border: 1px dashed var(--rim1); border-radius: 3px; background: transparent; cursor: pointer; }
-.rtt .more:hover, .rtt .more[aria-expanded=true] { background: var(--bg3); border-style: solid; }
-.rtt .nodata { font: 400 11px Inter; color: var(--fg2); padding: 3px 2px; }
-.rtt .drawer { border: 1px solid var(--rim1); border-radius: 4px;
-  background: var(--inset); overflow: hidden; }
-.rtt .drh { display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 6px 8px 6px 10px; border-bottom: 1px solid var(--rim0);
-  font: 600 10.5px Inter; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); }
-.rtt .drh b { color: var(--fg0); }
-.rtt .drl { max-height: 152px; overflow-y: auto;
-  display: grid; grid-template-columns: repeat(var(--dc, 2), minmax(0, 1fr));
-  gap: 2px 10px; padding: 6px 10px;
-  scrollbar-width: thin; scrollbar-color: var(--rim1) transparent; }
-.rtt .drr { display: flex; align-items: center; gap: 7px; min-width: 0;
-  padding: 3px 0; font: 500 12px Inter; color: var(--fg0); }
-.rtt .av { width: 20px; height: 20px; border-radius: 50%; flex: none;
-  background: radial-gradient(circle at 35% 30%, var(--rim1), var(--bg3));
-  font: 600 8.5px Inter; color: var(--fg0); display: grid; place-items: center;
-  box-shadow: 0 0 0 1px var(--rim0); }
-.rtt .drr.sp .av { box-shadow: 0 0 0 2px var(--lime); }
-.rtt .drr .nmn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rtt .drr .eq { margin-left: auto; }
-@media (prefers-reduced-motion: reduce) { .rtt * { animation: none !important; transition: none !important; } }
+  box-shadow: 0 2px 0 var(--under);
+  cursor: pointer;
+}
+.rov .ib svg { width: 12px; height: 12px; }
+.rov .ib:hover { color: var(--t1); border-color: var(--acc); }
+.rov .ib:active { transform: translateY(2px); box-shadow: none; }
+.rov .ib.lockon { color: var(--acc2); border-color: var(--acc2); }
+.rov .ib.bad { color: var(--red); border-color: var(--red); }
+
+.rov .sel2 {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.rov .selname {
+  font: 700 10px Inter; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--amber);
+  display: flex; align-items: center; gap: 6px;
+}
+.rov .mrow { display: flex; gap: 8px; align-items: center; }
+.rov .mrow .lv { flex: 1; }
+
+.rov .fvb {
+  width: 100%; display: flex; align-items: center; justify-content: center;
+  gap: 7px; height: 24px; margin-bottom: 4px;
+  font: 700 10px Inter; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--t1);
+  border: 1px solid var(--rim1); border-radius: 3px;
+  background: linear-gradient(180deg, var(--bg3), var(--bg2));
+  box-shadow: 0 2px 0 var(--under); cursor: pointer;
+}
+.rov .fvb svg { width: 12px; height: 12px; }
+.rov .fvb:hover { border-color: var(--acc); }
+.rov .fvb:active { transform: translateY(2px); box-shadow: none; }
+
+.rov .rig-btn {
+  font: 600 10px Inter; letter-spacing: .04em;
+  color: var(--t1);
+  border: 1px solid var(--rim1);
+  background: var(--inset);
+  height: 22px; border-radius: 3px; cursor: pointer; padding: 0 8px;
+  text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  width: 100%;
+}
+.rov .rig-btn:hover { border-color: var(--acc); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rov * { animation: none !important; transition: none !important; }
+}
 `;
   document.head.appendChild(s);
 }
 
-// Compact key-remap row shown in the mic strip's gear panel. Click the
-// key badge → it goes to "Press key…" and the next keydown is captured
-// as the new binding. Escape cancels. Rejects overlaps with the other
-// tuner's key so Crew and Command can't share a binding.
-function KeyRemapRow({ label, current, otherKey, onSave }) {
-  const [capturing, setCapturing] = useState(false);
-  const [deny, setDeny] = useState(null);
-  useEffect(() => {
-    if (!capturing) return;
-    const onKey = (e) => {
-      e.preventDefault(); e.stopPropagation();
-      if (e.key === 'Escape') { setCapturing(false); return; }
-      const raw = e.key;
-      const up = raw.length === 1 ? raw.toUpperCase() : (raw === 'CapsLock' ? 'CAPSLOCK' : raw.toUpperCase());
-      if (['SHIFT', 'CONTROL', 'ALT', 'META'].includes(up)) return;
-      if (otherKey && up === String(otherKey).toUpperCase()) {
-        setDeny(up); setTimeout(() => setDeny(null), 900);
-        return;
-      }
-      onSave?.(up);
-      setCapturing(false);
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [capturing, otherKey, onSave]);
-  return (
-    <label style={{
-      display: 'grid', gridTemplateColumns: '58px 1fr 38px', gap: 6, alignItems: 'center',
-      font: '600 10px Inter', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fg2)',
-    }}>
-      {label}
-      <button
-        type="button"
-        onClick={() => setCapturing(c => !c)}
-        aria-label={`Rebind ${label}`}
-        style={{
-          font: '600 10px Inter', letterSpacing: '0.06em', textTransform: 'uppercase',
-          color: capturing ? 'var(--amber)' : (deny ? 'var(--red)' : 'var(--fg2)'),
-          border: `1px solid ${capturing ? 'var(--amber)' : (deny ? 'var(--red)' : 'var(--rim1)')}`,
-          background: 'color-mix(in srgb, var(--bg0) 60%, #000)',
-          height: 22, borderRadius: 3, cursor: 'pointer', padding: '0 8px',
-          textAlign: 'left',
-        }}
-      >
-        {capturing ? 'Press a key…' : (deny ? `${deny} in use` : (current ? String(current).toUpperCase() : '—'))}
-      </button>
-      <span style={{
-        font: '600 10px Inter', color: 'var(--fg3)', textAlign: 'right',
-      }}>{capturing ? 'ESC' : 'Click'}</span>
-    </label>
-  );
+const LK_SVG = (unlocked) => (
+  <svg className={`i lkg${unlocked ? ' unl' : ''}`} viewBox="0 0 24 24">
+    <g className="sh"><path d="M8 11V8a4 4 0 0 1 8 0v3" /></g>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+  </svg>
+);
+const MIC_SVG = (
+  <svg className="i" viewBox="0 0 24 24">
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+  </svg>
+);
+const MICOFF_SVG = (
+  <svg className="i" viewBox="0 0 24 24">
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5 11a7 7 0 0 0 14 0M12 18v3M3 3l18 18" />
+  </svg>
+);
+const GEAR_SVG = (
+  <svg className="i" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" />
+  </svg>
+);
+const POWER_SVG = (
+  <svg className="i" viewBox="0 0 24 24">
+    <path d="M12 3v8M6.3 6.8a8 8 0 1 0 11.4 0" />
+  </svg>
+);
+const FULLVIEW_SVG = (
+  <svg className="i" viewBox="0 0 24 24">
+    <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+  </svg>
+);
+
+function shortName(n) {
+  const s = String(n || '');
+  return s.length <= 20 ? s : s.slice(0, 16) + '…';
 }
 
-// Compact rig-picker row shown in the mic strip's gear panel. Shows the
-// current rig's label; clicking the button opens the shared
-// RadioPickerModal scoped to the matching tuner.
-function RigPickRow({ label, value, onOpen }) {
-  return (
-    <label style={{
-      display: 'grid', gridTemplateColumns: '58px 1fr 38px', gap: 6, alignItems: 'center',
-      font: '600 10px Inter', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fg2)',
-    }}>
-      {label}
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Change ${label}`}
-        title={`Change ${label}`}
-        style={{
-          font: '600 10px Inter', letterSpacing: '0.04em',
-          color: 'var(--fg1)',
-          border: '1px solid var(--rim1)',
-          background: 'color-mix(in srgb, var(--bg0) 60%, #000)',
-          height: 22, borderRadius: 3, cursor: 'pointer', padding: '0 8px',
-          textAlign: 'left',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}
-      >{value}</button>
-      <span style={{ font: '600 10px Inter', color: 'var(--fg3)', textAlign: 'right' }}>▾</span>
-    </label>
-  );
-}
-
-function sh(n) { const s = String(n || ''); return s.length <= 12 ? s : s.slice(0, Math.max(6, Math.ceil(s.length / 2))) + '…'; }
-function initials(n) { const w = String(n || '').replace(/[_-]+/g, ' ').split(' ').filter(Boolean); return (w.length > 1 ? w[0][0] + w[1][0] : (n || '').slice(0, 2)).toUpperCase(); }
-const IC = {
-  lock:   <svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>,
-  unlock: <svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 4.8-1"/></svg>,
-  pwr:    <svg viewBox="0 0 16 16"><path d="M8 2v5.5"/><path d="M4.6 4.4a5 5 0 1 0 6.8 0"/></svg>,
-  gear:   <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>,
-  mic:    <svg viewBox="0 0 16 16"><rect x="6" y="2" width="4" height="7" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0M8 12.5v2"/></svg>,
-  micoff: <svg viewBox="0 0 16 16"><rect x="6" y="2" width="4" height="7" rx="2"/><path d="M3.5 8a4.5 4.5 0 0 0 9 0M8 12.5v2M2 2l12 12"/></svg>,
-  x:      <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>,
-};
+// ────────────────────────────────────────────────────────────────────────
 
 export default function RadioTwinTiles() {
   useEffect(() => { injectStyles(); }, []);
   const { user: me } = useAuthContext();
 
+  // ─── Transport + hook setup (identical to the old version) ───────────
   const initialTransportRef = useRef((() => {
     try {
       if (import.meta.env.VITE_NEXUS_UDP_ONLY === '1') return 'udp';
@@ -268,7 +362,7 @@ export default function RadioTwinTiles() {
 
   const [voiceProfile, setVoiceProfile] = useState(null);
   const [pttKey, setPttKey] = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
-  const [micDeviceId]    = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
+  const [micDeviceId, setMicDeviceId] = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
   const [outputDeviceId] = useState(() => localStorage.getItem('nexus_output_device_id') || null);
   const [micSensitivity, setMicSensitivity] = useState(() => {
     const v = Number(localStorage.getItem('nexus_mic_sensitivity'));
@@ -279,11 +373,8 @@ export default function RadioTwinTiles() {
     return Number.isFinite(v) && v >= 0 ? v : 100;
   });
   const [muted, setMuted] = useState(false);
-  const [micOpen, setMicOpen] = useState(false);
-  // Which tuner's rig picker is open: 'right' = Crew, 'left' = Command,
-  // null = closed. One picker at a time; closing by onClose (click outside
-  // or ESC) just sets back to null.
-  const [rigPicker, setRigPicker] = useState(null);
+
+  const [rigPicker, setRigPicker] = useState(null); // 'right' | 'left' | null
 
   const [crewLocked, setCrewLocked] = useState(() => localStorage.getItem('nexus_crew_locked') === '1');
   const [cmdLocked, setCmdLocked]   = useState(() => localStorage.getItem('nexus_command_locked') === '1');
@@ -348,7 +439,7 @@ export default function RadioTwinTiles() {
     return () => { cancelled = true; };
   }, []);
 
-  // Mic meter.
+  // Mic meter (lives on-screen inside the settings panel while open).
   const [micLevel, setMicLevel] = useState(0);
   useEffect(() => {
     const id = setInterval(() => {
@@ -358,125 +449,453 @@ export default function RadioTwinTiles() {
     return () => clearInterval(id);
   }, [crew]);
 
-  // Window width — observe our own container.
+  // ─── UI state ────────────────────────────────────────────────────────
+  const [sel, setSel] = useState(0);              // 0 = crew, 1 = cmd
+  const [editing, setEditing] = useState(null);   // 0 | 1 | null
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shakeTick, setShakeTick]   = useState({ 0: 0, 1: 0 });  // refuse-shake pulses
+  const [ringTick, setRingTick]     = useState({ 0: 0, 1: 0 });  // lock-ring pulses
+  const [lkbadTick, setLkbadTick]   = useState({ 0: 0, 1: 0 });  // lock-flash-red pulses
+
   const rootRef = useRef(null);
-  const [width, setWidth] = useState(560);
+  const settingsRef = useRef(null);
+  const gearRef = useRef(null);
+  const editRef = useRef(null);
+
+  // Measure the overlay root and tell main to match the window to it,
+  // top-right-anchored. Fires every time the roster, strip or settings
+  // panel changes size.
   useEffect(() => {
     const el = rootRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(entries => {
-      for (const e of entries) setWidth(Math.round(e.contentRect.width));
+    const api = window.electronAPI?.radio;
+    if (!api?.resize) return;
+    let last = { w: 0, h: 0 };
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        // offsetWidth/Height include padding + border; the measurement
+        // the window needs. contentRect excludes padding, which would
+        // leave a 4 px gap at the edges.
+        const w = Math.ceil(el.offsetWidth);
+        const h = Math.ceil(el.offsetHeight);
+        if (w === last.w && h === last.h) continue;
+        last = { w, h };
+        try { api.resize(w, h); } catch {}
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const chipCap = width < 400 ? 3 : 5;
-  const stack   = width < 300;
+  useEffect(() => { if (editing != null) { editRef.current?.focus(); editRef.current?.select(); } }, [editing]);
 
-  // Frequency editing per tile.
-  const [editing, setEditing] = useState(null); // 'crew' | 'command' | null
-  const editRef = useRef(null);
-  useEffect(() => { if (editing) editRef.current?.select(); }, [editing]);
+  // Click outside settings panel closes it.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onDown = (e) => {
+      if (settingsRef.current?.contains(e.target)) return;
+      if (gearRef.current?.contains(e.target)) return;
+      setSettingsOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [settingsOpen]);
 
-  // Roster open per tile.
-  const [rosterOpen, setRosterOpen] = useState(null); // 'crew' | 'command' | null
+  // Escape: cancel editing first, otherwise close settings.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') {
-        if (editing)    setEditing(null);
-        else if (rosterOpen) setRosterOpen(null);
-      }
+      if (e.key !== 'Escape') return;
+      if (editing != null)      setEditing(null);
+      else if (settingsOpen)    setSettingsOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editing, rosterOpen]);
+  }, [editing, settingsOpen]);
 
-  const commitFreq = useCallback((which, raw) => {
-    const hook = which === 'crew' ? crew : cmd;
-    const n = Number(String(raw || '').trim().replace(',', '.'));
-    if (!Number.isFinite(n) || n < 50 || n > 350) { setEditing(null); return; }
-    const normalized = n.toFixed(1);
-    try { hook.joinFrequency(normalized, which === 'cmd' ? undefined : null); } catch {}
-    setEditing(null);
-  }, [crew, cmd]);
+  // Opacity (persisted). Applied natively on the Electron window.
+  const [opacityPct, setOpacityPct] = useState(() => {
+    const v = Number(localStorage.getItem('nexus_radio_opacity'));
+    return Number.isFinite(v) && v >= 25 && v <= 100 ? v : 55;
+  });
+  useEffect(() => {
+    try { localStorage.setItem('nexus_radio_opacity', String(opacityPct)); } catch {}
+    try { window.electronAPI?.setOpacity?.(opacityPct / 100); } catch {}
+  }, [opacityPct]);
 
-  // Per-tile speaker detection.
+  // Input device list (refreshes on devicechange).
+  const [inputDevices, setInputDevices] = useState([]);
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const enumerate = () => {
+      navigator.mediaDevices.enumerateDevices().then((devs) => {
+        setInputDevices(devs.filter(d => d.kind === 'audioinput'));
+      }).catch(() => {});
+    };
+    enumerate();
+    navigator.mediaDevices.addEventListener?.('devicechange', enumerate);
+    return () => navigator.mediaDevices.removeEventListener?.('devicechange', enumerate);
+  }, []);
+
+  // ─── Roster model ────────────────────────────────────────────────────
+  // A "speaker" is identified by (channel, name). Keep a lingering map so
+  // a name stays visible for 3 s after the person stops talking. Live set
+  // is derived from the hook's transmittingPeerIds + peers.
   const txIds = useMemo(() => new Set((crew.transmittingPeerIds || []).filter(Boolean)), [crew.transmittingPeerIds]);
   const cmdTxIds = useMemo(() => new Set((cmd.transmittingPeerIds || []).filter(Boolean)), [cmd.transmittingPeerIds]);
 
-  const tiles = [
+  const liveSpeakers = useMemo(() => {
+    const out = [];
+    for (const p of (crew.peers || [])) {
+      if (txIds.has(p.socketId)) out.push({ c: 0, name: p.citizenName || p.userId || 'Unknown' });
+    }
+    for (const p of (cmd.peers || [])) {
+      if (cmdTxIds.has(p.socketId)) out.push({ c: 1, name: p.citizenName || p.userId || 'Unknown' });
+    }
+    return out;
+  }, [crew.peers, cmd.peers, txIds, cmdTxIds]);
+
+  const [recent, setRecent] = useState([]); // [{ c, name, t: lastSeen }]
+  useEffect(() => {
+    setRecent(prev => {
+      const next = prev.slice();
+      const liveKeys = new Set(liveSpeakers.map(s => `${s.c}:${s.name}`));
+      // Refresh existing & add new.
+      for (const s of liveSpeakers) {
+        const k = `${s.c}:${s.name}`;
+        const r = next.find(x => `${x.c}:${x.name}` === k);
+        if (r) r.t = Date.now();
+        else   next.push({ c: s.c, name: s.name, t: Date.now() });
+      }
+      // Prune after 3.2 s of silence (so the fade is visible).
+      const cutoff = Date.now() - 3200;
+      return next.filter(r => liveKeys.has(`${r.c}:${r.name}`) || r.t > cutoff);
+    });
+  }, [liveSpeakers]);
+
+  // Keep re-rendering so names fade without a live event.
+  const [, forceRender] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => forceRender(x => x + 1), 600);
+    return () => clearInterval(id);
+  }, []);
+
+  // ─── Derived per-channel state ──────────────────────────────────────
+  const crewLiveNames = useMemo(() => new Set(liveSpeakers.filter(s => s.c === 0).map(s => s.name)), [liveSpeakers]);
+  const cmdLiveNames  = useMemo(() => new Set(liveSpeakers.filter(s => s.c === 1).map(s => s.name)), [liveSpeakers]);
+
+  const crewTotalSpeakers = (crew.transmittingPeerIds || []).length + (crew.isPTTActive ? 1 : 0);
+  const cmdTotalSpeakers  = (cmd.transmittingPeerIds  || []).length + (cmd.isPTTActive  ? 1 : 0);
+  const crewDbl = crewTotalSpeakers > 1;
+  const cmdDbl  = cmdTotalSpeakers  > 1;
+
+  const chips = [
     {
-      id: 'crew', name: 'CREW', rig: crewRadio?.label || crewRadio?.id || '—',
-      freq: crew.tunedFrequency || '', locked: crewLocked, setLocked: setCrewLocked,
-      powered: crewPowered, setPowered: setCrewPowered,
-      tx: !!crew.isPTTActive, peers: crew.peers || [], txIds,
-      startPTT: () => crew.startPTT?.(), stopPTT: () => crew.stopPTT?.(),
-      pttKey: (pttKey || 'v').toUpperCase(),
+      c: 0, label: 'CREW',
+      freq: crew.tunedFrequency || '',
+      locked: crewLocked, powered: crewPowered,
+      tx: !!crew.isPTTActive,
+      speaking: crewLiveNames.size > 0 || !!crew.isPTTActive,
+      dbl: crewDbl,
     },
     {
-      id: 'command', name: 'COMMAND', rig: cmdRadio?.label || cmdRadio?.id || '—',
-      freq: cmd.tunedFrequency || '', locked: cmdLocked, setLocked: setCmdLocked,
-      powered: cmdPowered, setPowered: setCmdPowered,
-      tx: !!cmd.isPTTActive, peers: cmd.peers || [], txIds: cmdTxIds,
-      startPTT: () => cmd.startPTT?.(), stopPTT: () => cmd.stopPTT?.(),
-      pttKey: (cmd.pttKey || 'c').toUpperCase(),
+      c: 1, label: 'CMD',
+      freq: cmd.tunedFrequency || '',
+      locked: cmdLocked, powered: cmdPowered,
+      tx: !!cmd.isPTTActive,
+      speaking: cmdLiveNames.size > 0 || !!cmd.isPTTActive,
+      dbl: cmdDbl,
     },
   ];
 
-  const cols = stack ? 1 : 2;
+  // ─── Actions ────────────────────────────────────────────────────────
+  const refuse = (c) => {
+    setShakeTick(prev => ({ ...prev, [c]: prev[c] + 1 }));
+    setLkbadTick(prev => ({ ...prev, [c]: prev[c] + 1 }));
+  };
+
+  const beginEdit = (c) => {
+    setSel(c);
+    const ch = chips[c];
+    if (ch.locked || !ch.powered) { refuse(c); return; }
+    setEditing(c);
+  };
+
+  const commitFreq = useCallback((c, raw) => {
+    const n = Number(String(raw || '').trim().replace(',', '.'));
+    if (!Number.isFinite(n) || n < 50 || n > 350) { setEditing(null); return; }
+    const normalized = n.toFixed(1);
+    try {
+      if (c === 0) crew.joinFrequency(normalized);
+      else         cmd.joinFrequency(normalized);
+    } catch {}
+    setEditing(null);
+  }, [crew, cmd]);
+
+  const onWheel = (e) => {
+    const chipEl = e.target.closest('[data-c]');
+    if (!chipEl) return;
+    const c = Number(chipEl.dataset.c);
+    if (sel !== c || editing != null) return;
+    e.preventDefault();
+    const ch = chips[c];
+    if (ch.locked || !ch.powered) { refuse(c); return; }
+    const current = Number(ch.freq);
+    if (!Number.isFinite(current)) return;
+    const next = (current + (e.deltaY < 0 ? 0.1 : -0.1)).toFixed(1);
+    try {
+      if (c === 0) crew.joinFrequency(next);
+      else         cmd.joinFrequency(next);
+    } catch {}
+  };
+
+  const toggleLock = (c) => {
+    if (c === 0) setCrewLocked(l => !l);
+    else         setCmdLocked(l => !l);
+    setRingTick(prev => ({ ...prev, [c]: prev[c] + 1 }));
+  };
+  const togglePower = (c) => {
+    if (c === 0) setCrewPowered(p => !p);
+    else         setCmdPowered(p => !p);
+  };
+
+  const goFull = () => {
+    try { window.electronAPI?.setMode?.('full'); } catch {}
+  };
+
+  // ─── Render ─────────────────────────────────────────────────────────
+  const selected = chips[sel];
+  const selectedLocked = selected.locked;
+  const selectedPowered = selected.powered;
+
+  const nowTs = Date.now();
 
   return (
-    <div ref={rootRef} className="rtt">
-      {/* Mic strip */}
-      <div className={`mic${muted ? ' mute' : ''}`}>
-        <i className={`led${muted ? ' off' : ''}`} />
-        <span>Mic <em>{muted ? 'Muted' : 'Active'}</em></span>
-        <span className="mt"><u style={{ width: muted ? 0 : `${Math.min(100, micLevel * (micSensitivity / 100))}%` }} /></span>
-        <button className={`ib${muted ? ' red' : ''}`} onClick={() => setMuted(m => !m)} aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute microphone' : 'Mute microphone'}>
-          {muted ? IC.micoff : IC.mic}
-        </button>
-        <button className={`ib${micOpen ? ' on' : ''}`} onClick={() => setMicOpen(o => !o)} aria-label="Mic settings" title="Mic settings">{IC.gear}</button>
-      </div>
-      {micOpen && (
-        <div className="ms">
-          <label>
-            Outgoing
-            <input type="range" min="0" max="150" step="5" value={micSensitivity} onChange={e => setMicSensitivity(Number(e.target.value))} />
-            <b>{micSensitivity}%</b>
-          </label>
-          <label>
-            Incoming
-            <input type="range" min="0" max="150" step="5" value={rxVolume} onChange={e => setRxVolume(Number(e.target.value))} />
-            <b>{rxVolume}%</b>
-          </label>
-          <KeyRemapRow
-            label="Crew PTT"
-            current={pttKey}
-            otherKey={cmd.pttKey}
-            onSave={(k) => {
-              setPttKey(k);
-              try { localStorage.setItem('nexus_ptt_key', k); } catch {}
-              try { window.electronAPI?.setPttKey?.(k); } catch {}
-            }}
-          />
-          <KeyRemapRow
-            label="Cmd PTT"
-            current={cmd.pttKey || 'c'}
-            otherKey={pttKey}
-            onSave={(k) => { try { cmd.setPttKey?.(k); } catch {} }}
-          />
-          <RigPickRow
-            label="Crew rig"
-            value={crewRadio?.label || crewRadio?.id || '—'}
-            onOpen={() => setRigPicker('right')}
-          />
-          <RigPickRow
-            label="Cmd rig"
-            value={cmdRadio?.label || cmdRadio?.id || '(inherits)'}
-            onOpen={() => setRigPicker('left')}
-          />
+    <>
+      <div ref={rootRef} className={`rov${muted ? ' muted' : ''}`}>
+        {/* Strip */}
+        <div className="strip" onWheel={onWheel}>
+          {chips.map(ch => {
+            const classes = ['chip', 'glass'];
+            if (ch.c === 1) classes.push('cmd');
+            if (sel === ch.c) classes.push('sel');
+            if (ch.locked) classes.push('lk');
+            if (!ch.powered) classes.push('off');
+            if (ch.speaking && !ch.dbl) classes.push('sp');
+            if (ch.dbl) classes.push('dbl');
+            return (
+              <div
+                key={ch.c}
+                className={classes.join(' ')}
+                data-c={ch.c}
+                onClick={(e) => {
+                  if (e.target.closest('input')) return;
+                  setSel(ch.c);
+                }}
+                onDoubleClick={(e) => {
+                  const inFreq = e.target.closest('[data-x="fr"]');
+                  if (!inFreq) return;
+                  beginEdit(ch.c);
+                }}
+                title={ch.label}
+              >
+                <span
+                  key={`ring-${ringTick[ch.c]}`}
+                  className={`lkind pop1`}
+                  aria-hidden="true"
+                >
+                  {LK_SVG(false)}
+                </span>
+                <i className={`led ${ch.tx ? 'tx' : (ch.powered ? '' : 'off')}`} />
+                <span className="lab">{ch.label}</span>
+                {editing === ch.c ? (
+                  <input
+                    ref={editRef}
+                    className="fi"
+                    defaultValue={ch.freq}
+                    maxLength={5}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter')  { e.preventDefault(); commitFreq(ch.c, e.currentTarget.value); }
+                      if (e.key === 'Escape') { setEditing(null); }
+                    }}
+                    onBlur={(e) => { if (editing === ch.c) commitFreq(ch.c, e.currentTarget.value); }}
+                  />
+                ) : (
+                  <span
+                    key={`shake-${shakeTick[ch.c]}`}
+                    className="fr shake"
+                    data-x="fr"
+                    style={{ animation: shakeTick[ch.c] ? '' : 'none' }}
+                  >{ch.freq || '—'}</span>
+                )}
+              </div>
+            );
+          })}
+          <div className="mute glass" aria-hidden={!muted}>{MICOFF_SVG}MUTED</div>
+          <button
+            ref={gearRef}
+            className={`gearb${settingsOpen ? ' open' : ''}`}
+            title="Settings"
+            onClick={(e) => { e.stopPropagation(); setSettingsOpen(o => !o); }}
+          >
+            {GEAR_SVG}
+          </button>
         </div>
-      )}
+
+        {/* Thin red line under strip when muted */}
+        <div className="mtr" />
+
+        {/* Roster — names only, right-aligned */}
+        <div className="roster">
+          {recent.map(r => {
+            const liveKey = `${r.c}:${r.name}`;
+            const live = r.c === 0 ? crewLiveNames.has(r.name) : cmdLiveNames.has(r.name);
+            const chDbl = r.c === 0 ? crewDbl : cmdDbl;
+            const classes = ['rw'];
+            if (r.c === 1) classes.push('cmd');
+            if (chDbl && live) classes.push('dbl');
+            else if (live)     classes.push('lit');
+            else               classes.push('fade');
+            return (
+              <div key={liveKey} className={classes.join(' ')}>
+                <span className="n">{shortName(r.name)}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Settings panel */}
+        {settingsOpen && (
+          <div ref={settingsRef} className="sett glass">
+            <h4>Settings</h4>
+
+            {/* Selected radio */}
+            <div className="sg">
+              <h5>Selected radio</h5>
+              <div className="sel2">
+                <span className="selname">{selected.label}</span>
+                <span style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    className={`ib${selectedLocked ? ' lockon' : ''}`}
+                    onClick={() => toggleLock(sel)}
+                    title={selectedLocked ? 'Unlock selected radio' : 'Lock selected radio'}
+                  >
+                    {LK_SVG(!selectedLocked)}
+                  </button>
+                  <button
+                    className={`ib${selectedPowered ? '' : ' bad'}`}
+                    onClick={() => togglePower(sel)}
+                    title={selectedPowered ? 'Power off selected radio' : 'Power on selected radio'}
+                  >
+                    {POWER_SVG}
+                  </button>
+                </span>
+              </div>
+            </div>
+
+            {/* Sound */}
+            <div className="sg">
+              <h5>Sound</h5>
+              <label>
+                Incoming
+                <input
+                  type="range" min="0" max="150" step="5"
+                  value={rxVolume}
+                  onChange={(e) => setRxVolume(Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Outgoing
+                <input
+                  type="range" min="0" max="150" step="5"
+                  value={micSensitivity}
+                  onChange={(e) => setMicSensitivity(Number(e.target.value))}
+                />
+              </label>
+            </div>
+
+            {/* Microphone */}
+            <div className="sg">
+              <h5>Microphone</h5>
+              <label>
+                Input
+                <select
+                  value={micDeviceId || '__default__'}
+                  onChange={(e) => {
+                    const v = e.target.value === '__default__' ? null : e.target.value;
+                    setMicDeviceId(v);
+                    try {
+                      if (v) localStorage.setItem('nexus_mic_device_id', v);
+                      else   localStorage.removeItem('nexus_mic_device_id');
+                    } catch {}
+                  }}
+                >
+                  <option value="__default__">Default microphone</option>
+                  {inputDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>{d.label || 'Microphone'}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Sensitivity
+                <input
+                  type="range" min="0" max="150" step="5"
+                  value={micSensitivity}
+                  onChange={(e) => setMicSensitivity(Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Mic
+                <span className="mrow">
+                  <button
+                    className={`ib${muted ? ' bad' : ''}`}
+                    onClick={() => setMuted(m => !m)}
+                    title={muted ? 'Unmute microphone' : 'Mute microphone'}
+                  >
+                    {muted ? MICOFF_SVG : MIC_SVG}
+                  </button>
+                  <span className="lv"><u style={{ width: `${Math.min(100, (muted ? 0 : micLevel * (micSensitivity / 100)))}%` }} /></span>
+                </span>
+              </label>
+            </div>
+
+            {/* Radio type */}
+            <div className="sg">
+              <h5>Radio type</h5>
+              <label>
+                CREW
+                <button
+                  className="rig-btn"
+                  onClick={() => setRigPicker('right')}
+                  title="Change Crew radio"
+                >{crewRadio?.label || crewRadio?.id || '—'}</button>
+              </label>
+              <label>
+                CMD
+                <button
+                  className="rig-btn"
+                  onClick={() => setRigPicker('left')}
+                  title="Change Command radio"
+                >{cmdRadio?.label || cmdRadio?.id || '(inherits)'}</button>
+              </label>
+            </div>
+
+            {/* Display */}
+            <div className="sg">
+              <h5>Display</h5>
+              <label>
+                Opacity
+                <input
+                  type="range" min="25" max="100" step="1"
+                  value={opacityPct}
+                  onChange={(e) => setOpacityPct(Number(e.target.value))}
+                />
+              </label>
+              <button className="fvb" onClick={goFull} title="Switch to Full view">
+                {FULLVIEW_SVG}Full view
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {rigPicker && (
         <RadioPickerModal
@@ -485,136 +904,6 @@ export default function RadioTwinTiles() {
           onClose={() => setRigPicker(null)}
         />
       )}
-
-      {/* Tiles */}
-      <div className={`tiles${cols === 1 ? ' c1' : ''}`}>
-        {tiles.map(t => {
-          const speakers = (t.peers || []).filter(p => t.txIds.has(p.socketId));
-          const visible = [...(t.peers || [])].sort((a, b) => {
-            const as = t.txIds.has(a.socketId) ? 0 : 1;
-            const bs = t.txIds.has(b.socketId) ? 0 : 1;
-            return as - bs;
-          });
-          const shown = visible.slice(0, chipCap);
-          const more = visible.length - shown.length;
-          const isEditing = editing === t.id;
-          const isRosterOpen = rosterOpen === t.id;
-          const dbl = !t.tx && speakers.length > 1;
-          const txDisabled = muted || !t.powered;
-          const statusInner = !t.powered
-            ? (<><i className="d" style={{ background: 'var(--rim1)' }} /><span>Disconnected</span></>)
-            : dbl
-              ? (<><i className="air" /><span className="nm" style={{ color: 'var(--red)' }}>Double talk</span></>)
-              : t.tx
-                ? (<><i className="air" /><span className="nm" style={{ color: 'var(--red)' }}>You are on air</span></>)
-                : speakers[0]
-                  ? (<><span className="eq"><i /><i /><i /></span><span className="nm">{sh(speakers[0].citizenName || speakers[0].userId || 'Unknown')}</span></>)
-                  : (<><i className="d" /><span>{visible.length} on frequency</span></>);
-          return (
-            <div key={t.id} className={`tile raised${t.powered ? '' : ' off'}${t.tx ? ' tx' : ''}`}>
-              <div className="th2">
-                <div>
-                  <b><i className={`led${t.powered ? '' : ' offc'}`} />{t.name}</b>
-                  <small>{t.rig}</small>
-                </div>
-                <button className={`ib${t.powered ? '' : ' red'}`} onClick={() => t.setPowered(p => !p)} aria-label={t.powered ? `Disconnect ${t.name}` : `Reconnect ${t.name}`} title={t.powered ? 'Disconnect' : 'Reconnect'}>{IC.pwr}</button>
-              </div>
-              <div className="lrow">
-                {isEditing ? (
-                  <input
-                    ref={editRef}
-                    className="lcd"
-                    defaultValue={t.freq}
-                    inputMode="decimal"
-                    aria-label="Frequency"
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') { e.preventDefault(); commitFreq(t.id, e.currentTarget.value); }
-                      if (e.key === 'Escape') { setEditing(null); }
-                    }}
-                    onBlur={() => setEditing(null)}
-                  />
-                ) : (
-                  <button
-                    className={`lcd${t.locked ? ' lk' : ''}`}
-                    onClick={() => { if (!t.powered || t.locked) return; setEditing(t.id); }}
-                    title={t.locked ? 'Frequency locked' : 'Click to type a frequency'}
-                  >{t.freq || '—'}</button>
-                )}
-                <button className={`ib${t.locked ? ' on' : ''}`} onClick={() => t.setLocked(l => !l)} aria-label={t.locked ? 'Unlock' : 'Lock'} title={t.locked ? 'Unlock frequency' : 'Lock frequency'}>{t.locked ? IC.lock : IC.unlock}</button>
-              </div>
-              <button
-                className={`txb${t.tx ? ' on' : ''}${txDisabled ? ' dis' : ''}`}
-                aria-disabled={txDisabled}
-                onPointerDown={e => { if (txDisabled) return; e.preventDefault(); t.startPTT(); }}
-                onPointerUp={() => t.stopPTT()}
-                onPointerCancel={() => t.stopPTT()}
-              >
-                {t.tx ? 'On air' : muted ? 'Mic muted' : !t.powered ? 'Off' : 'Transmit'} <kbd>{t.pttKey}</kbd>
-              </button>
-              {visible.length > 0 ? (
-                <button className="cnt" aria-expanded={isRosterOpen} onClick={() => setRosterOpen(o => o === t.id ? null : t.id)} aria-label={`Show roster, ${visible.length} on frequency`}>
-                  {statusInner}
-                  <span className="car">▾</span>
-                </button>
-              ) : (
-                <div className="cnt">{statusInner}</div>
-              )}
-              <div className="chips">
-                {!t.powered
-                  ? <span className="nodata">Disconnected</span>
-                  : visible.length === 0
-                    ? <span className="nodata">No other operators</span>
-                    : (
-                      <>
-                        {shown.map(p => {
-                          const name = p.citizenName || p.userId || 'Unknown';
-                          const speaking = t.txIds.has(p.socketId);
-                          return (
-                            <span key={p.socketId || p.userId} className={`chip${speaking ? ' sp' : ''}`} title={name}>
-                              {speaking && <span className="eq"><i /><i /><i /></span>}
-                              {sh(name)}
-                            </span>
-                          );
-                        })}
-                        {more > 0 && (
-                          <button className="more" aria-expanded={isRosterOpen} onClick={() => setRosterOpen(o => o === t.id ? null : t.id)}>
-                            +{more}
-                          </button>
-                        )}
-                      </>
-                    )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Roster drawer */}
-      {rosterOpen && (() => {
-        const t = tiles.find(x => x.id === rosterOpen);
-        if (!t || !t.powered) return null;
-        return (
-          <div className="drawer" role="region" aria-label={`${t.name} roster`}>
-            <div className="drh">
-              <span><b>{t.name}</b> · {t.peers.length} on frequency</span>
-              <button className="ib" onClick={() => setRosterOpen(null)} aria-label="Close roster" title="Close">{IC.x}</button>
-            </div>
-            <div className="drl" style={{ '--dc': stack ? 1 : 2 }}>
-              {t.peers.map(p => {
-                const name = p.citizenName || p.userId || 'Unknown';
-                const speaking = t.txIds.has(p.socketId);
-                return (
-                  <div key={p.socketId || p.userId} className={`drr${speaking ? ' sp' : ''}`} title={name}>
-                    <span className="av">{initials(name)}</span>
-                    <span className="nmn">{sh(name)}</span>
-                    {speaking && <span className="eq"><i /><i /><i /></span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-    </div>
+    </>
   );
 }

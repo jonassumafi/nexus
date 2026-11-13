@@ -117,6 +117,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maxToggle()      { return ipcRenderer.invoke('nexus:maxToggle'); },
   close()          { return ipcRenderer.invoke('nexus:close'); },
 
+  // Radio-only: renderer measures its overlay with a ResizeObserver and
+  // asks the main process to shrink / grow the dedicated radio window
+  // to match. Main keeps the top-right corner fixed so growth spills
+  // leftward + downward, matching the HUD anchor.
+  radio: {
+    resize(width, height) { return ipcRenderer.invoke('nexus:radio:resize', { width, height }); },
+  },
+
   // Skin mirror for the custom installer. Fire-and-forget; writes a
   // plain JSON file that Nexus Setup reads to match colors.
   saveSkin(id)     { return ipcRenderer.invoke('nexus:save-skin', id); },
