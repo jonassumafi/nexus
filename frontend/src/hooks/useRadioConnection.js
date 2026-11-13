@@ -122,7 +122,10 @@ export function useRadioConnection({
     }
 
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+    // Pin to 48 kHz for parity with the UDP TX worklet's 48 kHz
+    // context. Avoids Chromium's cross-context silencing bug after
+    // view switches close prior AudioContexts in this page.
+    if (!audioCtxRef.current) audioCtxRef.current = new Ctx({ sampleRate: 48000 });
     const ctx = audioCtxRef.current;
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch {}

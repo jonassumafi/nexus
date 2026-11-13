@@ -142,7 +142,17 @@ export function useRadioConnectionUDP({
     }
 
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+    // Pin the mic chain's ctx to 48 kHz so it matches createUdpVoiceTx's
+    // own 48 kHz context. Without this, the two contexts land at
+    // different sample rates (the mic chain inherits the OS audio
+    // device's native rate — usually 44.1 kHz), Chromium has to
+    // resample MediaStream handoffs between them, and that resample
+    // path silently produces silence after any prior AudioContext in
+    // the page has been closed — which happens on every view switch.
+    // Symptom: clicks (socket.io) kept reaching peers but voice
+    // (Opus frames via the TX worklet) went mute after one view
+    // switch and never recovered until a full Nexus restart.
+    if (!audioCtxRef.current) audioCtxRef.current = new Ctx({ sampleRate: 48000 });
     const ctx = audioCtxRef.current;
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch {}
