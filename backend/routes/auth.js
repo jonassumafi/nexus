@@ -74,10 +74,19 @@ router.post('/discord/callback', async (req, res) => {
 
     let user = await User.findOne({ discord_id });
     if (!user) {
+      // Auto-assign a rig at signup so the TX pipeline has a radio
+      // spec on the user's very first transmission. Without this,
+      // a brand-new operator who keys up before useMyRadio resolves
+      // sends mic audio without the SRS txEffect baked in — the
+      // listener's rig still colors it, but it reads as "unfiltered"
+      // next to peers whose TX chain had their rig applied too.
+      const radioModels = require('../services/radioModels');
       user = await User.create({
         discord_id,
         username,
         avatar,
+        radio_type: radioModels.randomRadio(),
+        command_radio_type: null,
         is_platform_owner: discord_id === process.env.PLATFORM_OWNER_DISCORD_ID,
       });
     } else {

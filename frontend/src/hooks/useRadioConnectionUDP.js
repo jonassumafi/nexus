@@ -870,6 +870,15 @@ export function useRadioConnectionUDP({
   const setSrsRadioSpec = useCallback((spec) => {
     if (srsSpecRef.current === spec) return;
     const wasTuned = !!currentFreqRef.current;
+
+    // If ensureMicAndChain already ran (user joined a freq) BEFORE the
+    // spec resolved, the TX chain was built with no SRS stage — the
+    // sender ships voice without any radio-tx character. Detect that
+    // case so we can rebuild the chain below once the spec actually
+    // arrives. (Brand-new users triggered this: useMyRadio fetch races
+    // against joinFrequency and loses.)
+    const txChainWasRaw = !!filteredStreamRef.current && !srsChainRef.current;
+
     srsSpecRef.current = spec || null;
 
     if (wasTuned) {
@@ -884,6 +893,32 @@ export function useRadioConnectionUDP({
       // Rebuild every peer's RX DSP so the new spec's rxEffect takes
       // effect immediately on the next incoming frame.
       try { udpRxRef.current?.rebuildAllPeerRxGraphs?.(); } catch {}
+
+      // Rebuild the TX chain if it was built without an SRS stage.
+      // Skip if PTT is held — don't glitch an in-flight transmission.
+      if (txChainWasRaw && spec?.txEffect && !isPTTActive) {
+        (async () => {
+          try { await udpTxRef.current?.close?.(); } catch {}
+          udpTxRef.current = null;
+          try { filteredStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
+          try { filterChainRef.current?.dispose?.(); } catch {}
+          try { micGainRef.current?.disconnect?.(); } catch {}
+          try { analyserSourceRef.current?.disconnect?.(); } catch {}
+          try { analyserRef.current?.disconnect?.(); } catch {}
+          try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
+          filteredStreamRef.current = null;
+          filterChainRef.current    = null;
+          micGainRef.current        = null;
+          analyserRef.current       = null;
+          analyserSourceRef.current = null;
+          micStreamRef.current      = null;
+          const next = await ensureMicAndChain();
+          if (next) {
+            try { udpTxRef.current = await createUdpVoiceTx(next); }
+            catch (err) { console.error('[RadioUDP] tx rebuild on spec arrival failed:', err); }
+          }
+        })();
+      }
       return;
     }
 
@@ -891,7 +926,7 @@ export function useRadioConnectionUDP({
     srsChainRef.current = null;
     try { filteredStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
     filteredStreamRef.current = null;
-  }, [hasUdp]);
+  }, [hasUdp, isPTTActive, ensureMicAndChain]);
 
   const setSrsRadioBand = useCallback((band) => {
     const ctx = audioCtxRef.current;
