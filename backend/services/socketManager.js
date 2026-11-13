@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Mission = require('../models/Mission');
 const Ship = require('../models/Ship');
+const Friend = require('../models/Friend');
 const MissionLog = require('../models/MissionLog');
 const ShipAccessRequest = require('../models/ShipAccessRequest');
 const radioModels = require('./radioModels');
@@ -107,6 +108,50 @@ function init(socketIo) {
         const unique = new Set(all.map(s => String(s.userId)));
         io.to('global').emit('presence:online_count', { count: unique.size });
       } catch {}
+    })();
+
+    // Live friend presence. Fire `friend:presence { userId, online: true }`
+    // to each of this user's accepted friends, but only when this socket
+    // is the user's *first* in the global room — multi-tab or reconnects
+    // shouldn't flap their friends' dots. Deliver the current online
+    // snapshot of this user's friends back to the newcomer so the list
+    // loaded by /api/friends doesn't stay stuck on a stale "offline".
+    (async () => {
+      try {
+        const all = await io.in('global').fetchSockets();
+        const sameUser = all.filter(s => String(s.userId) === String(socket.userId));
+        const firstConnection = sameUser.length === 1;
+
+        const rows = await Friend.find({
+          status: 'accepted',
+          $or: [{ a: socket.userId }, { b: socket.userId }],
+        }).select('a b').lean();
+
+        const friendIds = rows.map(r =>
+          String(r.a) === String(socket.userId) ? String(r.b) : String(r.a)
+        );
+
+        if (firstConnection) {
+          for (const fid of friendIds) {
+            emitToUser(fid, 'friend:presence', {
+              userId: String(socket.userId), online: true,
+            });
+          }
+        }
+
+        // Backfill the newcomer with each friend's current online state so
+        // the dashboard's initial /api/friends result (snapshotted before
+        // this socket attached) catches up without a refetch.
+        if (friendIds.length > 0) {
+          const onlineIds = new Set(all.map(s => String(s.userId)));
+          const payload = friendIds.map(fid => ({
+            userId: fid, online: onlineIds.has(fid),
+          }));
+          socket.emit('friend:presence_bulk', payload);
+        }
+      } catch (err) {
+        console.error('[friend:presence] connect broadcast failed:', err.message);
+      }
     })();
 
     socket.emit('presence:hello');
@@ -361,7 +406,28 @@ function init(socketIo) {
           const all = await io.in('global').fetchSockets();
           const unique = new Set(all.map(s => String(s.userId)));
           io.to('global').emit('presence:online_count', { count: unique.size });
-        } catch {}
+
+          // Friend presence: only emit offline when this user has no
+          // other sockets left in the global room. Multi-tab users (or
+          // a page refresh mid-session) shouldn't briefly flash their
+          // friends offline.
+          const stillHere = all.some(s => String(s.userId) === String(socket.userId));
+          if (stillHere) return;
+
+          const rows = await Friend.find({
+            status: 'accepted',
+            $or: [{ a: socket.userId }, { b: socket.userId }],
+          }).select('a b').lean();
+
+          for (const r of rows) {
+            const fid = String(r.a) === String(socket.userId) ? String(r.b) : String(r.a);
+            emitToUser(fid, 'friend:presence', {
+              userId: String(socket.userId), online: false,
+            });
+          }
+        } catch (err) {
+          console.error('[friend:presence] disconnect broadcast failed:', err.message);
+        }
       });
 
       const freqRooms = [...socket.rooms].filter(r => r.startsWith('freq_'));
