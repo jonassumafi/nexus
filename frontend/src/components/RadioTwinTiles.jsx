@@ -30,6 +30,16 @@ import useMyRadio from '../hooks/useMyRadio';
 import { randomVoiceProfile } from '../utils/spacesuitFilter';
 import RadioPickerModal from './RadioPickerModal';
 import api from '../services/api';
+import { playMute, playUnmute } from '../utils/audioFx';
+
+// Short mechanical cues shared with Full / Companion for the three
+// radio-chrome toggles that live in this overlay. Lock + power reuse
+// the same click samples the main view plays through radioChrome; we
+// go direct via new Audio() so the overlay doesn't need an
+// AudioContext of its own just for UI blips.
+function playLockClose()  { try { new Audio('/sounds/click2.mp3').play().catch(() => {}); } catch {} }
+function playLockOpen()   { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} }
+function playPowerClick() { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} }
 
 const PROFILE_FIELDS = [
   'highpass', 'lowpass', 'resonance_freq', 'resonance_q',
@@ -58,8 +68,22 @@ function injectStyles() {
   padding: 2px 2px 4px 2px;
   font: 14px/1.5 Inter, system-ui, sans-serif;
   color: var(--t1);
-  -webkit-app-region: no-drag;
+  /* The overlay body is the drag handle. Interactive children (chips,
+   * gear, settings controls, inputs, mute chip) opt back out below so
+   * the player can still click them. Without this the only draggable
+   * surface was the 4 px gap between chips — effectively unclickable. */
+  -webkit-app-region: drag;
 }
+.rov button,
+.rov input,
+.rov select,
+.rov textarea,
+.rov [role="button"],
+.rov .chip,
+.rov .gearb,
+.rov .mute,
+.rov .sett,
+.rov .roster .rw { -webkit-app-region: no-drag; }
 
 .rov .glass {
   background: color-mix(in srgb, var(--bg0) 76%, transparent);
@@ -68,19 +92,7 @@ function injectStyles() {
   -webkit-backdrop-filter: blur(3px);
 }
 
-/* The strip is the drag handle. Chips, gear, and every panel control
- * opt back out below. Empty gaps between chips still drag because
- * the gap belongs to the .strip background. */
-.rov .strip {
-  display: flex; gap: 4px; align-self: stretch; align-items: center;
-  -webkit-app-region: drag;
-}
-.rov .strip .chip,
-.rov .strip .gearb,
-.rov .strip .mute,
-.rov .strip input { -webkit-app-region: no-drag; }
-.rov .sett,
-.rov .roster { -webkit-app-region: no-drag; }
+.rov .strip { display: flex; gap: 4px; align-self: stretch; align-items: center; }
 
 .rov .chip {
   flex: 1; display: flex; align-items: center; gap: 6px;
@@ -648,13 +660,20 @@ export default function RadioTwinTiles() {
   };
 
   const toggleLock = (c) => {
-    if (c === 0) setCrewLocked(l => !l);
-    else         setCmdLocked(l => !l);
+    if (c === 0) {
+      setCrewLocked(l => { (l ? playLockOpen : playLockClose)(); return !l; });
+    } else {
+      setCmdLocked(l => { (l ? playLockOpen : playLockClose)(); return !l; });
+    }
     setRingTick(prev => ({ ...prev, [c]: prev[c] + 1 }));
   };
   const togglePower = (c) => {
+    playPowerClick();
     if (c === 0) setCrewPowered(p => !p);
     else         setCmdPowered(p => !p);
+  };
+  const toggleMute = () => {
+    setMuted(m => { (m ? playUnmute : playMute)(); return !m; });
   };
 
   const goFull = () => {
@@ -847,7 +866,7 @@ export default function RadioTwinTiles() {
                 <span className="mrow">
                   <button
                     className={`ib${muted ? ' bad' : ''}`}
-                    onClick={() => setMuted(m => !m)}
+                    onClick={toggleMute}
                     title={muted ? 'Unmute microphone' : 'Mute microphone'}
                   >
                     {muted ? MICOFF_SVG : MIC_SVG}
