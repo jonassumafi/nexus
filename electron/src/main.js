@@ -534,6 +534,12 @@ function switchMode(nextMode, opts = {}) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (currentMode !== 'radio') persistBounds();
       try { mainWindow.hide(); } catch {}
+      // Unload the hidden page. Left running, the Full/Companion view
+      // keeps its radio connections (Command WebRTC, socket rooms, mic)
+      // alongside the Radio-only window's, i.e. the same user in the
+      // channels twice. Before v0.9.26 the loadURL swap unloaded it;
+      // switching back reloads the route (wasRadio below).
+      try { mainWindow.loadURL('about:blank'); } catch {}
     }
     currentMode = 'radio';
     saveState({ mode: 'radio' });
@@ -551,7 +557,13 @@ function switchMode(nextMode, opts = {}) {
   // new mode. Otherwise it's a regular Full↔Companion swap on mainWindow.
   const wasRadio = currentMode === 'radio';
   if (wasRadio && radioWindow && !radioWindow.isDestroyed()) {
-    try { radioWindow.hide(); } catch {}
+    // Destroy rather than hide, for the same reason the main page is
+    // unloaded above: a hidden Radio-only renderer would stay joined to
+    // the radio channels. Its position is saved on every move, and
+    // createRadioWindow rebuilds it next time.
+    persistRadioBounds();
+    try { radioWindow.destroy(); } catch {}
+    radioWindow = null;
   }
   if (!mainWindow || mainWindow.isDestroyed()) {
     // Main was closed somehow; rebuild it before loading the new mode.
@@ -677,12 +689,12 @@ function startKeyHook() {
 
     console.log('[main] global key hook active (uiohook-napi), PTT key =', currentPttKey);
     setTimeout(() => {
-      try { mainWindow?.webContents.send('nexus:hook-status', { ok: true, pttKey: currentPttKey, impl: 'uiohook-napi' }); } catch {}
+      sendToActive('nexus:hook-status', { ok: true, pttKey: currentPttKey, impl: 'uiohook-napi' });
     }, 2000);
   } catch (err) {
     console.error('[main] key hook failed:', err.message);
     setTimeout(() => {
-      try { mainWindow?.webContents.send('nexus:hook-status', { ok: false, error: err.message }); } catch {}
+      sendToActive('nexus:hook-status', { ok: false, error: err.message });
     }, 2000);
   }
 }
@@ -831,12 +843,16 @@ ipcMain.handle('nexus:save-skin', (_e, skin) => {
 // decodes them in step 3.
 const udpVoice = require('./udp-voice');
 let udpRxUnsub = null;
-ipcMain.handle('nexus:udp:open', (_e, opts) => {
+ipcMain.handle('nexus:udp:open', (e, opts) => {
   try {
     const info = udpVoice.open(opts || {});
     udpRxUnsub?.();
+    // Deliver incoming voice to the renderer that opened the session.
+    // Since v0.9.26 Radio-only lives in its own window, so "mainWindow"
+    // would send Crew audio to a hidden window and Radio-only hears nobody.
+    const target = e.sender;
     udpRxUnsub = udpVoice.onRx((buf) => {
-      try { mainWindow?.webContents?.send('nexus:udp:rx', buf); } catch {}
+      try { if (!target.isDestroyed()) target.send('nexus:udp:rx', buf); } catch {}
     });
     return { ok: true, ...info };
   } catch (err) { return { ok: false, error: err.message }; }
