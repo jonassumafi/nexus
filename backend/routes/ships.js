@@ -398,6 +398,26 @@ router.put('/:id', isAuthenticated, async (req, res) => {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
     }
 
+    // ship_name gets the same uppercase + per-owner uniqueness check as
+    // the /register flow. Other collections reference ships by _id so no
+    // denormalized name needs to be back-filled — the next read joins
+    // against the renamed Ship document. Historical MissionLog entries
+    // keep their snapshot of the old name on purpose.
+    if (req.body.ship_name !== undefined) {
+      const next = String(req.body.ship_name || '').toUpperCase().trim();
+      if (!next) return res.status(400).json({ error: 'CALLSIGN REQUIRED' });
+      if (next.length > 40) return res.status(400).json({ error: 'CALLSIGN TOO LONG' });
+      if (next !== (ship.ship_name || '').toUpperCase()) {
+        const dup = await Ship.findOne({
+          owner_id: ship.owner_id,
+          ship_name: next,
+          _id: { $ne: ship._id },
+        });
+        if (dup) return res.status(400).json({ error: 'CALLSIGN ALREADY REGISTERED TO YOUR FLEET' });
+      }
+      updates.ship_name = next;
+    }
+
     const updated = await Ship.findByIdAndUpdate(req.params.id, updates, { new: true });
     res.json(updated);
   } catch (err) {

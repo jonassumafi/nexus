@@ -3328,8 +3328,14 @@ export default function Dashboard() {
         {/* isolation:isolate gives each mounted child its own compositor
             scope so Chromium tears down the GPU layer cleanly on tab
             swap — fixes the "ship registry stays faded behind the
-            mission view" ghost. */}
-        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, isolation: 'isolate' }}>
+            mission view" ghost.
+            overflow: auto (was: hidden) is a fail-safe for small
+            dashboard windows — if a child form (ship description,
+            mission editor) is too tall for the current center-column
+            height, the user gets a scrollbar instead of clipped
+            content. Children that manage their own scroll (like
+            MissionDetail) fill height:100% and don't trigger this. */}
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'auto', minHeight: 0, isolation: 'isolate' }}>
           {createMissionMode ? (
             <CreateMission
               me={me}

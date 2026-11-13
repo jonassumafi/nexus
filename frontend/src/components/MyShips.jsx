@@ -1252,6 +1252,28 @@ function ShipDetail({
   const descPulse = useSavePulse();
   const [descError, setDescError] = useState('');
 
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameDraft, setNameDraft]     = useState('');
+  const [nameSaving, setNameSaving]   = useState(false);
+  const [nameError, setNameError]     = useState('');
+  const commitShipName = async () => {
+    const next = String(nameDraft || '').toUpperCase().trim();
+    const current = String(ship.ship_name || '').toUpperCase().trim();
+    if (!next) { setNameError('CALLSIGN REQUIRED'); return; }
+    if (next.length > 40) { setNameError('CALLSIGN TOO LONG'); return; }
+    if (next === current) { setNameEditing(false); setNameError(''); return; }
+    setNameSaving(true); setNameError('');
+    try {
+      await api.put(`/ships/${ship._id}`, { ship_name: next });
+      setNameEditing(false);
+      onChanged?.();
+    } catch (err) {
+      setNameError(err?.response?.data?.error || 'SAVE FAILED');
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
   const [announce, setAnnounce] = useState('');
   const [statusGlow, setStatusGlow] = useState(false);
   const prevMissionRef = useRef(ship?.is_mission);
@@ -1450,7 +1472,46 @@ function ShipDetail({
           <IconBack />
         </button>
         <div className="ms-id">
-          <h1 title={ship.ship_name}>{ship.ship_name}</h1>
+          {nameEditing ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={e => { setNameDraft(e.target.value.toUpperCase().slice(0, 40)); if (nameError) setNameError(''); }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter')  { e.preventDefault(); commitShipName(); }
+                  if (e.key === 'Escape') { setNameEditing(false); setNameError(''); }
+                }}
+                aria-label="Ship name"
+                style={{
+                  background: 'var(--bg0)', color: 'var(--fg0)',
+                  border: '1px solid var(--rim1)', borderRadius: 3,
+                  padding: '4px 10px', font: '700 22px/1 Inter, system-ui, sans-serif',
+                  textTransform: 'uppercase', letterSpacing: '0.02em', minWidth: 220,
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="button" className="btn go"
+                disabled={nameSaving}
+                onClick={() => { playClick(); commitShipName(); }}
+                style={{ fontSize: 11, padding: '4px 12px' }}
+              >{nameSaving ? 'Saving…' : 'Save'}</button>
+              <button
+                type="button" className="btn"
+                disabled={nameSaving}
+                onClick={() => { setNameEditing(false); setNameError(''); }}
+                style={{ fontSize: 11, padding: '4px 12px' }}
+              >Cancel</button>
+              {nameError && (
+                <span style={{ fontSize: 11, color: 'var(--red)', letterSpacing: '0.04em' }}>
+                  {nameError}
+                </span>
+              )}
+            </div>
+          ) : (
+            <h1 title={ship.ship_name}>{ship.ship_name}</h1>
+          )}
           {displayName && <div className="ms-mdl" title={displayName}>{displayName}</div>}
           <div className="ms-meta">
             <span>Type · <b>{ship.type || '—'}</b></span>
@@ -1475,6 +1536,22 @@ function ShipDetail({
                   title="Edit nodes"
                 >
                   <IconEdit /> Edit nodes
+                </button>
+              )}
+              {!isBorrowed && (
+                <button
+                  type="button"
+                  className="ms-abtn"
+                  onClick={() => {
+                    playClick();
+                    setNameDraft(ship.ship_name || '');
+                    setNameError('');
+                    setNameEditing(true);
+                  }}
+                  aria-label="Edit ship name"
+                  title="Edit ship name"
+                >
+                  <IconEdit /> Edit name
                 </button>
               )}
               <button
