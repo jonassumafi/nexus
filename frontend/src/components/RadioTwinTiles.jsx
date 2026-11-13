@@ -92,14 +92,32 @@ function injectStyles() {
   -webkit-backdrop-filter: blur(3px);
 }
 
-/* Pad the strip 5 px top + bottom so the ~34 px tall row has a 5 px
- * drag band above and below the 24 px chips. Without this padding,
- * chips fill the full strip height and the only drag surface is the
- * 4 px horizontal gaps between chips — too narrow to grab. */
+/* The strip is the primary drag surface. Give it its own glass
+ * background so there are real pixels everywhere — on Windows,
+ * -webkit-app-region: drag is ignored where pixels are fully
+ * transparent, which is why the padding-only approach never worked.
+ * The window-level opacity slider in settings panel dials this
+ * whole overlay 25–100 %. */
 .rov .strip {
   display: flex; gap: 4px; align-self: stretch; align-items: center;
-  padding: 5px 2px;
+  padding: 4px 6px; border-radius: 6px;
+  background: color-mix(in srgb, var(--bg0) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rim0) 85%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  -webkit-app-region: drag;
+  cursor: grab;
 }
+.rov .strip:active { cursor: grabbing; }
+/* Every interactive child of the strip opts back out so the chips,
+ * gear, pin and mute still click normally. */
+.rov .strip > .chip,
+.rov .strip > .gearb,
+.rov .strip > .mute,
+.rov .strip input { -webkit-app-region: no-drag; cursor: default; }
+.rov .strip > .chip { cursor: pointer; }
+.rov .strip > .gearb,
+.rov .strip > .mute { cursor: pointer; }
 
 .rov .chip {
   flex: 1; display: flex; align-items: center; gap: 6px;
