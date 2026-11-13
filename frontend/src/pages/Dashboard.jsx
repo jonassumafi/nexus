@@ -3541,7 +3541,15 @@ export default function Dashboard() {
                 radioState={radioState}
                 setRadioState={setRadioState}
                 isMuted={isMuted}
-                setIsMuted={setIsMuted}
+                setIsMuted={(fn) => {
+                  const next = typeof fn === 'function' ? fn(isMuted) : !!fn;
+                  if (next !== isMuted) {
+                    try {
+                      new Audio(next ? '/sounds/mute_mic.mp3' : '/sounds/unmute_mic.mp3').play().catch(() => {});
+                    } catch {}
+                  }
+                  setIsMuted(fn);
+                }}
                 micSensitivity={micSensitivity}
                 setMicSensitivity={setMicSensitivity}
                 tunedFrequency={tunedFrequency}

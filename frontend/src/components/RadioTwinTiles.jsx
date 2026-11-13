@@ -92,7 +92,14 @@ function injectStyles() {
   -webkit-backdrop-filter: blur(3px);
 }
 
-.rov .strip { display: flex; gap: 4px; align-self: stretch; align-items: center; }
+/* Pad the strip 5 px top + bottom so the ~34 px tall row has a 5 px
+ * drag band above and below the 24 px chips. Without this padding,
+ * chips fill the full strip height and the only drag surface is the
+ * 4 px horizontal gaps between chips — too narrow to grab. */
+.rov .strip {
+  display: flex; gap: 4px; align-self: stretch; align-items: center;
+  padding: 5px 2px;
+}
 
 .rov .chip {
   flex: 1; display: flex; align-items: center; gap: 6px;
@@ -350,6 +357,11 @@ const FULLVIEW_SVG = (
     <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
   </svg>
 );
+const PIN_SVG = (
+  <svg className="i" viewBox="0 0 24 24">
+    <path d="M12 2l-1 6-5 2 5 2v10M12 4l1 6 5 2-5 2" />
+  </svg>
+);
 
 function shortName(n) {
   const s = String(n || '');
@@ -465,6 +477,24 @@ export default function RadioTwinTiles() {
   const [sel, setSel] = useState(0);              // 0 = crew, 1 = cmd
   const [editing, setEditing] = useState(null);   // 0 | 1 | null
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+
+  // Hydrate pin state from the shell and keep it in sync with
+  // mode-switches and manual pin toggles.
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api) return;
+    return api.onWindowState?.((s) => {
+      if (s && typeof s.pinned === 'boolean') setPinned(s.pinned);
+    });
+  }, []);
+  const togglePin = async () => {
+    try {
+      const next = await window.electronAPI?.togglePin?.();
+      if (typeof next === 'boolean') setPinned(next);
+    } catch {}
+    playPowerClick(); // same mechanical click used for other chrome toggles
+  };
   const [shakeTick, setShakeTick]   = useState({ 0: 0, 1: 0 });  // refuse-shake pulses
   const [ringTick, setRingTick]     = useState({ 0: 0, 1: 0 });  // lock-ring pulses
   const [lkbadTick, setLkbadTick]   = useState({ 0: 0, 1: 0 });  // lock-flash-red pulses
@@ -756,6 +786,14 @@ export default function RadioTwinTiles() {
             onClick={(e) => { e.stopPropagation(); setSettingsOpen(o => !o); }}
           >
             {GEAR_SVG}
+          </button>
+          <button
+            className={`gearb${pinned ? ' open' : ''}`}
+            title={pinned ? 'Unpin from top' : 'Pin on top'}
+            aria-pressed={pinned}
+            onClick={(e) => { e.stopPropagation(); togglePin(); }}
+          >
+            {PIN_SVG}
           </button>
         </div>
 

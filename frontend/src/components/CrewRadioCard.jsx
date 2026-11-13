@@ -8,6 +8,12 @@ import useMyRadio from '../hooks/useMyRadio';
 import RadioPickerModal from './RadioPickerModal';
 import api from '../services/api';
 
+// Short mechanical cues for lock/power toggles. Matches the Radio-only
+// overlay (RadioTwinTiles) so all three views sound the same.
+function playLockClose()  { try { new Audio('/sounds/click2.mp3').play().catch(() => {}); } catch {} }
+function playLockOpen()   { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} }
+function playPowerClick() { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} }
+
 export default function CrewRadioCard({
   tunedFrequency,
   peers,
@@ -114,8 +120,8 @@ export default function CrewRadioCard({
         locked={locked}
         powered={powered}
         onCommitFreq={onCommitFreq}
-        onPowerToggle={() => setPowered(p => !p)}
-        onLockToggle={() => setLocked(l => !l)}
+        onPowerToggle={() => { playPowerClick(); setPowered(p => !p); }}
+        onLockToggle={() => setLocked(l => { (l ? playLockOpen : playLockClose)(); return !l; })}
         onPttDown={startPTT}
         onPttUp={stopPTT}
         onRemapPtt={(preresolvedKey) => {

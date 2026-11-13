@@ -10,6 +10,12 @@ import RadioModule from './RadioModule';
 import RadioPickerModal from './RadioPickerModal';
 import api from '../services/api';
 
+// Short mechanical cues for lock/power toggles. Matches the Radio-only
+// overlay (RadioTwinTiles) so all three views sound the same.
+function playLockClose()  { try { new Audio('/sounds/click2.mp3').play().catch(() => {}); } catch {} }
+function playLockOpen()   { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} }
+function playPowerClick() { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} }
+
 const LABEL_LS_KEY   = 'nexus_command_label';
 const LOCK_LS_KEY    = 'nexus_command_locked';
 const POWER_LS_KEY   = 'nexus_command_powered';
@@ -161,8 +167,8 @@ export default function CommandRadioCard({
         locked={locked}
         powered={powered}
         onCommitFreq={onCommitFreq}
-        onPowerToggle={() => setPowered(p => !p)}
-        onLockToggle={() => setLocked(l => !l)}
+        onPowerToggle={() => { playPowerClick(); setPowered(p => !p); }}
+        onLockToggle={() => setLocked(l => { (l ? playLockOpen : playLockClose)(); return !l; })}
         onPttDown={startPTT}
         onPttUp={stopPTT}
         onRemapPtt={(preresolvedKey) => {

@@ -28,7 +28,13 @@ import useUpdateFlow from '../hooks/useUpdateFlow';
 import FreqTuneInput from '../components/FreqTuneInput';
 import SharedMicStrip from '../components/SharedMicStrip';
 import RadioPickerModal from '../components/RadioPickerModal';
-import { playTune } from '../utils/audioFx';
+import { playTune, playMute, playUnmute } from '../utils/audioFx';
+
+// Short mechanical cues for lock/power toggles — matches the Radio-only
+// overlay so all three views sound the same.
+const playLockClose  = () => { try { new Audio('/sounds/click2.mp3').play().catch(() => {}); } catch {} };
+const playLockOpen   = () => { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} };
+const playPowerClick = () => { try { new Audio('/sounds/click.mp3').play().catch(() => {}); }  catch {} };
 import '../components/radioMotion.css';
 
 // ── Error boundary ────────────────────────────────────────────────────
@@ -487,8 +493,8 @@ function Companion() {
                 locked={crewLocked}
                 powered={crewPowered}
                 onCommitFreq={onCrewCommitFreq}
-                onPowerToggle={() => setCrewPowered(p => !p)}
-                onLockToggle={() => setCrewLocked(l => !l)}
+                onPowerToggle={() => { playPowerClick(); setCrewPowered(p => !p); }}
+                onLockToggle={() => setCrewLocked(l => { (l ? playLockOpen : playLockClose)(); return !l; })}
                 onPttDown={() => { if (!isMuted && crewPowered) crew.startPTT?.(); }}
                 onPttUp={() => crew.stopPTT?.()}
                 onOpenSettings={() => openCfg('crew')}
@@ -505,8 +511,8 @@ function Companion() {
                 locked={commandLocked}
                 powered={commandPowered}
                 onCommitFreq={onCommandCommitFreq}
-                onPowerToggle={() => setCommandPowered(p => !p)}
-                onLockToggle={() => setCommandLocked(l => !l)}
+                onPowerToggle={() => { playPowerClick(); setCommandPowered(p => !p); }}
+                onLockToggle={() => setCommandLocked(l => { (l ? playLockOpen : playLockClose)(); return !l; })}
                 onPttDown={() => { if (!isMuted && commandPowered) command.startPTT?.(); }}
                 onPttUp={() => command.stopPTT?.()}
                 onOpenSettings={() => openCfg('command')}
@@ -523,7 +529,7 @@ function Companion() {
               setRxVolume={setRxVolume}
               isActive={!isMuted}
               isMuted={isMuted}
-              onToggleMute={() => setIsMuted(m => !m)}
+              onToggleMute={() => setIsMuted(m => { (m ? playUnmute : playMute)(); return !m; })}
               peersCount={(() => {
                 // Combined unique operators across both tuners.
                 const ids = new Set();
