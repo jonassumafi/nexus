@@ -119,6 +119,25 @@ function injectStyles() {
 .rov .strip > .gearb,
 .rov .strip > .mute { cursor: pointer; }
 
+/* Drag grip — six dots in a 2×3 grid, sized to match the chip height
+ * so the handle reads as part of the strip without widening the HUD
+ * much. Inherits -webkit-app-region: drag from the strip and the
+ * grab cursor from the strip hover state. */
+.rov .strip > .grip {
+  display: grid; grid-template-columns: repeat(2, 2px);
+  gap: 2px 2px; align-content: center;
+  width: 10px; height: 20px;
+  margin-right: 2px;
+  flex: none; opacity: 0.55;
+  transition: opacity .15s;
+}
+.rov .strip > .grip i {
+  width: 2px; height: 2px; border-radius: 50%;
+  background: var(--acc);
+  display: block;
+}
+.rov .strip:hover > .grip { opacity: 0.85; }
+
 .rov .chip {
   flex: 1; display: flex; align-items: center; gap: 6px;
   height: 24px; padding: 0 8px; border-radius: 4px;
@@ -740,6 +759,13 @@ export default function RadioTwinTiles() {
       <div ref={rootRef} className={`rov${muted ? ' muted' : ''}`}>
         {/* Strip */}
         <div className="strip" onWheel={onWheel}>
+          {/* Grab handle — visual affordance for the drag region. The
+              whole strip is already -webkit-app-region: drag; this just
+              gives the player a clear "pick me up" target before the
+              crew chip. Six vertical dots in two columns. */}
+          <span className="grip" aria-hidden="true" title="Drag to move">
+            <i /><i /><i /><i /><i /><i />
+          </span>
           {chips.map(ch => {
             const classes = ['chip', 'glass'];
             if (ch.c === 1) classes.push('cmd');
