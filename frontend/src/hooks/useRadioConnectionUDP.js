@@ -94,12 +94,6 @@ export function useRadioConnectionUDP({
   const micStreamRef    = useRef(null);
   const filterChainRef  = useRef(null);
   const srsChainRef     = useRef(null);
-  // Final AudioNode of the TX graph (after spacesuit → SRS → FM pre-
-  // emphasis → outbound delay). createUdpVoiceTx taps this node in the
-  // same AudioContext as the mic chain, avoiding Chromium's cross-
-  // context MediaStreamSource silencing bug that broke every
-  // post-view-switch TX in v0.9.26.
-  const txFinalNodeRef  = useRef(null);
   const srsSpecRef      = useRef(null);
   const srsBandRef      = useRef('VHF');
   const filteredStreamRef = useRef(null);
@@ -199,17 +193,13 @@ export function useRadioConnectionUDP({
     }
 
     const outDelay = getOutboundDelay(ctx);
-    let finalNode;
     if (outDelay) {
       srsOutput.connect(outDelay);
       outDelay.connect(dest);
-      finalNode = outDelay;
     } else {
       srsOutput.connect(dest);
-      finalNode = srsOutput;
     }
     filteredStreamRef.current = dest.stream;
-    txFinalNodeRef.current    = finalNode;
 
     // Mute until PTT pressed (the UDP TX wrapper gates frames too, but
     // this keeps the destination silent for consistency with the WebRTC hook).
@@ -242,7 +232,6 @@ export function useRadioConnectionUDP({
       try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
 
       filteredStreamRef.current = null;
-      txFinalNodeRef.current    = null;
       filterChainRef.current    = null;
       micGainRef.current        = null;
       analyserRef.current       = null;
@@ -252,12 +241,9 @@ export function useRadioConnectionUDP({
       const newStream = await ensureMicAndChain();
       if (cancelled || !newStream) return;
 
-      // Rebuild the TX wrapper, tapping the mic chain in its own ctx.
+      // Rebuild the TX wrapper around the fresh filtered stream.
       try {
-        udpTxRef.current = await createUdpVoiceTx({
-          ctx: audioCtxRef.current,
-          sourceNode: txFinalNodeRef.current,
-        });
+        udpTxRef.current = await createUdpVoiceTx(newStream);
       } catch (err) {
         console.error('[RadioUDP] rebuild tx failed:', err);
       }
@@ -455,16 +441,11 @@ export function useRadioConnectionUDP({
       console.error('[RadioUDP] udp.open failed:', err);
     }
 
-    // Build (or rebuild) the TX wrapper. Shares the mic chain's ctx
-    // and taps its final node directly — no cross-context MediaStream
-    // hop, which is what silenced TX after view-switches on 0.9.26.
-    if (filtered && audioCtxRef.current && txFinalNodeRef.current) {
+    // Build (or rebuild) the TX wrapper around the current filtered stream.
+    if (filtered) {
       try {
         if (udpTxRef.current) { try { await udpTxRef.current.close(); } catch {} }
-        udpTxRef.current = await createUdpVoiceTx({
-          ctx: audioCtxRef.current,
-          sourceNode: txFinalNodeRef.current,
-        });
+        udpTxRef.current = await createUdpVoiceTx(filtered);
       } catch (err) {
         console.error('[RadioUDP] createUdpVoiceTx failed:', err);
       }
@@ -535,7 +516,6 @@ export function useRadioConnectionUDP({
     try { audioCtxRef.current?.close(); } catch {}
 
     filteredStreamRef.current  = null;
-    txFinalNodeRef.current     = null;
     filterChainRef.current     = null;
     micGainRef.current         = null;
     analyserRef.current        = null;
@@ -681,22 +661,7 @@ export function useRadioConnectionUDP({
     const onPeerJoined = (peer) => {
       if (!forThisTuner(peer)) return;
       setPeers(prev => {
-        // Dedupe by socketId first (idempotency).
         if (prev.some(p => p.socketId === peer.socketId)) return prev;
-        // Dedupe by userId within this tuner: if the same user already
-        // has an entry (stale socket from a crashed client or a
-        // view-switch whose peer-left didn't arrive yet), replace it
-        // with the fresh one. Crew and Command are separate hook
-        // instances with separate peer lists, so a user legitimately
-        // on both channels still appears in each.
-        const otherSameUser = prev.findIndex(
-          p => peer.userId && String(p.userId) === String(peer.userId)
-        );
-        if (otherSameUser >= 0) {
-          const next = prev.slice();
-          next[otherSameUser] = peer;
-          return next;
-        }
         return [...prev, peer];
       });
       new Audio('/sounds/freq_connect.mp3').play().catch(() => {});
@@ -942,20 +907,14 @@ export function useRadioConnectionUDP({
           try { analyserRef.current?.disconnect?.(); } catch {}
           try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
           filteredStreamRef.current = null;
-      txFinalNodeRef.current    = null;
           filterChainRef.current    = null;
           micGainRef.current        = null;
           analyserRef.current       = null;
           analyserSourceRef.current = null;
           micStreamRef.current      = null;
           const next = await ensureMicAndChain();
-          if (next && audioCtxRef.current && txFinalNodeRef.current) {
-            try {
-              udpTxRef.current = await createUdpVoiceTx({
-                ctx: audioCtxRef.current,
-                sourceNode: txFinalNodeRef.current,
-              });
-            }
+          if (next) {
+            try { udpTxRef.current = await createUdpVoiceTx(next); }
             catch (err) { console.error('[RadioUDP] tx rebuild on spec arrival failed:', err); }
           }
         })();
@@ -967,7 +926,6 @@ export function useRadioConnectionUDP({
     srsChainRef.current = null;
     try { filteredStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
     filteredStreamRef.current = null;
-      txFinalNodeRef.current    = null;
   }, [hasUdp, isPTTActive, ensureMicAndChain]);
 
   const setSrsRadioBand = useCallback((band) => {
