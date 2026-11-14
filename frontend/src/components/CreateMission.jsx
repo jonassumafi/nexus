@@ -1365,9 +1365,23 @@ function Wizard({ me, onClose, onSuccess }) {
   const stageTitle = stage === 4 ? 'Review' : STAGES[stage - 1].label;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg0)' }}>
-      {/* Header */}
-      <div className="sh" style={{ alignItems: 'flex-start' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      height: '100%',                 // fill parent when parent has explicit height
+      maxHeight: '100%',              // never grow beyond parent
+      minHeight: 0,                   // let flex clamp us
+      background: 'var(--bg0)',
+      position: 'relative',           // sticky children are relative to this
+      overflow: 'hidden',             // body handles its own scroll; outer never does
+    }}>
+      {/* Header — sticky so the action buttons stay reachable even on
+          small / high-DPI windows where a parent layout bug might
+          otherwise push them off-screen. z-index lifts above body. */}
+      <div className="sh" style={{
+        alignItems: 'flex-start',
+        position: 'sticky', top: 0, zIndex: 3,
+        flexWrap: 'wrap',             // long titles + hint wrap below buttons rather than clip
+      }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontSize: 11, color: 'var(--blue)', fontWeight: 600,
@@ -1379,6 +1393,7 @@ function Wizard({ me, onClose, onSuccess }) {
             <div style={{
               fontSize: 15, color: 'var(--fg0)', fontWeight: 700,
               marginTop: 4,
+              overflowWrap: 'anywhere',
             }}>
               {form.name}
             </div>
@@ -1386,21 +1401,23 @@ function Wizard({ me, onClose, onSuccess }) {
         </div>
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'stretch',
-          gap: 6, flexShrink: 0, minWidth: 220,
+          gap: 6, flexShrink: 0, minWidth: 180, maxWidth: '100%',
         }}>
           {headerButtons()}
         </div>
       </div>
 
-      {/* Stage pills */}
-      <StagePills
-        current={stage > 3 ? 3 : stage}
-        completedMax={completedMax}
-        onJump={(s) => setStage(s)}
-      />
+      {/* Stage pills — also sticky under the header */}
+      <div style={{ position: 'sticky', top: 'var(--sh-height, 56px)', zIndex: 2, flexShrink: 0, background: 'var(--bg0)' }}>
+        <StagePills
+          current={stage > 3 ? 3 : stage}
+          completedMax={completedMax}
+          onJump={(s) => setStage(s)}
+        />
+      </div>
 
       {/* Body */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+      <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0 }}>
         {stage === 1 && (
           <Stage1
             form={form}
