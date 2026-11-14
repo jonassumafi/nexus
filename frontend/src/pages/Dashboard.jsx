@@ -2530,7 +2530,6 @@ export default function Dashboard() {
   const [friendsOpen, setFriendsOpen]       = useState(false);
   const [idCard, setIdCard]                 = useState(null); // {userId, rect}
   const [bugPopoverOpen, setBugPopoverOpen] = useState(false);
-  const [discPopoverOpen, setDiscPopoverOpen] = useState(false);
   const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
   const [skinPopoverOpen, setSkinPopoverOpen] = useState(false);
   const [bugText, setBugText]               = useState('');
@@ -3045,7 +3044,7 @@ export default function Dashboard() {
         onOpenSkin={() => setSkinPopoverOpen(o => !o)}
         onOpenSettings={() => setSettingsPopoverOpen(o => !o)}
         onOpenBug={() => setBugPopoverOpen(true)}
-        onOpenDisconnect={() => setDiscPopoverOpen(true)}
+        onOpenDisconnect={() => navigate('/disconnect')}
       />
 
       {messagesPopoverOpen && (
@@ -3113,18 +3112,9 @@ export default function Dashboard() {
         </AnchoredPopover>
       )}
 
-      {discPopoverOpen && (
-        <AnchoredPopover anchorRef={powerBtnRef} width={280} onClose={() => setDiscPopoverOpen(false)} label="Disconnect">
-          <h4>Disconnect?</h4>
-          <div className="nxp-body">
-            <p>You will leave your radio frequencies and stop receiving mission updates.</p>
-          </div>
-          <div className="nxp-acts">
-            <button className="nxp-link" onClick={() => setDiscPopoverOpen(false)}>Stay connected</button>
-            <button className="nxp-btn danger" onClick={() => { setDiscPopoverOpen(false); navigate('/disconnect'); }}>Disconnect</button>
-          </div>
-        </AnchoredPopover>
-      )}
+      {/* Disconnect popover removed: the Banner power button now
+          requires a 6-second press-and-hold, so a second confirm
+          dialog would be redundant. */}
 
       <FriendsDrawer
         open={friendsOpen}

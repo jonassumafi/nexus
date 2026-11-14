@@ -31,6 +31,7 @@ import { randomVoiceProfile } from '../utils/spacesuitFilter';
 import RadioPickerModal from './RadioPickerModal';
 import api from '../services/api';
 import { playMute, playUnmute } from '../utils/audioFx';
+import HoldButton, { useHold, HoldRing } from './HoldButton';
 
 // Short mechanical cues shared with Full / Companion for the three
 // radio-chrome toggles that live in this overlay. Lock + power reuse
@@ -410,6 +411,52 @@ function shortName(n) {
   return s.length <= 20 ? s : s.slice(0, 16) + '…';
 }
 
+// Radio-only `ib`-sized power button. Turning OFF requires a 3-second
+// hold with a progress ring; turning ON stays a single click.
+function PowerHoldIB({ powered, onToggle }) {
+  const { bindProps, progress, showHint, holding } = useHold({
+    holdMs: 3000,
+    hintText: 'Hold to turn off',
+    onComplete: () => { try { onToggle?.(); } catch {} },
+  });
+  if (!powered) {
+    return (
+      <button
+        className="ib bad"
+        onClick={() => { try { onToggle?.(); } catch {} }}
+        title="Power on selected radio"
+      >
+        {POWER_SVG}
+      </button>
+    );
+  }
+  return (
+    <button
+      className="ib"
+      {...bindProps}
+      aria-label="Power off (hold 3 seconds)"
+      title="Hold to turn off"
+      style={{
+        position: 'relative',
+        ...(holding ? { borderColor: 'var(--red)', color: 'var(--red)' } : null),
+      }}
+    >
+      <HoldRing progress={progress} variant="danger" size={28} />
+      <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex' }}>{POWER_SVG}</span>
+      {showHint && (
+        <span
+          role="status"
+          style={{
+            position: 'absolute', left: '50%', bottom: -14, transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap', fontSize: 9, letterSpacing: '0.08em',
+            color: 'var(--red)', pointerEvents: 'none',
+          }}
+        >Hold to turn off</span>
+      )}
+    </button>
+  );
+}
+
 // ────────────────────────────────────────────────────────────────────────
 
 export default function RadioTwinTiles() {
@@ -762,6 +809,19 @@ export default function RadioTwinTiles() {
     try { window.electronAPI?.setMode?.('full'); } catch {}
   };
 
+  // Disconnect from the app — always quits completely, bypassing the
+  // "Minimize to tray" setting. Routed through the /disconnect page
+  // so the usual exit animation plays before the shell actually quits.
+  const goDisconnect = () => {
+    try {
+      // Switch to Full so the Disconnect page renders in the dashboard
+      // window (it's a full-screen animation; radio-only would clip it).
+      window.electronAPI?.setMode?.('full');
+    } catch {}
+    try { window.location.hash = ''; } catch {}
+    try { window.location.href = '/disconnect'; } catch {}
+  };
+
   // ─── Render ─────────────────────────────────────────────────────────
   const selected = chips[sel];
   const selectedLocked = selected.locked;
@@ -896,13 +956,10 @@ export default function RadioTwinTiles() {
                   >
                     {LK_SVG(!selectedLocked)}
                   </button>
-                  <button
-                    className={`ib${selectedPowered ? '' : ' bad'}`}
-                    onClick={() => togglePower(sel)}
-                    title={selectedPowered ? 'Power off selected radio' : 'Power on selected radio'}
-                  >
-                    {POWER_SVG}
-                  </button>
+                  <PowerHoldIB
+                    powered={selectedPowered}
+                    onToggle={() => togglePower(sel)}
+                  />
                 </span>
               </div>
             </div>
@@ -1008,6 +1065,22 @@ export default function RadioTwinTiles() {
               <button className="fvb" onClick={goFull} title="Switch to Full view">
                 {FULLVIEW_SVG}Full view
               </button>
+            </div>
+
+            {/* Disconnect — 6-second hold-to-confirm. Lives at the
+                bottom, visually separated from the radio controls,
+                styled red. Always quits completely, even when the
+                close-behavior setting is Minimize to tray. */}
+            <div className="sg" style={{ marginTop: 6 }}>
+              <HoldButton
+                holdMs={6000}
+                variant="danger"
+                hintText="Hold to disconnect"
+                ariaLabel="Disconnect from Nexus (hold 6 seconds)"
+                title="Hold to disconnect"
+                style={{ width: '100%', padding: '9px 14px' }}
+                onComplete={goDisconnect}
+              >DISCONNECT</HoldButton>
             </div>
           </div>
         )}

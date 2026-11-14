@@ -11,42 +11,61 @@
 import { useEffect, useRef, useState } from 'react';
 import FreqTuneInput from './FreqTuneInput';
 import { playTune } from '../utils/audioFx';
+import { useHold, HoldRing } from './HoldButton';
 import './radioMotion.css';
 
-// Power toggle button. When powered on, hover=red (hint: "will turn off").
-// When powered off, hover=cyan (hint: "will turn on"). Idle color/weight
-// also communicates state: a bright solid glyph when on, a dim outlined
-// glyph when off. Clickable regardless of lock — operator must always be
-// able to kill the radio.
+// Power toggle button. Turning ON is still a single click; turning OFF
+// requires a 3-second press-and-hold with a progress ring, so the
+// operator can't accidentally silence their radio mid-fight. Early
+// release cancels. When powered off, hover=cyan (restorative).
 function PowerBtn({ onClick, powered }) {
   const [hover, setHover] = useState(false);
   const [pressing, setPressing] = useState(false);
-  const flash = hover && !pressing;
-  // When powered: hover flashes red (destructive). When off: hover flashes cyan (restorative).
+  const { bindProps, progress, holding, showHint } = useHold({
+    holdMs: 3000,
+    hintText: 'Hold to turn off',
+    onComplete: () => { try { onClick?.(); } catch {} },
+  });
+
+  // When powered on: show a filling ring, no instant click. When off:
+  // single click turns on (hold machinery is bypassed).
+  const flash = hover && !pressing && !holding;
   const flashColor = powered ? 'var(--red)' : 'var(--cyan)';
+
+  const commonHandlers = powered
+    ? bindProps
+    : { onClick: () => { try { onClick?.(); } catch {} } };
+
   return (
     <button
       className="rm-ib"
-      onClick={onClick}
       onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => { setHover(false); setPressing(false); }}
-      onMouseDown={() => setPressing(true)}
-      onMouseUp={() => setPressing(false)}
-      aria-label={powered ? 'Power off' : 'Power on'}
+      onMouseLeave={() => { setHover(false); setPressing(false); if (powered) bindProps.onMouseLeave(); }}
+      onMouseDown={() => { setPressing(true); if (powered) bindProps.onMouseDown(); }}
+      onMouseUp={() => { setPressing(false); if (powered) bindProps.onMouseUp(); }}
+      onTouchStart={powered ? bindProps.onTouchStart : undefined}
+      onTouchEnd={powered ? bindProps.onTouchEnd : undefined}
+      onTouchCancel={powered ? bindProps.onTouchCancel : undefined}
+      onKeyDown={powered ? bindProps.onKeyDown : undefined}
+      onKeyUp={powered ? bindProps.onKeyUp : undefined}
+      onBlur={powered ? bindProps.onBlur : undefined}
+      onClick={powered ? undefined : commonHandlers.onClick}
+      aria-label={powered ? 'Power off (hold 3 seconds)' : 'Power on'}
       aria-pressed={powered}
-      title={powered ? 'Power off radio' : 'Power on radio'}
+      title={powered ? 'Hold to turn off' : 'Power on radio'}
       style={{
+        position: 'relative',
         width: 32, minHeight: 0,
         display: 'grid', placeItems: 'center',
         borderRadius: 5, padding: 0, flex: 'none',
-        border: flash
+        border: (flash || holding)
           ? `1px solid color-mix(in srgb, ${flashColor} 70%, var(--bg0))`
           : '1px solid var(--rim1)',
-        background: flash
+        background: (flash || holding)
           ? `linear-gradient(180deg, color-mix(in srgb, ${flashColor} 55%, var(--bg0)), color-mix(in srgb, ${flashColor} 32%, var(--bg0)))`
           : 'linear-gradient(180deg, var(--bg3, #183230), var(--bg2))',
         boxShadow: '0 1px 0 var(--hl) inset, 0 2px 0 var(--edge)',
-        color: flash
+        color: (flash || holding)
           ? '#fff'
           : (powered
               ? 'color-mix(in srgb, var(--red) 55%, #fff)'
@@ -56,8 +75,23 @@ function PowerBtn({ onClick, powered }) {
         transition: 'background .12s, color .12s, border-color .12s, opacity .12s',
         fontSize: 14,
         fontWeight: powered ? 700 : 400,
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
-    >⏻</button>
+    >
+      {powered && <HoldRing progress={progress} variant="danger" size={32} />}
+      <span style={{ position: 'relative', zIndex: 1 }}>⏻</span>
+      {showHint && (
+        <span
+          role="status"
+          style={{
+            position: 'absolute', left: '50%', bottom: -16, transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap', fontSize: 9, letterSpacing: '0.08em',
+            color: 'var(--red)', pointerEvents: 'none',
+          }}
+        >Hold to turn off</span>
+      )}
+    </button>
   );
 }
 

@@ -1,4 +1,6 @@
 [
+  { "id": 160, "version": "0.9.29", "date": "2026-11-14",
+    "tag": "new", "text": "Disconnect and power-off now require a press-and-hold: 6 seconds for Disconnect (dashboard and Radio-only gear), 3 seconds to turn a radio off. Turning on stays a single click. A filling ring shows progress; early release cancels" },
   { "id": 159, "version": "0.9.29", "date": "2026-11-14",
     "tag": "new", "text": "New setting: \"When I close the window\" — Quit completely (default) or Minimize to tray. Tray menu gains Open dashboard, Radio-only, Toggle mic mute and Quit" },
   { "id": 158, "version": "0.9.28", "date": "2026-11-14",

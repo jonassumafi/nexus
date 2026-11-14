@@ -1154,6 +1154,9 @@ ipcMain.handle('nexus:prefs:set', (_e, key, value) => {
   savePrefs({ [key]: value });
   return true;
 });
+ipcMain.handle('nexus:app:quit', () => {
+  requestQuit('renderer-quit');
+});
 ipcMain.handle('nexus:app:relaunch', () => {
   try {
     requestQuit('app-relaunch', () => {

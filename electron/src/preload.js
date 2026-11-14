@@ -164,6 +164,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   app: {
     relaunch: () => ipcRenderer.invoke('nexus:app:relaunch'),
+    // Renderer-initiated quit. Always runs the shared cleanup routine
+    // and quits completely, regardless of the closeBehavior setting
+    // (used by the Disconnect page at the end of its animation).
+    quit:     () => ipcRenderer.invoke('nexus:app:quit'),
     // Clean-shutdown hook. The renderer calls armQuitHook() once it's
     // ready to handle a final "leave channels + mark offline" burst,
     // then listens via onBeforeQuit(handler). When the handler has

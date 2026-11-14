@@ -6,6 +6,7 @@
 // This component owns its own CSS for the nav; higher-level app CSS is
 // unaffected. Icon glyphs are inlined SVG so no dep on an icon lib.
 import { useEffect, useRef, useState } from 'react';
+import { useHold, HoldRing } from './HoldButton';
 
 const STYLE_ID = 'banner-styles';
 function injectStyles() {
@@ -48,6 +49,33 @@ function injectStyles() {
 @media (prefers-reduced-motion:reduce){ .nxb *{transition:none !important;animation:none !important} }
 `;
   document.head.appendChild(s);
+}
+
+// Disconnect icon button with a 6-second press-and-hold. The old
+// behavior was click → popover-confirm → disconnect; now the confirm
+// gesture is the hold itself. Early release shows a "Hold" hint.
+function DisconnectHoldButton({ powerBtnRef, onConfirm }) {
+  const { bindProps, progress, holding, showHint } = useHold({
+    holdMs: 6000,
+    hintText: 'Hold to disconnect',
+    onComplete: () => { try { onConfirm?.(); } catch {} },
+  });
+  return (
+    <button
+      ref={powerBtnRef}
+      className="ib sm dng"
+      data-tip={showHint ? 'Hold to disconnect' : 'Hold to disconnect'}
+      aria-label="Disconnect (hold 6 seconds)"
+      {...bindProps}
+      style={{
+        position: 'relative',
+        ...(holding ? { color: 'var(--red)', borderColor: 'var(--red)' } : null),
+      }}
+    >
+      <HoldRing progress={progress} variant="danger" size={26} />
+      <I name="power" />
+    </button>
+  );
 }
 
 function I({ name }) {
@@ -175,7 +203,7 @@ export default function Banner({
       <button ref={skinBtnRef}     className="ib sm" data-tip="Skin"     aria-label="Skin"     onClick={onOpenSkin}><I name="skin" /></button>
       <button ref={settingsBtnRef} className="ib sm" data-tip="Settings" aria-label="Settings" onClick={onOpenSettings}><I name="gear" /></button>
       <button ref={bugBtnRef}      className="ib sm" data-tip="Report a bug" aria-label="Report a bug" onClick={onOpenBug}><I name="bug" /></button>
-      <button ref={powerBtnRef}    className="ib sm dng" data-tip="Disconnect" aria-label="Disconnect" onClick={onOpenDisconnect}><I name="power" /></button>
+      <DisconnectHoldButton powerBtnRef={powerBtnRef} onConfirm={onOpenDisconnect} />
     </nav>
   );
 }

@@ -41,6 +41,13 @@ export default function Disconnect() {
     const lastDelay = (lines.length - 1) * 400;
     tids.push(setTimeout(() => {
       localStorage.removeItem('nexus_token');
+      // In Electron, Disconnect quits the app completely (bypasses the
+      // "Minimize to tray" setting by design — Disconnect always exits).
+      // In the browser, fall back to navigating home.
+      const api = typeof window !== 'undefined' ? window.electronAPI : null;
+      if (api?.app?.quit) {
+        try { api.app.quit(); return; } catch {}
+      }
       window.location.href = '/';
     }, lastDelay + 2400));
 
