@@ -9,7 +9,7 @@
 //
 // Driven entirely by useUpdateFlow. Mount once per view (Full, Companion).
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const TAG_LABEL = { new: 'New', better: 'Better', fix: 'Fix' };
 const TAG_COLOR = { new: 'var(--lime, #44dd88)', better: 'var(--acc2, #00eeff)', fix: 'var(--amber, #ffbb33)' };
@@ -17,6 +17,61 @@ const TAG_CLASS = { new: 'n', better: 'i', fix: 'f' };
 
 export default function UpdateCard({ flow, compact = false }) {
   const { surface, state } = flow;
+
+  // Notification chime. Fires exactly when the badge appears on screen,
+  // because this component is only mounted inside the Full dashboard;
+  // Radio-only and the installer launcher never render it, so neither
+  // ever makes noise. Keyed per surface so each distinct notification
+  // chimes only once. Focus-gated so an autostart into an empty room
+  // defers the ding until the player's next focus event.
+  //
+  //   surface=update   → update_tone.wav
+  //   surface=whatsnew → feature_tone.wav
+  //   surface=fixes    → feature_tone.wav
+  const chimedKeyRef = useRef(null);
+  useEffect(() => {
+    if (surface === 'none') return;
+    let src = null;
+    let key = null;
+    if (surface === 'update') {
+      src = '/sounds/update_tone.wav';
+      key = `update:${flow.version || 'unknown'}`;
+    } else if (surface === 'whatsnew' || surface === 'fixes') {
+      src = '/sounds/feature_tone.wav';
+      const newestId = flow.entries?.[0]?.id ?? null;
+      key = `${surface}:${newestId ?? 'none'}`;
+    }
+    if (!src || !key || chimedKeyRef.current === key) return;
+
+    const play = () => {
+      if (chimedKeyRef.current === key) return;
+      chimedKeyRef.current = key;
+      try {
+        const snd = new Audio(src);
+        snd.volume = 0.6;
+        snd.play().catch(() => {});
+      } catch {}
+    };
+
+    const focused = typeof document !== 'undefined'
+      && document.visibilityState !== 'hidden'
+      && document.hasFocus();
+    if (focused) { play(); return; }
+
+    const onReady = () => {
+      if (document.visibilityState !== 'hidden' && document.hasFocus()) {
+        play();
+        cleanup();
+      }
+    };
+    const cleanup = () => {
+      window.removeEventListener('focus', onReady);
+      document.removeEventListener('visibilitychange', onReady);
+    };
+    window.addEventListener('focus', onReady);
+    document.addEventListener('visibilitychange', onReady);
+    return cleanup;
+  }, [surface, flow.version, flow.entries]);
 
   // Lock Escape for required update surfaces. Closeable surfaces handle
   // Escape themselves via onClose.

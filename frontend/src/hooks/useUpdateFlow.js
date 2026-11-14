@@ -64,50 +64,10 @@ export default function useUpdateFlow() {
   // So we can delay a card's appearance while PTT is held.
   const pendingAvailableRef = useRef(null);
 
-  // One-time chime when the installer update pill first appears —
-  // keyed by version so we only chime once per installer. Fires on
-  // the 'update' surface (any state: available / downloading / ready);
-  // the feature-announcement surfaces (whatsnew / fixes) stay silent.
-  //
-  // Gated on window focus so an autostart launch into an empty room
-  // doesn't ding; if focus isn't held, we wait for the player's next
-  // focus/visibility event and play then.
-  const chimedForRef = useRef(null);
-  useEffect(() => {
-    if (surface !== 'update') return;
-    const key = version || 'update';
-    if (chimedForRef.current === key) return;
-
-    const play = () => {
-      if (chimedForRef.current === key) return;
-      chimedForRef.current = key;
-      try {
-        const snd = new Audio('/sounds/update_tone.wav');
-        snd.volume = 0.6;
-        snd.play().catch(() => {});
-      } catch {}
-    };
-
-    const focused = typeof document !== 'undefined'
-      && document.visibilityState !== 'hidden'
-      && document.hasFocus();
-
-    if (focused) { play(); return; }
-
-    const onReady = () => {
-      if (document.visibilityState !== 'hidden' && document.hasFocus()) {
-        play();
-        cleanup();
-      }
-    };
-    const cleanup = () => {
-      window.removeEventListener('focus', onReady);
-      document.removeEventListener('visibilitychange', onReady);
-    };
-    window.addEventListener('focus', onReady);
-    document.addEventListener('visibilitychange', onReady);
-    return cleanup;
-  }, [surface, version]);
+  // Chime placement lives in the badge components themselves (see
+  // UpdateCard) so the sound only fires when a badge is actually on
+  // screen — never from Radio-only, Chat popout, or any renderer
+  // that doesn't mount the card. Nothing to do here.
 
   // ─── PTT bridge — track hold state so required cards wait for release.
   // The Electron shell emits nexus:ptt down/up from the OS-level key hook.
