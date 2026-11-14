@@ -1,5 +1,5 @@
 // New dashboard nav row (Layout A). Three right-hand groups separated
-// by vertical rules: chat/friends | pin/companion/radio | settings/bug/power.
+// by vertical rules: chat/friends | pin/radio | settings/bug/power.
 // The brand row + window bar above it stay untouched and are rendered
 // by the Dashboard page as before.
 //
@@ -90,7 +90,6 @@ export default function Banner({
   friendsBtnRef,
   // window toggles (Electron)
   pinned, onTogglePin,
-  onCompanion,
   radioOnly, onToggleRadio,
   hasElectron,
   // admin popovers
@@ -169,7 +168,6 @@ export default function Banner({
         <>
           <button className="ib" data-tip={pinned ? 'Unpin' : 'Pin on top'}
             aria-label="Pin window on top" aria-pressed={pinned || undefined} onClick={onTogglePin}><I name="pin" /></button>
-          <button className="ib" data-tip="Companion window" aria-label="Switch to companion window" onClick={onCompanion}><I name="companion" /></button>
           <button className="ib" data-tip="Radio-only window" aria-label="Switch to radio-only window"
             aria-pressed={radioOnly || undefined} onClick={onToggleRadio}><I name="radio" /></button>
         </>

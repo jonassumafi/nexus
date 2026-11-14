@@ -25,7 +25,6 @@ import Onboarding   from './pages/Onboarding.jsx';
 import Disconnect   from './pages/Disconnect.jsx';
 import Admin        from './pages/Admin.jsx';
 import RadioWidget  from './pages/RadioWidget.jsx';
-import Companion    from './pages/Companion.jsx';
 import GlobalChatPopout from './pages/GlobalChatPopout.jsx';
 import RootErrorBoundary from './components/RootErrorBoundary.jsx';
 import Toaster from './components/Toaster.jsx';
@@ -98,12 +97,12 @@ function RouteGuard({ children }) {
   const { isAuthenticated, user } = useAuthContext();
   const location = useLocation();
 
-  // Radio widget + companion mode always render — they handle their own
+  // Radio widget + chat popout always render — they handle their own
   // loading / unauthenticated state internally. Previously the RouteGuard
   // redirected to /dashboard when auth wasn't ready, which caused the
   // dashboard to render cramped at 320×44 showing only the giant
-  // "Nexus Interstellar" title.
-  if (location.pathname === '/radio' || location.pathname === '/companion' || location.pathname === '/chat-popout') return children;
+  // "Nexus Interstellar" title. Companion view was removed in v0.9.27.
+  if (location.pathname === '/radio' || location.pathname === '/chat-popout') return children;
   // Unauthenticated users access everything else freely (Splash, etc.)
   if (!isAuthenticated) return children;
 
@@ -140,7 +139,6 @@ createRoot(document.getElementById('root')).render(
                 <Route path="/disconnect"     element={<Disconnect />} />
                 <Route path="/admin"          element={<Admin />} />
                 <Route path="/radio"          element={<RadioWidget />} />
-                <Route path="/companion"      element={<Companion />} />
                 <Route path="/chat-popout"    element={<GlobalChatPopout />} />
               </Routes>
             </RouteGuard>

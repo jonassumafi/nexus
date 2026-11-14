@@ -118,12 +118,6 @@ const MODES = {
     size: { width: 1280, height: 820 },
     minSize: { width: 900, height: 600 },
   },
-  companion: {
-    path: '/companion',
-    // v0.9.0 — grew by ~120px vertically to fit the Command tuner card.
-    size: { width: 340, height: 660 },
-    minSize: { width: 340, height: 540 },
-  },
   radio: {
     path: '/radio',
     // v0.9.26 — Radio-only now runs in its own BrowserWindow
@@ -135,6 +129,9 @@ const MODES = {
     minSize: { width: 240, height: 80 },
   },
 };
+// Companion mode (340×660, /companion route) was removed in v0.9.27 —
+// voice continuity was fighting too many lifecycle edges on the
+// Companion renderer. Full and Radio-only are the only views now.
 
 // ─── Persisted state ──────────────────────────────────────────────────────
 const STATE_PATH = () => path.join(app.getPath('userData'), 'window-state.json');
@@ -148,19 +145,21 @@ function loadState() {
     // full dashboard: a screen-sized always-on-top window that covered
     // everything. Migrate that flag to the compact modes only.
     const pm = (s.pinnedModes && typeof s.pinnedModes === 'object') ? s.pinnedModes
-      : { full: false, companion: !!s.pinned, radio: !!s.pinned };
+      : { full: false, radio: !!s.pinned };
+    // Companion was removed in v0.9.27. If someone was last in that
+    // mode, fall back to full on next launch.
+    const migratedMode = s.mode === 'companion' ? 'full' : s.mode;
     return {
-      mode: ['full', 'companion', 'radio'].includes(s.mode) ? s.mode : 'full',
+      mode: ['full', 'radio'].includes(migratedMode) ? migratedMode : 'full',
       pinned: !!s.pinned,
-      pinnedModes: { full: !!pm.full, companion: !!pm.companion, radio: !!pm.radio },
+      pinnedModes: { full: !!pm.full, radio: !!pm.radio },
       full:      s.full      || {},
-      companion: s.companion || {},
       radio:     s.radio     || {},
       radioExpanded: !!s.radioExpanded,
     };
   } catch {
-    return { mode: 'full', pinned: false, pinnedModes: { full: false, companion: false, radio: false },
-      full: {}, companion: {}, radio: {}, radioExpanded: false };
+    return { mode: 'full', pinned: false, pinnedModes: { full: false, radio: false },
+      full: {}, radio: {}, radioExpanded: false };
   }
 }
 
@@ -603,8 +602,8 @@ function switchMode(nextMode, opts = {}) {
   }
 
   // ─── To Full or Companion ───────────────────────────────────────────
-  // Coming from radio: hide the radio window, show mainWindow with the
-  // new mode. Otherwise it's a regular Full↔Companion swap on mainWindow.
+  // Coming from radio: hide the radio window, show mainWindow in Full.
+  // (Companion was removed in v0.9.27 — Full is the only non-radio mode.)
   const wasRadio = currentMode === 'radio';
   if (wasRadio && radioWindow && !radioWindow.isDestroyed()) {
     // Destroy rather than hide, for the same reason the main page is
@@ -629,26 +628,12 @@ function switchMode(nextMode, opts = {}) {
   mainWindow.setMovable(true);
   mainWindow.setMinimumSize(m.minSize.width, m.minSize.height);
 
-  if (currentMode === 'full') {
-    const b = computeBounds('full', state);
-    try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
-    mainWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height }, true);
-    if (state.full && state.full.maximized) {
-      try { mainWindow.maximize(); } catch {}
-    }
-  } else {
-    const saved = state[currentMode] || {};
-    const width  = Number.isFinite(saved.width)  ? saved.width  : m.size.width;
-    const height = Number.isFinite(saved.height) ? saved.height : m.size.height;
-    try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
-    mainWindow.setSize(width, height, true);
-    try {
-      const display = screen.getDisplayNearestPoint(mainWindow.getBounds());
-      const area = display.workArea;
-      const cx = Math.round(area.x + (area.width  - width)  / 2);
-      const cy = Math.round(area.y + (area.height - height) / 2);
-      mainWindow.setPosition(cx, cy);
-    } catch {}
+  // currentMode here is always 'full' now that Companion is gone.
+  const b = computeBounds('full', state);
+  try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
+  mainWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height }, true);
+  if (state.full && state.full.maximized) {
+    try { mainWindow.maximize(); } catch {}
   }
   try { mainWindow.show(); } catch {}
   applyPin();
@@ -839,7 +824,7 @@ ipcMain.handle('nexus:setMode', (_e, mode) => {
 });
 
 ipcMain.handle('nexus:cycleMode', () => {
-  const order = ['full', 'companion', 'radio'];
+  const order = ['full', 'radio'];
   const i = order.indexOf(currentMode);
   const next = order[(i + 1) % order.length];
   switchMode(next);
@@ -1082,7 +1067,6 @@ function createTray() {
     tray.setToolTip('Nexus Companion');
     const menu = Menu.buildFromTemplate([
       { label: 'Full dashboard',   click: () => switchMode('full') },
-      { label: 'Companion (340×540)', click: () => switchMode('companion') },
       { label: 'Radio-only (compact)', click: () => switchMode('radio') },
       { type: 'separator' },
       { label: 'Show window', click: () => {
@@ -1095,8 +1079,8 @@ function createTray() {
           try {
             // Also unpins every mode: a pinned window is the usual reason
             // someone reaches for "Reset layout".
-            saveState({ mode: 'full', full: {}, companion: {}, radio: {}, radioExpanded: false,
-              pinned: false, pinnedModes: { full: false, companion: false, radio: false } });
+            saveState({ mode: 'full', full: {}, radio: {}, radioExpanded: false,
+              pinned: false, pinnedModes: { full: false, radio: false } });
             switchMode('full', { force: true });
           } catch {}
         } },

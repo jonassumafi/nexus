@@ -942,22 +942,6 @@ function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onReg
             </button>
             <button
               className="btn"
-              onClick={() => { playClick(); electron.setMode?.('companion'); }}
-              style={{ fontSize: 12, padding: '7px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              title="Switch to the 340×540 companion window"
-            >
-              {/* Shrink-to-small-window glyph: two inward arrows pointing to a tiny frame */}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M4 10V4h6" />
-                <path d="M20 14v6h-6" />
-                <path d="M4 4l7 7" />
-                <path d="M20 20l-7-7" />
-              </svg>
-              Companion
-            </button>
-            <button
-              className="btn"
               onClick={() => { playClick(); electron.setMode?.('radio'); }}
               style={{ fontSize: 12, padding: '7px 10px' }}
               title="Switch to the ultra-compact radio-only widget"
@@ -3041,7 +3025,6 @@ export default function Dashboard() {
         hasElectron={!!(typeof window !== 'undefined' && window.electronAPI)}
         pinned={winPinned}
         onTogglePin={async () => { try { await window.electronAPI?.togglePin?.(); } catch {} }}
-        onCompanion={() => window.electronAPI?.setMode?.('companion')}
         radioOnly={winMode === 'radio'}
         onToggleRadio={() => window.electronAPI?.setMode?.('radio')}
         settingsBtnRef={settingsBtnRef}
