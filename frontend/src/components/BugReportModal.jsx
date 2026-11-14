@@ -89,6 +89,9 @@ export default function BugReportModal({ open, onClose }) {
     >
       <div style={{
         width: '100%', maxWidth: 460,
+        maxHeight: '90vh',           // never spill past the viewport
+        minHeight: 0,
+        display: 'flex', flexDirection: 'column',
         background: 'linear-gradient(180deg, var(--bz1,#172636), var(--bz2,#0f1b27))',
         border: '1px solid var(--edge, var(--rim0, #1A3A50))',
         borderRadius: 8,
@@ -102,6 +105,7 @@ export default function BugReportModal({ open, onClose }) {
           padding: '9px 14px',
           borderBottom: '1px solid var(--rim0)',
           background: 'linear-gradient(180deg, #0A1B2B, #061018)',
+          flexShrink: 0,
         }}>
           <span style={{
             fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
@@ -121,7 +125,12 @@ export default function BugReportModal({ open, onClose }) {
           </button>
         </div>
 
-        <div style={{ padding: '12px 14px' }}>
+        <div style={{
+          padding: '12px 14px',
+          flex: '1 1 auto',
+          overflowY: 'auto',
+          minHeight: 0,
+        }}>
           <div style={{
             fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
             color: 'var(--fg3)', marginBottom: 4,
@@ -227,6 +236,7 @@ export default function BugReportModal({ open, onClose }) {
           padding: '10px 14px',
           borderTop: '1px solid var(--rim0)',
           background: 'linear-gradient(180deg, #061018, #020C14)',
+          flexShrink: 0,
         }}>
           <button className="btn" onClick={close} disabled={submitting}
             style={{ flex: 1, fontSize: 11, padding: '7px 10px' }}>
