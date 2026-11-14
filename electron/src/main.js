@@ -1502,15 +1502,16 @@ app.on('session-end', () => {
 process.on('SIGINT',  () => requestQuit('SIGINT'));
 process.on('SIGTERM', () => requestQuit('SIGTERM'));
 
-// Best-effort cleanup on uncaught errors. We still exit; the point is
-// not to leave a dangling PTT hook or UDP socket if the main process
-// throws from a code path we didn't guard.
+// Log uncaught errors but do not quit on them. Prior versions quit via
+// cleanupBeforeQuit here, which silently dropped the player out of
+// voice on any stray bug — worse than Electron's default of showing a
+// dialog and keeping the app alive. SIGINT/SIGTERM/session-end/
+// before-quit already cover orderly cleanup; anything else should be
+// logged and left alone so one-off bugs don't boot the player.
 process.on('uncaughtException', (err) => {
   console.error('[uncaught]', err?.stack || err?.message || err);
-  requestQuit('uncaught-exception');
 });
 process.on('unhandledRejection', (err) => {
-  // Log only — a bad network promise should not kill the shell.
   console.error('[unhandled rejection]', err?.stack || err?.message || err);
 });
 
