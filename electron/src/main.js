@@ -1847,7 +1847,7 @@ app.whenReady().then(() => {
   createTray();
 
   // If the splash is in play, run the update check right away so the
-  // "Checking for updates" log line can resolve inside the 3.5 s floor
+  // "Checking for updates" log line can resolve inside the 5 s floor
   // instead of waiting for the usual 4 s delay. Unpacked dev builds
   // short-circuit inside electron-updater.
   if (splashActive) {

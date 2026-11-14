@@ -3,7 +3,7 @@
  * shell (loaded via loadFile) so it paints at renderer-ready, works
  * offline, and never depends on the frontend dev/prod server.
  *
- * Reveal rule: all phases must be ok/offline, 3.5s floor must have
+ * Reveal rule: all phases must be ok/offline, 5s floor must have
  * passed, and the last log line must have been visible for 450ms.
  */
 (function () {
@@ -66,7 +66,7 @@
     { id: 'dash',    label: 'Opening your dashboard',      ftLabel: 'READY',    needs: ['heartbeat'],      network: true  },
   ];
 
-  var FLOOR_MS = 3500;
+  var FLOOR_MS = 5000; // minimum time on screen (user: let it play out)
   var LINE_MIN_MS = 450;
   var STILL_WORKING_MS = 20000;
   var FAIL_MS = 60000;
