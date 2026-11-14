@@ -22,6 +22,14 @@ export default function Gate() {
     }
   }, [isAuthenticated, user, navigate]);
 
+  // Render nothing for the one frame between mount and the useEffect's
+  // navigate() firing — otherwise returning users see a brief flash of
+  // the "click to initiate" screen before the redirect kicks in. First-
+  // time users (not authenticated or onboarding incomplete) fall through
+  // to the normal intro below.
+  if (isAuthenticated && user?.onboarding_complete) return null;
+  if (isAuthenticated && user && !user.onboarding_complete) return null;
+
   // Jump directly to the Splash boot sequence (with HDD audio handoff
   // intact so Splash's expected soundscape still runs). Shared by click
   // and any-key handlers below.

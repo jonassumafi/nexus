@@ -83,7 +83,7 @@ export default function Banner({
   // page state
   page,                       // 'missions'|'mymission'|'myships'|'registry'|'register'
   canMyMission,
-  onMissions, onNewMission, onMyMission, onMyShips, onRegistry, onRegister,
+  onMissions, onMyMission, onMyShips, onRegistry, onRegister,
   // comms
   chatOpen, onToggleChat, chatUnread,
   friendsOpen, onToggleFriends, friendsUnread, friendsOnline,
@@ -107,9 +107,6 @@ export default function Banner({
     <nav ref={bannerRef} className="nxb" aria-label="Primary">
       <button className="nb" aria-current={current('missions')} onClick={onMissions}>
         <I name="missions" /> Missions
-      </button>
-      <button className="nb ghost" onClick={onNewMission} title="Create a new mission">
-        <I name="plus" /> <span className="hide-md">New mission</span>
       </button>
       {canMyMission && (
         <button className="nb" aria-current={current('mymission')} onClick={onMyMission}>

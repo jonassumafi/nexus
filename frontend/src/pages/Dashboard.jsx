@@ -3009,7 +3009,6 @@ export default function Dashboard() {
         }
         canMyMission={!!myMission}
         onMissions={() => enterMode('dashboard')}
-        onNewMission={() => enterMode('create')}
         onMyMission={() => myMission && selectMission(myMission._id)}
         onMyShips={() => enterMode('myShips')}
         onRegistry={() => enterMode('registry')}
