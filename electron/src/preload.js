@@ -156,4 +156,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   app: {
     relaunch: () => ipcRenderer.invoke('nexus:app:relaunch'),
   },
+
+  // Interface zoom — Full dashboard webContents.setZoomFactor.
+  // Range 0.75..1.5, persisted to prefs.json. Radio-only is unaffected;
+  // its HUD is an approved fixed footprint.
+  zoom: {
+    get: ()   => ipcRenderer.invoke('nexus:zoom:get'),
+    set: (v)  => ipcRenderer.invoke('nexus:zoom:set', v),
+  },
 });

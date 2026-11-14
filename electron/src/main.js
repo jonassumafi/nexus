@@ -366,6 +366,15 @@ function createWindow() {
       mode: currentMode,
       radioExpanded,
     });
+    // Apply the saved interface zoom factor on every load — Chromium
+    // resets zoom to 1.0 on navigate, so we re-apply after loadURL.
+    try {
+      const p = loadPrefs();
+      const z = Number(p.interfaceZoom);
+      if (Number.isFinite(z) && z >= 0.75 && z <= 1.5) {
+        mainWindow.webContents.setZoomFactor(z);
+      }
+    } catch {}
   });
 
   mainWindow.on('move',   persistBounds);
@@ -1098,6 +1107,35 @@ ipcMain.handle('nexus:app:relaunch', () => {
   }
 });
 
+// Interface zoom — applies to the main window (Full dashboard). The
+// renderer calls nexus:zoom:set with a float in [0.75, 1.5]; we clamp,
+// write it to prefs.json, and apply it via webContents.setZoomFactor.
+// Radio-only has its own already-tuned size (zoom isn't applied there
+// — the HUD mockup is the approved footprint).
+function clampZoom(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(0.75, Math.min(1.5, n));
+}
+function applyMainZoom(z) {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.setZoomFactor(z);
+  } catch (err) {
+    console.error('[zoom] apply failed:', err.message);
+  }
+}
+ipcMain.handle('nexus:zoom:get', () => {
+  const p = loadPrefs();
+  return clampZoom(p.interfaceZoom ?? 1);
+});
+ipcMain.handle('nexus:zoom:set', (_e, v) => {
+  const z = clampZoom(v);
+  savePrefs({ interfaceZoom: z });
+  applyMainZoom(z);
+  return z;
+});
+
 // ─── Safe-mode recovery ───────────────────────────────────────────────────
 // If a user ends up stuck in a broken mode (e.g. the renderer errors out
 // in a non-full mode), this hard-coded global shortcut forces the window
@@ -1130,6 +1168,23 @@ function registerSafeMode() {
     };
     globalShortcut.register('F12', openDevTools);
     globalShortcut.register('CommandOrControl+Alt+D', openDevTools);
+
+    // Interface zoom — Ctrl+= (zoom in), Ctrl+- (zoom out), Ctrl+0 (reset).
+    // Only active when the main window has focus so game bindings aren't
+    // hijacked when the player's elsewhere.
+    const zoomStep = (delta) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (!mainWindow.isFocused()) return;
+      const prefs = loadPrefs();
+      const current = clampZoom(prefs.interfaceZoom ?? 1);
+      const next = clampZoom(delta === 0 ? 1 : current + delta);
+      savePrefs({ interfaceZoom: next });
+      applyMainZoom(next);
+    };
+    globalShortcut.register('CommandOrControl+=',    () => zoomStep(+0.05));
+    globalShortcut.register('CommandOrControl+Plus', () => zoomStep(+0.05));
+    globalShortcut.register('CommandOrControl+-',    () => zoomStep(-0.05));
+    globalShortcut.register('CommandOrControl+0',    () => zoomStep(0));
   } catch (err) {
     console.error('[main] safe-mode shortcut failed:', err.message);
   }
@@ -1215,17 +1270,25 @@ if (process.platform === 'win32') {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
-  // Diagnostics: log GPU feature status + primary display scale so a
-  // tester's compositing bug can be reasoned about from the log file.
-  // Cheap, one-shot.
+  // Diagnostics: log GPU feature status + primary display scale +
+  // device-pixel and effective-pixel sizes + initial window size, so a
+  // tester's compositing / responsive-layout bug can be reasoned about
+  // from the log file. Cheap, one-shot.
   try {
     const gpu = app.getGPUFeatureStatus?.();
     const d = screen.getPrimaryDisplay();
+    const dev = d.workAreaSize || d.size;
+    const scale = d.scaleFactor || 1;
+    const eff = { width: Math.round(dev.width / scale), height: Math.round(dev.height / scale) };
     console.log('[gpu] feature status:', JSON.stringify(gpu));
-    console.log('[gpu] scaleFactor=' + d.scaleFactor + ' size=' + d.size.width + 'x' + d.size.height);
+    console.log('[display] scaleFactor=' + scale +
+      ' device=' + dev.width + 'x' + dev.height +
+      ' effective=' + eff.width + 'x' + eff.height);
     console.log('[gpu] hardwareAcceleration pref=' + (_prefsAtStart.hardwareAcceleration === false ? 'OFF' : 'ON'));
+    const z0 = Number(_prefsAtStart.interfaceZoom);
+    console.log('[zoom] interfaceZoom pref=' + (Number.isFinite(z0) ? z0 : 1));
   } catch (err) {
-    console.error('[gpu diag]', err.message);
+    console.error('[diag]', err.message);
   }
 
   createWindow();
