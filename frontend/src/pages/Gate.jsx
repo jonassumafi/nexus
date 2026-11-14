@@ -55,18 +55,25 @@ export default function Gate() {
     try { api?.startup?.markStep?.('heartbeat', 'ok'); } catch {}
   }, [hasCharacter, isAuthenticated, user]);
 
-  // Returning player: NEVER show "Enter" or route through /splash. While
-  // AuthContext resolves, render null; once resolved we either sit tight
-  // (the useEffect above will navigate) or stay blank while the
-  // unauthenticated-returning-player path waits for OAuth / callback.
+  // Returning player: NEVER show "Enter" or route through /splash.
+  // While AuthContext resolves, render null (no "Enter" flash).
+  // If AuthContext resolves to authenticated → the navigate effect
+  //   above routes to /dashboard or /onboarding.
+  // If AuthContext resolves to NOT authenticated (expired token,
+  //   fresh logout) → we must kick OAuth directly; otherwise the
+  //   user sits on a maximized blank dark-blue window forever with
+  //   no path forward. Same destination Splash.jsx uses.
+  const oauthKickedRef = useRef(false);
+  useEffect(() => {
+    if (hasCharacter !== true) return;
+    if (isAuthenticated && user) return; // navigate effect above routes authenticated users
+    if (oauthKickedRef.current) return;
+    oauthKickedRef.current = true;
+    try { window.location.href = '/api/auth/discord'; } catch {}
+  }, [hasCharacter, isAuthenticated, user]);
+
   if (hasCharacter === undefined) return null;
-  if (hasCharacter === true) {
-    // All authenticated destinations are handled by the navigate effect
-    // above. For an unauthenticated returning player we render null here
-    // and let the normal OAuth flow kick in from the main-process /
-    // AuthCallback path. Do NOT fall through to beginSequence/`/splash`.
-    return null;
-  }
+  if (hasCharacter === true) return null;
 
   // Render nothing for the one frame between mount and the useEffect's
   // navigate() firing — otherwise returning users see a brief flash of
