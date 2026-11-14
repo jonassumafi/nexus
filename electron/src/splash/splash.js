@@ -131,12 +131,18 @@
     $bf.style.width = barPct + '%';
     $pp.textContent = barPct + '%';
 
-    var statusWord = downloading
-      ? ('Downloading update ' + Math.round(state.update.percent || 0) + '%')
-      : (PHASES[state.activeIdx] ? PHASES[state.activeIdx].label : 'Starting');
+    // Updating at launch: say which version, and warn before the app
+    // closes into the installer so it doesn't look like a crash.
+    var ver = state.update && state.update.version ? ('Nexus ' + state.update.version) : 'the latest version';
+    var restarting = state.update && state.update.ready;
+    var statusWord = restarting
+      ? ('Update ready — restarting to install ' + ver + '…')
+      : downloading
+        ? ('Updating to ' + ver + ' — ' + Math.round(state.update.percent || 0) + '%')
+        : (PHASES[state.activeIdx] ? PHASES[state.activeIdx].label : 'Starting');
     if (state.stillWorking && !state.revealed) statusWord += ' — Still working';
     $ps.textContent = statusWord;
-    $ftl.textContent = downloading
+    $ftl.textContent = (downloading || restarting)
       ? 'UPDATE'
       : (PHASES[state.activeIdx] ? PHASES[state.activeIdx].ftLabel : 'STARTING');
 
@@ -199,21 +205,38 @@
     });
   }
 
+  // Updates at launch are mandatory for returning players (no skip): the
+  // splash holds until the download finishes, then installs. Only a failed
+  // download (error -> update_check 'offline') lets the player in.
+
+  // Shown before the app closes into the installer, so the hand-off
+  // reads as "restarting to update" rather than a crash.
+  var RESTART_NOTICE_MS = 2000;
+
   if (api && api.update && api.update.on) {
-    api.update.on('available', function () {
-      state.update = { percent: 0, downloading: true, ready: false };
+    api.update.on('available', function (info) {
+      state.update = { version: (info && info.version) || null, percent: 0,
+        downloading: true, ready: false };
       try { api.update.download && api.update.download(); } catch (e) {}
       render();
     });
     api.update.on('progress', function (p) {
-      var pct = Math.round((p && p.percent) || 0);
-      state.update = { percent: pct, downloading: true, ready: false };
+      if (!state.update) state.update = { version: null };
+      state.update.percent = Math.round((p && p.percent) || 0);
+      state.update.downloading = true;
+      state.update.ready = false;
       render();
     });
-    api.update.on('ready', function () {
-      state.update = { percent: 100, downloading: false, ready: true };
-      try { api.update.installNow && api.update.installNow(); } catch (e) {}
+    api.update.on('ready', function (info) {
+      if (!state.update) state.update = { version: null };
+      if (info && info.version) state.update.version = info.version;
+      state.update.percent = 100;
+      state.update.downloading = false;
+      state.update.ready = true;
       render();
+      setTimeout(function () {
+        try { api.update.installNow && api.update.installNow(); } catch (e) {}
+      }, RESTART_NOTICE_MS);
     });
     api.update.on('none', function () {
       if (state.steps.update_check === 'pending') markStepLocal('update_check', 'ok');
@@ -286,6 +309,10 @@
       if (!isPhaseDone(PHASES[i])) { stuck = PHASES[i]; break; }
     }
     if (!stuck) return;
+    // A mandatory update that is still downloading isn't stuck: keep the
+    // splash up. main.js reveals the dashboard if the download stalls
+    // (no progress for a while) or errors (-> update_check 'offline').
+    if (stuck.id === 'update' && state.update && state.update.downloading && !state.update.ready) return;
     if (stuck.network) {
       // Degrade pending network needs to 'offline' so we keep moving.
       for (var k = 0; k < stuck.needs.length; k++) {

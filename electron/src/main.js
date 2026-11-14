@@ -378,17 +378,14 @@ function createSplashWindow() {
 
   // ── The splash may delay the dashboard, never hide it. ──
   // While splashActive, the main window's own reveal is suppressed and
-  // only the splash page's signalReady() shows it. The splash is a web
-  // route, so offline / server down / a bad deploy / a script error
-  // would otherwise leave Nexus invisible (tray icon only). Reveal the
-  // dashboard immediately if the page can't load, crashes or is closed,
-  // and in any case after SPLASH_MAX_MS (above the page's own 20 s
-  // "still working" state).
-  const SPLASH_MAX_MS = 25000;
-  const capTimer = setTimeout(() => {
-    if (!handoffStarted) console.warn('[splash] no ready signal after ' + SPLASH_MAX_MS + ' ms, revealing');
-    revealForSplash();
-  }, SPLASH_MAX_MS);
+  // only the splash page's signalReady() shows it. If the page can't
+  // load, crashes or a script error stops it signalling, Nexus would stay
+  // invisible (tray icon only). Reveal the dashboard immediately if the
+  // page fails or crashes, and in any case after SPLASH_MAX_MS (above
+  // the page's own 20 s "still working" state). A mandatory launch update
+  // re-arms the timer on every progress event (armSplashCap), so a slow
+  // but moving download keeps the splash up and only a stall reveals.
+  armSplashCap(SPLASH_MAX_MS, 'no ready signal');
   splashWindow.webContents.on('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
     if (!isMainFrame || code === -3) return; // -3 = aborted (redirect), not a failure
     console.warn('[splash] page failed to load:', code, desc);
@@ -399,9 +396,14 @@ function createSplashWindow() {
     revealForSplash();
   });
   splashWindow.on('closed', () => {
-    clearTimeout(capTimer);
+    clearTimeout(splashCapTimer);
     splashWindow = null;
-    if (!handoffStarted) revealForSplash(); // closed by the user (Alt+F4)
+    if (handoffStarted) return;
+    // Closed by the user (Alt+F4). Updates at launch are mandatory, so
+    // closing mid-update quits instead of skipping into the dashboard;
+    // the update resumes on the next launch.
+    if (launchUpdateActive) { requestQuit('splash-closed-during-update'); return; }
+    revealForSplash();
   });
   // Suppress page-title updates like the other windows.
   splashWindow.on('page-title-updated', (e) => e.preventDefault());
@@ -412,8 +414,25 @@ function createSplashWindow() {
 // Reveal handoff: fade splash 1→0 while main (or radio) fades 0→1 over
 // 400 ms, then destroy the splash. Drops into radio-only mode after the
 // fade if that was the last used mode. Idempotent; a second call no-ops.
+// Safety timer for the splash (see createSplashWindow). Re-armable so a
+// mandatory launch update that is still making progress isn't cut off.
+const SPLASH_MAX_MS = 25000;          // no ready signal at all
+const SPLASH_UPDATE_STALL_MS = 30000; // update download made no progress
+const SPLASH_INSTALL_MS = 15000;      // downloaded but installer never launched
+let splashCapTimer = null;
+let launchUpdateActive = false;       // a mandatory update is downloading/installing
+function armSplashCap(ms, why) {
+  clearTimeout(splashCapTimer);
+  splashCapTimer = setTimeout(() => {
+    if (!handoffStarted) console.warn('[splash] ' + why + ' after ' + ms + ' ms, revealing');
+    launchUpdateActive = false;
+    revealForSplash();
+  }, ms);
+}
+
 let handoffStarted = false;
 function revealForSplash() {
+  clearTimeout(splashCapTimer);
   if (handoffStarted) return;
   handoffStarted = true;
   const savedMode = (() => {
@@ -1875,6 +1894,12 @@ autoUpdater.on('update-available', (info) => {
   };
   sendToActive('nexus:update:available', payload);
   sendToSplash('nexus:update:available', payload);
+  // The splash downloads + installs it (mandatory at launch). Hold the
+  // splash while the download is moving; see armSplashCap.
+  if (splashActive && !handoffStarted) {
+    launchUpdateActive = true;
+    armSplashCap(SPLASH_UPDATE_STALL_MS, 'update download stalled');
+  }
 });
 autoUpdater.on('update-not-available', () => {
   sendToActive('nexus:update:none');
@@ -1890,9 +1915,13 @@ autoUpdater.on('download-progress', (p) => {
   };
   sendToActive('nexus:update:progress', payload);
   sendToSplash('nexus:update:progress', payload);
+  if (launchUpdateActive && !handoffStarted) armSplashCap(SPLASH_UPDATE_STALL_MS, 'update download stalled');
 });
 autoUpdater.on('update-downloaded', (info) => {
   updatePhase = 'downloaded';
+  // Splash shows "restarting to install" then calls installNow; if the
+  // installer never launches, don't leave the player on the splash.
+  if (launchUpdateActive && !handoffStarted) armSplashCap(SPLASH_INSTALL_MS, 'update installer did not start');
   const payload = {
     version: info?.version,
     releaseNotes: info?.releaseNotes,
@@ -1906,6 +1935,11 @@ autoUpdater.on('error', (err) => {
   sendToSplash('nexus:update:error', { message: err?.message });
   // A failed update check never blocks the splash — degrade to offline.
   broadcastStartupStep('update_check', 'offline');
+  // A failed mandatory download lets the player in rather than trap them.
+  if (launchUpdateActive && !handoffStarted) {
+    launchUpdateActive = false;
+    armSplashCap(SPLASH_MAX_MS, 'no ready signal after update error');
+  }
 });
 
 ipcMain.handle('nexus:update:checkNow', async () => {
