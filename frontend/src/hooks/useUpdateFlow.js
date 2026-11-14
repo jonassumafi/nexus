@@ -68,19 +68,45 @@ export default function useUpdateFlow() {
   // 'whatsnew' (version changed) and 'fixes' (new changelog entries
   // since last visit), but NOT for the installer 'update' surface,
   // which is utilitarian and shouldn't ding.
+  //
+  // Gated on window focus so an autostart launch into an empty room
+  // doesn't ding; if the player isn't looking, we wait for their next
+  // focus/visibility event and play then (still only once per id).
   const chimedForRef = useRef(null);
   useEffect(() => {
     if (surface !== 'whatsnew' && surface !== 'fixes') return;
     const newestId = entries.length > 0 ? entries[0].id : null;
-    // Only chime once per distinct notification (guard against
-    // StrictMode double-invoke + any surface re-render).
     if (newestId == null || chimedForRef.current === newestId) return;
-    chimedForRef.current = newestId;
-    try {
-      const snd = new Audio('/sounds/update_tone.wav');
-      snd.volume = 0.6;
-      snd.play().catch(() => {});
-    } catch {}
+
+    const play = () => {
+      if (chimedForRef.current === newestId) return;
+      chimedForRef.current = newestId;
+      try {
+        const snd = new Audio('/sounds/update_tone.wav');
+        snd.volume = 0.6;
+        snd.play().catch(() => {});
+      } catch {}
+    };
+
+    const focused = typeof document !== 'undefined'
+      && document.visibilityState !== 'hidden'
+      && document.hasFocus();
+
+    if (focused) { play(); return; }
+
+    const onReady = () => {
+      if (document.visibilityState !== 'hidden' && document.hasFocus()) {
+        play();
+        cleanup();
+      }
+    };
+    const cleanup = () => {
+      window.removeEventListener('focus', onReady);
+      document.removeEventListener('visibilitychange', onReady);
+    };
+    window.addEventListener('focus', onReady);
+    document.addEventListener('visibilitychange', onReady);
+    return cleanup;
   }, [surface, entries]);
 
   // ─── PTT bridge — track hold state so required cards wait for release.
