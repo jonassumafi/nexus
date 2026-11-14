@@ -152,7 +152,13 @@ export function useRadioConnectionUDP({
     // Symptom: clicks (socket.io) kept reaching peers but voice
     // (Opus frames via the TX worklet) went mute after one view
     // switch and never recovered until a full Nexus restart.
-    if (!audioCtxRef.current) audioCtxRef.current = new Ctx({ sampleRate: 48000 });
+    if (!audioCtxRef.current) {
+      // Prefer an explicit 48 kHz context (matches the UDP TX worklet).
+      // Fall back to the system default rate if the driver refuses the
+      // forced rate — rare but reported on low-end Realtek codecs.
+      try { audioCtxRef.current = new Ctx({ sampleRate: 48000 }); }
+      catch { audioCtxRef.current = new Ctx(); }
+    }
     const ctx = audioCtxRef.current;
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch {}

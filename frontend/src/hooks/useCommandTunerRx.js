@@ -194,7 +194,10 @@ export function useCommandTunerRx(opts = {}) {
     // Pin to 48 kHz so cross-context MediaStream handoffs with the UDP
     // TX worklet don't hit Chromium's post-context-close silencing bug.
     // See the matching comment in useRadioConnectionUDP.ensureMicAndChain.
-    if (!audioCtxRef.current) audioCtxRef.current = new Ctx({ sampleRate: 48000 });
+    if (!audioCtxRef.current) {
+      try { audioCtxRef.current = new Ctx({ sampleRate: 48000 }); }
+      catch { audioCtxRef.current = new Ctx(); }
+    }
     const ctx = audioCtxRef.current;
     if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
     try { await ensureCvsdWorkletLoaded(ctx); } catch {}
