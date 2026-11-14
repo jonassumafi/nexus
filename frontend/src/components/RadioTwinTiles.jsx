@@ -68,6 +68,11 @@ function injectStyles() {
   padding: 2px 2px 4px 2px;
   font: 14px/1.5 Inter, system-ui, sans-serif;
   color: var(--t1);
+  /* v0.9.28 — 20 % upscale. Using zoom (not transform) so the layout
+   * dimensions actually grow and the ResizeObserver reports the new
+   * size to the shell, which resizes the window to match. All inner
+   * pixel values (padding, chip heights, font sizes) scale together. */
+  zoom: 1.2;
   /* The overlay body is the drag handle. Interactive children (chips,
    * gear, settings controls, inputs, mute chip) opt back out below so
    * the player can still click them. Without this the only draggable
