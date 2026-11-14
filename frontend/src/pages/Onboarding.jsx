@@ -843,30 +843,48 @@ export default function Onboarding() {
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'var(--void)',
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      padding: '32px 48px',
-      overflowY: 'auto',
-    }}>
-      <div className="vig" />
+    <>
+      <style>{`
+        .onb-shell {
+          position: fixed; inset: 0;
+          background: var(--void);
+          display: flex; align-items: flex-start; justify-content: center;
+          padding: 32px 48px;
+          overflow-y: auto;
+        }
+        .onb-column {
+          width: 100%; max-width: 820px;
+          position: relative; z-index: 1;
+          min-width: 0;
+        }
+        .onb-card { padding: 24px 28px; font-family: var(--font); font-size: 14px; }
+        .onb-card img, .onb-card svg { max-width: 100%; height: auto; }
+        @media (max-width: 900px) {
+          .onb-shell { padding: 20px 20px; }
+        }
+        @media (max-width: 600px) {
+          .onb-shell { padding: 12px 10px; }
+          .onb-card  { padding: 16px 14px; font-size: 13px; }
+        }
+      `}</style>
+      <div className="onb-shell">
+        <div className="vig" />
 
-      <div style={{ width: '100%', maxWidth: 820, position: 'relative', zIndex: 1 }}>
-        {/* Progress strip: step dots + section header */}
-        <div className="raised" style={{ padding: '14px 18px', marginBottom: 16 }}>
-          <div style={{
-            fontSize: 11, fontWeight: 600, letterSpacing: '0.14em',
-            color: 'var(--blue)', textTransform: 'uppercase',
-            marginBottom: 10,
-          }}>
-            Step {String(step).padStart(2, '0')} / 08 — {STEP_TITLES[step]}
+        <div className="onb-column">
+          {/* Progress strip: step dots + section header */}
+          <div className="raised" style={{ padding: '14px 18px', marginBottom: 16 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.14em',
+              color: 'var(--blue)', textTransform: 'uppercase',
+              marginBottom: 10,
+            }}>
+              Step {String(step).padStart(2, '0')} / 08 — {STEP_TITLES[step]}
+            </div>
+            <div className="progress"><i style={{ width: `${(step / 8) * 100}%` }} /></div>
           </div>
-          <div className="progress"><i style={{ width: `${(step / 8) * 100}%` }} /></div>
-        </div>
 
-        {/* Step body in its own raised card */}
-        <div className="raised" style={{ padding: '24px 28px', fontFamily: 'var(--font)', fontSize: 14 }}>
+          {/* Step body in its own raised card */}
+          <div className="raised onb-card">
           {step === 1 && <Step1 onNext={next} />}
           {step === 2 && <Step2 onNext={next} onBack={back} />}
           {step === 3 && <Step3 formData={formData} update={update} onNext={next} onBack={back} />}
@@ -884,8 +902,9 @@ export default function Onboarding() {
               onBack={back}
             />
           )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
