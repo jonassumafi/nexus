@@ -1,4 +1,6 @@
 [
+  { "id": 161, "version": "0.9.29", "date": "2026-11-14",
+    "tag": "better", "text": "Dashboard window now fades in instead of flashing white on launch" },
   { "id": 160, "version": "0.9.29", "date": "2026-11-14",
     "tag": "new", "text": "Disconnect and power-off now require a press-and-hold: 6 seconds for Disconnect (dashboard and Radio-only gear), 3 seconds to turn a radio off. Turning on stays a single click. A filling ring shows progress; early release cancels" },
   { "id": 159, "version": "0.9.29", "date": "2026-11-14",

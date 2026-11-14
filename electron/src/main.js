@@ -283,6 +283,12 @@ function createWindow() {
     y: bounds.y,
     width:  bounds.width,
     height: bounds.height,
+    // Show on ready-to-show so the first paint has committed before
+    // the window appears. Prevents the white "blank page" flash on
+    // launch. paintWhenInitiallyHidden lets the renderer actually
+    // paint while we're still hiding it.
+    show: false,
+    paintWhenInitiallyHidden: true,
     minWidth:  MODES[currentMode].minSize.width,
     minHeight: MODES[currentMode].minSize.height,
     // Solid chassis — opaque window with a device-like bezel drawn
@@ -393,6 +399,30 @@ function createWindow() {
 
   mainWindow.webContents.on('unresponsive', () => {
     console.error('[main] renderer unresponsive');
+  });
+
+  // Fade-in on first paint. Short (~0.2 s), skippable on error — we
+  // never let an effect delay the window appearing. Minimize/restore
+  // fades are skipped because setOpacity fights Windows' native
+  // minimize animation on a frameless window (per spec: "if the
+  // custom title bar prevents it, skip it").
+  mainWindow.once('ready-to-show', () => {
+    try {
+      mainWindow.setOpacity(0);
+      mainWindow.show();
+      const started = Date.now();
+      const DUR = 200;
+      const tick = () => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        const t = Math.min(1, (Date.now() - started) / DUR);
+        try { mainWindow.setOpacity(t); } catch {}
+        if (t < 1) setTimeout(tick, 16);
+      };
+      tick();
+    } catch (err) {
+      console.warn('[main] fade-in failed:', err?.message);
+      try { mainWindow.setOpacity(1); mainWindow.show(); } catch {}
+    }
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
