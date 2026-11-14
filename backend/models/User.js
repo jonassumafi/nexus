@@ -10,6 +10,10 @@ const UserSchema = new mongoose.Schema({
   biography: String,
   profile_url: String,
   onboarding_complete: { type: Boolean, default: false },
+  // Updated on every socket connection as a durable fallback for
+  // "last seen" queries. Live online status is still driven by the
+  // socket.io presence map in socketManager.js.
+  last_seen_at: { type: Date, default: null },
   org_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', default: null },
   is_freelancer: { type: Boolean, default: false },
   is_platform_owner: { type: Boolean, default: false },

@@ -99,6 +99,11 @@ function init(socketIo) {
     }
     socket.join(`user_${socket.user._id}`);
 
+    // Durable "last seen" stamp. Fire-and-forget — if this write
+    // fails, live presence via the socket map is still authoritative.
+    User.updateOne({ _id: socket.user._id }, { $set: { last_seen_at: new Date() } })
+      .catch((err) => console.warn('[presence] last_seen_at write failed:', err?.message));
+
     // Live online-player count. Broadcast after this socket joins so the
     // joiner also sees the up-to-date number. Deduped per userId so that
     // a single operator with two browser tabs doesn't double-count.

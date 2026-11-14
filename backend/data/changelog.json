@@ -1,4 +1,6 @@
 [
+  { "id": 162, "version": "0.9.29", "date": "2026-11-14",
+    "tag": "better", "text": "Friends now see you go offline within a second of a clean quit, and within about 30 seconds if the app crashes or loses power" },
   { "id": 161, "version": "0.9.29", "date": "2026-11-14",
     "tag": "better", "text": "Dashboard window now fades in instead of flashing white on launch" },
   { "id": 160, "version": "0.9.29", "date": "2026-11-14",

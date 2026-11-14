@@ -19,7 +19,16 @@ export function useSocket(token) {
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
 
+    // Clean exit path: on Electron's cleanup-before-quit broadcast,
+    // drop the socket immediately so friends see the disconnect
+    // without waiting for the ping-timeout fallback.
+    const onBeforeQuit = () => {
+      try { socket.disconnect(); } catch {}
+    };
+    window.addEventListener('nexus:before-quit', onBeforeQuit);
+
     return () => {
+      window.removeEventListener('nexus:before-quit', onBeforeQuit);
       socket.disconnect();
       socketRef.current = null;
       setConnected(false);

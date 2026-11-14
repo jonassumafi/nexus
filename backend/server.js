@@ -39,6 +39,13 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  // Crash-detection budget. pingInterval 10 s + pingTimeout 20 s means
+  // a client that lost power or had its process killed drops from
+  // friends' lists within ~30 s — the budget the lifecycle spec asks
+  // for. Clean quits still propagate immediately via the Electron
+  // cleanup routine disconnecting the socket.
+  pingInterval: 10000,
+  pingTimeout:  20000,
 });
 
 app.use(cors({
