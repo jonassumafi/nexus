@@ -154,8 +154,13 @@
       d.className = done ? 'done' : (active ? 'on' : '');
     }
 
-    // Log lines.
-    var html = '';
+    // Log lines. Patched in place, never rebuilt: each .ln plays a fade-in
+    // when it is created, and render() runs on every step and on every
+    // download-progress tick (several times a second), so rebuilding the
+    // box replayed that animation on every line, over and over (flicker).
+    // Only a line that just appeared animates; existing ones only change
+    // their text/class when something about them actually changed.
+    var lines = [];
     for (var k = 0; k < state.visiblePhases.length; k++) {
       var v = state.visiblePhases[k];
       var def = null;
@@ -169,12 +174,29 @@
       if (done2 && !offline) suffix = '<span class="ok">ok</span>';
       else if (offline) suffix = '<span class="offline">offline</span>';
       if (failed) suffix += '<span class="err-label">failed</span>';
-      html += '<div class="' + cls + '">' + escapeHtml(def ? def.label : v.id) + '...' + suffix + '</div>';
+      lines.push({ cls: cls, html: escapeHtml(def ? def.label : v.id) + '...' + suffix });
     }
-    if (state.failedPhase) {
-      html += '<div class="actions"><button id="retryBtn">Retry</button><button id="quitBtn">Quit</button></div>';
+    var rows = $lg.querySelectorAll('.ln');
+    for (var li = 0; li < lines.length; li++) {
+      var row = rows[li];
+      if (!row) {
+        row = document.createElement('div');
+        var actionsEl = $lg.querySelector('.actions');
+        $lg.insertBefore(row, actionsEl);
+      }
+      if (row.className !== lines[li].cls) row.className = lines[li].cls;
+      if (row.innerHTML !== lines[li].html) row.innerHTML = lines[li].html;
     }
-    $lg.innerHTML = html;
+    for (var ri = lines.length; ri < rows.length; ri++) rows[ri].remove();
+    var hasActions = !!$lg.querySelector('.actions');
+    if (state.failedPhase && !hasActions) {
+      var act = document.createElement('div');
+      act.className = 'actions';
+      act.innerHTML = '<button id="retryBtn">Retry</button><button id="quitBtn">Quit</button>';
+      $lg.appendChild(act);
+    } else if (!state.failedPhase && hasActions) {
+      $lg.querySelector('.actions').remove();
+    }
     if (state.failedPhase) {
       var r = document.getElementById('retryBtn');
       var q = document.getElementById('quitBtn');
