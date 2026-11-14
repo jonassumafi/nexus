@@ -1106,9 +1106,10 @@ ipcMain.handle('nexus:prefs:set', (_e, key, value) => {
 });
 ipcMain.handle('nexus:app:relaunch', () => {
   try {
-    isQuitting = true;
-    app.relaunch();
-    app.exit(0);
+    requestQuit('app-relaunch', () => {
+      app.relaunch();
+      app.exit(0);
+    });
   } catch (err) {
     console.error('[app:relaunch] failed:', err.message);
   }
@@ -1238,7 +1239,7 @@ function createTray() {
           } catch {}
         } },
       { type: 'separator' },
-      { label: 'Quit Nexus', click: () => { isQuitting = true; app.quit(); } },
+      { label: 'Quit Nexus', click: () => requestQuit('tray-menu') },
     ]);
     tray.setContextMenu(menu);
     tray.on('click', () => {
@@ -1251,6 +1252,160 @@ function createTray() {
     console.error('[main] tray failed:', err.message);
   }
 }
+
+// ─── Clean shutdown ──────────────────────────────────────────────────────
+// One place that runs on every exit: tray Quit, Alt+F4 / X (when the
+// close-behavior setting is "quit completely"), Disconnect, the auto-
+// updater restart, app.relaunch, Windows shutdown/sign-out, SIGINT/
+// SIGTERM, and uncaught crashes. Idempotent — safe to call more than
+// once. Budgets ~3 seconds for the orderly steps, then force-exits so a
+// hung renderer or socket can never trap the player's shell.
+//
+// Order:
+//   1. Broadcast nexus:app:before-quit to every renderer that armed the
+//      hook so they can leave radio channels and send a final "offline"
+//      ping. Wait up to 1.2 s for every armed renderer to ack.
+//   2. Close the UDP voice session.
+//   3. Stop the global PTT key hook + unregister global shortcuts.
+//   4. Destroy child windows, then the main window.
+//   5. Destroy the tray icon.
+//   6. app.exit(0) — or run a caller-supplied finalAction (updater
+//      install, relaunch) instead.
+//
+// Saved prefs (prefs.json, window-state.json, skin.json) stay as-is:
+// those writers are already synchronous-on-change, so there's nothing
+// to flush. Only the *live* hooks + channel membership are released.
+const armedQuitHookWindows = new Set();
+ipcMain.handle('nexus:app:armQuitHook', (e) => {
+  armedQuitHookWindows.add(e.sender.id);
+  return true;
+});
+ipcMain.handle('nexus:app:disarmQuitHook', (e) => {
+  armedQuitHookWindows.delete(e.sender.id);
+  return true;
+});
+
+let cleanupPromise = null;
+let cleanupWatchdog = null;
+function cleanupBeforeQuit(reason, finalAction) {
+  if (cleanupPromise) return cleanupPromise;
+  console.log('[cleanup] start, reason=' + reason);
+  isQuitting = true;
+
+  // Hard deadline. If the orderly path hangs, kick the process after
+  // 3.5 s regardless so no exit can leave a stuck window.
+  cleanupWatchdog = setTimeout(() => {
+    console.warn('[cleanup] deadline exceeded, forcing exit');
+    try { process.exit(0); } catch {}
+  }, 3500);
+
+  cleanupPromise = (async () => {
+    // Step 1 — ask renderers to leave channels + send offline ping.
+    try {
+      const wins = BrowserWindow.getAllWindows();
+      const waitingFor = new Set();
+      let onReady = null;
+      for (const w of wins) {
+        if (w.isDestroyed()) continue;
+        if (!armedQuitHookWindows.has(w.webContents.id)) continue;
+        waitingFor.add(w.webContents.id);
+        try { w.webContents.send('nexus:app:before-quit', { reason }); } catch {}
+      }
+      if (waitingFor.size > 0) {
+        await new Promise((resolve) => {
+          onReady = (e) => {
+            waitingFor.delete(e.sender.id);
+            if (waitingFor.size === 0) resolve();
+          };
+          ipcMain.on('nexus:app:readyToQuit', onReady);
+          setTimeout(resolve, 1200); // never block longer than this
+        });
+      }
+      if (onReady) { try { ipcMain.removeListener('nexus:app:readyToQuit', onReady); } catch {} }
+    } catch (err) { console.warn('[cleanup] renderer signal:', err?.message); }
+
+    // Step 2 — close UDP voice. udpVoice.close() with no arg closes
+    // whichever session is live.
+    try { udpRxUnsub?.(); udpRxUnsub = null; } catch {}
+    try { udpVoice.close(); } catch (err) { console.warn('[cleanup] udp:', err?.message); }
+
+    // Step 3 — release OS-level hooks + global shortcuts.
+    try { stopKeyHook(); } catch {}
+    try { globalShortcut.unregisterAll(); } catch {}
+
+    // Cancel any in-flight view-switch animation stepper.
+    try { cancelViewSwitchAnim(); } catch {}
+
+    // Step 4 — destroy all windows (chat popout, radio strip, main).
+    for (const w of BrowserWindow.getAllWindows()) {
+      try { if (!w.isDestroyed()) w.destroy(); } catch {}
+    }
+
+    // Step 5 — destroy the tray icon.
+    try { tray?.destroy(); } catch {}
+    tray = null;
+
+    console.log('[cleanup] done');
+  })();
+
+  cleanupPromise
+    .then(() => {
+      clearTimeout(cleanupWatchdog);
+      if (typeof finalAction === 'function') {
+        try { finalAction(); return; } catch (err) {
+          console.error('[cleanup] finalAction failed:', err?.message);
+        }
+      }
+      try { app.exit(0); } catch {}
+    })
+    .catch((err) => {
+      clearTimeout(cleanupWatchdog);
+      console.error('[cleanup] failed:', err?.message);
+      try { app.exit(1); } catch {}
+    });
+
+  return cleanupPromise;
+}
+
+// Public entry — every "please quit" path calls this instead of
+// app.quit() directly. finalAction is optional (updater / relaunch).
+function requestQuit(reason, finalAction) {
+  cleanupBeforeQuit(reason, finalAction);
+}
+
+// Central funnel. Any code path that lands on before-quit (OS Alt+F4
+// when the window didn't hide, Cmd+Q on macOS, app.quit() from any
+// code we don't own, etc.) is redirected through cleanup. Once cleanup
+// is in-flight we let subsequent quit events proceed normally.
+app.on('before-quit', (e) => {
+  if (!cleanupPromise) {
+    e.preventDefault();
+    requestQuit('before-quit');
+  }
+});
+
+// Windows shutdown / sign-out / restart (WM_ENDSESSION → 'session-end').
+// Short deadline before the OS terminates us, so cleanup must stay snappy.
+app.on('session-end', () => {
+  requestQuit('session-end');
+});
+
+// Signal handlers for terminal-driven dev runs + SIGTERM from installers
+// or service managers.
+process.on('SIGINT',  () => requestQuit('SIGINT'));
+process.on('SIGTERM', () => requestQuit('SIGTERM'));
+
+// Best-effort cleanup on uncaught errors. We still exit; the point is
+// not to leave a dangling PTT hook or UDP socket if the main process
+// throws from a code path we didn't guard.
+process.on('uncaughtException', (err) => {
+  console.error('[uncaught]', err?.stack || err?.message || err);
+  requestQuit('uncaught-exception');
+});
+process.on('unhandledRejection', (err) => {
+  // Log only — a bad network promise should not kill the shell.
+  console.error('[unhandled rejection]', err?.stack || err?.message || err);
+});
 
 // ─── Single-instance guard ───────────────────────────────────────────────
 // Prevents the "two Nexus windows open and each thinks it's the only one"
@@ -1400,16 +1555,26 @@ ipcMain.handle('nexus:update:download', async () => {
 ipcMain.handle('nexus:update:installNow', () => {
   // Fires the install + restart flow immediately. The user should save
   // whatever they're doing first — we don't force a confirmation here
-  // because the renderer already does.
-  isQuitting = true;
-  try { autoUpdater.quitAndInstall(false, true); }
-  catch (err) { console.error('[updater] quitAndInstall failed:', err?.message); }
+  // because the renderer already does. Cleanup runs first so the UDP
+  // socket + PTT hook don't linger across the restart.
+  requestQuit('update-install', () => {
+    try { autoUpdater.quitAndInstall(false, true); }
+    catch (err) { console.error('[updater] quitAndInstall failed:', err?.message); }
+  });
 });
 
+// Safety net: if every window closes without going through the normal
+// close-to-tray path (shouldn't happen, but a render crash could do it),
+// funnel into the cleanup routine. On macOS the convention is to keep
+// the app alive even with no windows; we match that there.
+app.on('window-all-closed', () => {
+  if (process.platform === 'darwin') return;
+  if (cleanupPromise) return;
+  requestQuit('window-all-closed');
+});
+
+// Last-ditch safety: if cleanup was bypassed somehow, still release
+// global shortcuts before the process is gone.
 app.on('will-quit', () => {
   try { globalShortcut.unregisterAll(); } catch {}
-});
-app.on('window-all-closed', () => {
-  stopKeyHook();
-  if (process.platform !== 'darwin') app.quit();
 });

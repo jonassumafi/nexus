@@ -155,6 +155,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   app: {
     relaunch: () => ipcRenderer.invoke('nexus:app:relaunch'),
+    // Clean-shutdown hook. The renderer calls armQuitHook() once it's
+    // ready to handle a final "leave channels + mark offline" burst,
+    // then listens via onBeforeQuit(handler). When the handler has
+    // finished its own cleanup it calls readyToQuit() so the main
+    // process stops waiting and proceeds with the exit.
+    armQuitHook:    () => ipcRenderer.invoke('nexus:app:armQuitHook'),
+    disarmQuitHook: () => ipcRenderer.invoke('nexus:app:disarmQuitHook'),
+    readyToQuit:    () => ipcRenderer.send('nexus:app:readyToQuit'),
+    onBeforeQuit(handler) {
+      const listener = (_e, payload) => handler(payload);
+      ipcRenderer.on('nexus:app:before-quit', listener);
+      return () => ipcRenderer.removeListener('nexus:app:before-quit', listener);
+    },
   },
 
   // Interface zoom — Full dashboard webContents.setZoomFactor.
