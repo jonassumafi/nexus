@@ -64,23 +64,23 @@ export default function useUpdateFlow() {
   // So we can delay a card's appearance while PTT is held.
   const pendingAvailableRef = useRef(null);
 
-  // One-time chime when a new-feature surface opens — plays for
-  // 'whatsnew' (version changed) and 'fixes' (new changelog entries
-  // since last visit), but NOT for the installer 'update' surface,
-  // which is utilitarian and shouldn't ding.
+  // One-time chime when the installer update pill first appears —
+  // keyed by version so we only chime once per installer. Fires on
+  // the 'update' surface (any state: available / downloading / ready);
+  // the feature-announcement surfaces (whatsnew / fixes) stay silent.
   //
   // Gated on window focus so an autostart launch into an empty room
-  // doesn't ding; if the player isn't looking, we wait for their next
-  // focus/visibility event and play then (still only once per id).
+  // doesn't ding; if focus isn't held, we wait for the player's next
+  // focus/visibility event and play then.
   const chimedForRef = useRef(null);
   useEffect(() => {
-    if (surface !== 'whatsnew' && surface !== 'fixes') return;
-    const newestId = entries.length > 0 ? entries[0].id : null;
-    if (newestId == null || chimedForRef.current === newestId) return;
+    if (surface !== 'update') return;
+    const key = version || 'update';
+    if (chimedForRef.current === key) return;
 
     const play = () => {
-      if (chimedForRef.current === newestId) return;
-      chimedForRef.current = newestId;
+      if (chimedForRef.current === key) return;
+      chimedForRef.current = key;
       try {
         const snd = new Audio('/sounds/update_tone.wav');
         snd.volume = 0.6;
@@ -107,7 +107,7 @@ export default function useUpdateFlow() {
     window.addEventListener('focus', onReady);
     document.addEventListener('visibilitychange', onReady);
     return cleanup;
-  }, [surface, entries]);
+  }, [surface, version]);
 
   // ─── PTT bridge — track hold state so required cards wait for release.
   // The Electron shell emits nexus:ptt down/up from the OS-level key hook.
