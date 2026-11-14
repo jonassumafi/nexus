@@ -75,9 +75,9 @@ export function useRadioConnection({
   const micGainRef        = useRef(null);
   const sensitivityRef    = useRef(100);
   const isMutedRef        = useRef(false);
-  // Receive-volume multiplier on top of the baked 1.8× playback boost.
-  // 1.0 = unchanged (1.8× effective). Driven by the shared RX slider in
-  // the Mic Strip; applied to every peer <audio> element.
+  // Receive-volume multiplier on top of the baked 1.08× playback boost.
+  // 1.0 = unchanged (1.08× effective). Driven by the shared RX slider
+  // in the Mic Strip; applied to every peer <audio> element.
   const rxVolumeRef       = useRef(1.0);
 
   useEffect(() => { profileRef.current = voiceProfile; }, [voiceProfile]);
@@ -353,7 +353,7 @@ export function useRadioConnection({
         audio.autoplay = true;
         // Listener-side playback boost — raises perceived voice loudness
         // without touching the signal path or SRS character shaping.
-        try { audio.volume = Math.max(0, Math.min(3, 1.8 * (rxVolumeRef.current ?? 1.0))); } catch {}
+        try { audio.volume = Math.max(0, Math.min(3, 1.08 * (rxVolumeRef.current ?? 1.0))); } catch {}
         peerAudiosRef.current[peerSocketId] = audio;
 
         // Wire the stream through the listener's own SRS rxEffect if we
@@ -421,7 +421,7 @@ export function useRadioConnection({
       const source = ctx.createMediaStreamSource(stream);
       const chain = buildSrsChain(ctx, spec.rxEffect);
       const gain = ctx.createGain();
-      gain.gain.value = Math.max(0, Math.min(3, 1.8 * (rxVolumeRef.current ?? 1.0)));
+      gain.gain.value = Math.max(0, Math.min(3, 1.08 * (rxVolumeRef.current ?? 1.0)));
       if (chain) {
         source.connect(chain.input);
         chain.output.connect(gain);

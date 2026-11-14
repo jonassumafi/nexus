@@ -317,15 +317,16 @@ export function useRadioConnectionUDP({
     const audio = new Audio();
     audio.autoplay = true;
     // Quadratic response curve — audio.volume is linear amplitude, but
-     // human loudness perception is roughly logarithmic, so a linear
-     // slider felt WAY too hot at the low end (users reported having
-     // to hold the slider around 10 % to not blow ears). Squaring the
-     // slider value (0..1.5 input → 0..1 output after browser cap)
-     // gives a gentle bottom end and keeps the top unchanged:
-     //   slider 30 % → 0.09 volume (roughly matches old "10 %")
-     //   slider 100 % → 1.0 volume (unity)
-     //   slider 150 % → clips to 1.0 (same as 100 %)
-    const rvQ = (rxVolumeRef.current ?? 1.0) ** 2;
+     // Human loudness perception is roughly logarithmic, so a linear
+     // slider felt WAY too hot at the low end. Squaring the slider
+     // value gives a gentle bottom end. Multiplier 0.6 inside the
+     // square rescales the curve so you don't have to hold the
+     // slider near zero to avoid being deafened:
+     //   slider 50 % → 0.09 volume (matches the old 30 % / "10 %"
+     //                              feel on the WebRTC path)
+     //   slider 100 % → 0.36 volume (quieter than the old 1.0 max)
+     //   slider 150 % → 0.81 volume (still below clip)
+    const rvQ = (0.6 * (rxVolumeRef.current ?? 1.0)) ** 2;
     try { audio.volume = Math.max(0, Math.min(1, rvQ)); } catch {}
     try { audio.srcObject = stream; } catch {}
     if (outputDeviceIdRef.current && typeof audio.setSinkId === 'function') {
