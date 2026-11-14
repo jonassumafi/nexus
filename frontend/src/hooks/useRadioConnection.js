@@ -561,7 +561,11 @@ export function useRadioConnection({
     try {
       micStreamRef.current?.getTracks().forEach(t => t.stop());
     } catch {}
-    try { audioCtxRef.current?.close(); } catch {}
+    // NOT closing audioCtxRef — Chromium silences subsequent
+    // MediaStreamSource reads in a page that previously had an
+    // AudioContext closed. Nulling the ref is enough to force
+    // ensureMicAndChain to build a fresh ctx on next call; the
+    // old ctx lingers until page unload without poisoning anything.
 
     filteredStreamRef.current  = null;
     filterChainRef.current     = null;
@@ -1018,7 +1022,8 @@ export function useRadioConnection({
       try { analyserSourceRef.current?.disconnect(); } catch {}
       try { analyserRef.current?.disconnect(); } catch {}
       try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
-      try { audioCtxRef.current?.close(); } catch {}
+      // See teardownAudioChain — intentionally NOT closing
+      // audioCtxRef. Chromium reclaims on page unload.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

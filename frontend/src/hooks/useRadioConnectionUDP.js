@@ -523,7 +523,9 @@ export function useRadioConnectionUDP({
     try { analyserSourceRef.current?.disconnect(); } catch {}
     try { analyserRef.current?.disconnect(); } catch {}
     try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
-    try { audioCtxRef.current?.close(); } catch {}
+    // NOT closing audioCtxRef — Chromium quirk silences subsequent
+    // MediaStreamSource reads in any page where close() has fired.
+    // Nulling the ref is enough to force a fresh ctx next call.
 
     filteredStreamRef.current  = null;
     filterChainRef.current     = null;
@@ -869,7 +871,16 @@ export function useRadioConnectionUDP({
       try { analyserSourceRef.current?.disconnect(); } catch {}
       try { analyserRef.current?.disconnect(); } catch {}
       try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
-      try { audioCtxRef.current?.close(); } catch {}
+      // Intentionally NOT closing audioCtxRef here. The hook only
+      // unmounts on page navigation (full view switch in Electron),
+      // at which point Chromium reclaims the whole page's audio graph
+      // anyway. Our explicit close() firing right before the page
+      // unloads has no cleanup benefit and triggers a Chromium quirk
+      // where any subsequent AudioContext in a page that previously
+      // had one close()'d reads silence from MediaStreamSource. That
+      // was the voice-silent-after-view-switch bug — Opus frames
+      // flowed but carried zero samples. See 1aaaf1e's followup
+      // diagnosis.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -243,7 +243,11 @@ export function useCommandTunerRx(opts = {}) {
     try { filterChainRef.current?.dispose(); } catch {}
     try { srsChainRef.current?.dispose?.(); } catch {}
     try { micStreamRef.current?.getTracks().forEach(t => t.stop()); } catch {}
-    try { audioCtxRef.current?.close(); } catch {}
+    // NOT closing audioCtxRef — see useRadioConnectionUDP's unmount
+    // comment. Any close() poisons subsequent MediaStreamSource reads
+    // in the page via a Chromium quirk, which was the voice-silent-
+    // after-view-switch bug. Chromium reclaims the ctx when the page
+    // unloads (view switch = renderer navigation = page unload).
     filteredStreamRef.current = null;
     filterChainRef.current = null;
     srsChainRef.current = null;
