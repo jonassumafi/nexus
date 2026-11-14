@@ -2612,11 +2612,13 @@ export default function Dashboard() {
   // Global receive-volume (percent 0..150). Governs loudness of every peer's
   // incoming voice on both the Crew and Command tuners — does not touch
   // outgoing audio. Persisted so operators don't retune it per session.
+  // Default 50 — see RadioTwinTiles for the rationale. A saved 0 is
+  // treated as invalid (mute is the way to silence incoming voice).
   const [rxVolume, setRxVolume] = useState(() => {
     try {
       const v = Number(localStorage.getItem('nexus_rx_volume'));
-      return Number.isFinite(v) && v >= 0 && v <= 150 ? v : 20;
-    } catch { return 20; }
+      return Number.isFinite(v) && v > 0 && v <= 150 ? v : 50;
+    } catch { return 50; }
   });
   useEffect(() => {
     try { localStorage.setItem('nexus_rx_volume', String(rxVolume)); } catch {}

@@ -485,9 +485,15 @@ export default function RadioTwinTiles() {
     const v = Number(localStorage.getItem('nexus_mic_sensitivity'));
     return Number.isFinite(v) && v > 0 ? v : 100;
   });
+  // Incoming-voice volume. Default 50 — low enough to not blast
+  // someone on first launch, high enough to be clearly audible.
+  // A saved 0 is treated as invalid (people reported thinking the
+  // app was broken when the slider was stuck at 0 from a prior
+  // session) and reset to the default. If the user actually wants
+  // silence, that's what the mute button is for.
   const [rxVolume, setRxVolume] = useState(() => {
     const v = Number(localStorage.getItem('nexus_rx_volume'));
-    return Number.isFinite(v) && v >= 0 ? v : 20;
+    return Number.isFinite(v) && v > 0 ? v : 50;
   });
   const [muted, setMuted] = useState(false);
 
