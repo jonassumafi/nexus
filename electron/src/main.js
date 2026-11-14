@@ -571,51 +571,113 @@ function persistBounds() {
 //
 // opts.force re-applies placement even when already in nextMode (tray
 // "Reset layout" while in full mode used to do nothing).
+// Cross-fade between two BrowserWindows via setOpacity steppers.
+// Independent of transparent window limits (transparent cannot be
+// toggled after creation per Electron docs, so we don't try the
+// "shrink to strip" morph — we keep both windows at their existing
+// settings and fade). Cancellable on repeated calls; the next call
+// cancels the in-flight stepper and whatever state the user asked
+// for wins immediately.
+let viewSwitchAnim = null;
+function cancelViewSwitchAnim() {
+  if (viewSwitchAnim) {
+    try { clearInterval(viewSwitchAnim.timer); } catch {}
+    viewSwitchAnim = null;
+  }
+}
+function crossFade(leaveWin, arriveWin, { leaveFrom, leaveTo, arriveFrom, arriveTo, duration, onComplete }) {
+  cancelViewSwitchAnim();
+  const steps = Math.max(2, Math.round(duration / 30));
+  const interval = Math.round(duration / steps);
+  let i = 0;
+  const stepOpacity = (win, from, to, t) => {
+    const v = from + (to - from) * t;
+    try { win && !win.isDestroyed() && win.setOpacity(Math.max(0, Math.min(1, v))); } catch {}
+  };
+  try { arriveWin && !arriveWin.isDestroyed() && arriveWin.setOpacity(arriveFrom); } catch {}
+  const token = (viewSwitchAnim = { timer: null });
+  const timer = setInterval(() => {
+    if (!viewSwitchAnim || viewSwitchAnim !== token) {
+      try { clearInterval(timer); } catch {}
+      return;
+    }
+    i++;
+    const t = Math.min(1, i / steps);
+    stepOpacity(leaveWin, leaveFrom, leaveTo, t);
+    stepOpacity(arriveWin, arriveFrom, arriveTo, t);
+    if (i >= steps) {
+      try { clearInterval(timer); } catch {}
+      if (viewSwitchAnim === token) viewSwitchAnim = null;
+      try { onComplete && onComplete(); } catch (err) { console.error('[xfade] onComplete:', err.message); }
+    }
+  }, interval);
+  token.timer = timer;
+}
+
 function switchMode(nextMode, opts = {}) {
   if (!MODES[nextMode] || (nextMode === currentMode && !opts.force)) return;
 
   // ─── To Radio-only ──────────────────────────────────────────────────
-  // Hide the main window (Full/Companion) and bring up the dedicated
-  // transparent radio window. The udp-voice engine in main process is
-  // unaffected; renderer-side hooks reinitialize the same way a
-  // loadURL swap used to.
+  // Hide the main window and bring up the dedicated transparent radio
+  // window. The udp-voice engine in main process is unaffected;
+  // renderer-side hooks reinitialize the same way a loadURL swap used
+  // to. v0.9.28 added a ~300 ms cross-fade on top of the existing
+  // show/hide; bounds + lifecycle are the same.
   if (nextMode === 'radio') {
+    cancelViewSwitchAnim();
+    const prevMainOpacity = (() => { try { return mainWindow?.getOpacity?.() ?? 1; } catch { return 1; } })();
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (currentMode !== 'radio') persistBounds();
-      try { mainWindow.hide(); } catch {}
-      // Unload the hidden page. Left running, the Full/Companion view
-      // keeps its radio connections (Command WebRTC, socket rooms, mic)
-      // alongside the Radio-only window's, i.e. the same user in the
-      // channels twice. Before v0.9.26 the loadURL swap unloaded it;
-      // switching back reloads the route (wasRadio below).
-      try { mainWindow.loadURL('about:blank'); } catch {}
     }
     currentMode = 'radio';
     saveState({ mode: 'radio' });
+    const mainWasVisible = mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible();
     if (!radioWindow || radioWindow.isDestroyed()) {
       createRadioWindow();
+      // createRadioWindow shows on ready-to-show; we don't want the
+      // "pop in at full opacity" though, so pre-set opacity to 0 and
+      // let the fade bring it up. ready-to-show may fire later than
+      // our fade starts; setOpacity(0) here is still correct, and the
+      // fade's arriveFrom:0 keeps consistency if the ready-to-show
+      // hasn't landed yet.
+      try { radioWindow.setOpacity(0); } catch {}
     } else {
-      try { radioWindow.show(); } catch {}
+      try { radioWindow.setOpacity(0); radioWindow.show(); } catch {}
     }
     applyPin();
+
+    const finishToRadio = () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        try { mainWindow.hide(); } catch {}
+        try { mainWindow.setOpacity(prevMainOpacity || 1); } catch {}
+        // Unload the hidden page so the Full renderer doesn't stay joined
+        // to the radio channels twice (see v0.9.26 cleanup rationale).
+        try { mainWindow.loadURL('about:blank'); } catch {}
+      }
+      try { radioWindow && !radioWindow.isDestroyed() && radioWindow.setOpacity(1); } catch {}
+    };
+
+    if (!mainWasVisible) {
+      finishToRadio();
+      return;
+    }
+    crossFade(mainWindow, radioWindow, {
+      leaveFrom: prevMainOpacity, leaveTo: 0,
+      arriveFrom: 0, arriveTo: 1,
+      duration: 300,
+      onComplete: finishToRadio,
+    });
     return;
   }
 
-  // ─── To Full or Companion ───────────────────────────────────────────
-  // Coming from radio: hide the radio window, show mainWindow in Full.
-  // (Companion was removed in v0.9.27 — Full is the only non-radio mode.)
+  // ─── To Full ────────────────────────────────────────────────────────
+  // Coming from radio: cross-fade radioWindow out while mainWindow
+  // fades in, then destroy radioWindow. Companion was removed in
+  // v0.9.27 — Full is the only non-radio mode left.
+  cancelViewSwitchAnim();
   const wasRadio = currentMode === 'radio';
-  if (wasRadio && radioWindow && !radioWindow.isDestroyed()) {
-    // Destroy rather than hide, for the same reason the main page is
-    // unloaded above: a hidden Radio-only renderer would stay joined to
-    // the radio channels. Its position is saved on every move, and
-    // createRadioWindow rebuilds it next time.
-    persistRadioBounds();
-    try { radioWindow.destroy(); } catch {}
-    radioWindow = null;
-  }
+  const prevRadioOpacity = (() => { try { return radioWindow?.getOpacity?.() ?? 1; } catch { return 1; } })();
   if (!mainWindow || mainWindow.isDestroyed()) {
-    // Main was closed somehow; rebuild it before loading the new mode.
     createWindow();
   }
   if (!wasRadio) persistBounds();
@@ -628,27 +690,43 @@ function switchMode(nextMode, opts = {}) {
   mainWindow.setMovable(true);
   mainWindow.setMinimumSize(m.minSize.width, m.minSize.height);
 
-  // currentMode here is always 'full' now that Companion is gone.
   const b = computeBounds('full', state);
   try { if (mainWindow.isMaximized()) mainWindow.unmaximize(); } catch {}
   mainWindow.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height }, true);
   if (state.full && state.full.maximized) {
     try { mainWindow.maximize(); } catch {}
   }
+  // Pre-fade: bring mainWindow in at opacity 0 so we can crossfade up
+  // to full visibility. Only applies when coming from radio — direct
+  // Full-is-already-visible flows don't need it.
+  if (wasRadio) {
+    try { mainWindow.setOpacity(0); } catch {}
+  }
   try { mainWindow.show(); } catch {}
   applyPin();
-  // Clear cache on mode switch too, so any mid-session frontend deploy is
-  // picked up without a full app relaunch.
+
+  const finishToFull = () => {
+    try { mainWindow && !mainWindow.isDestroyed() && mainWindow.setOpacity(1); } catch {}
+    if (wasRadio && radioWindow && !radioWindow.isDestroyed()) {
+      persistRadioBounds();
+      try { radioWindow.destroy(); } catch {}
+      radioWindow = null;
+    }
+  };
+
   session.defaultSession.clearCache()
     .catch(() => {})
     .finally(() => {
+      mainWindow.loadURL(urlFor(MODES[currentMode].path));
       if (wasRadio) {
-        // Coming back from radio mode — the mainWindow renderer was
-        // showing whatever was loaded when we left. Reload the correct
-        // route so Full↔Companion cache stays consistent.
-        mainWindow.loadURL(urlFor(MODES[currentMode].path));
+        crossFade(radioWindow, mainWindow, {
+          leaveFrom: prevRadioOpacity, leaveTo: 0,
+          arriveFrom: 0, arriveTo: 1,
+          duration: 300,
+          onComplete: finishToFull,
+        });
       } else {
-        mainWindow.loadURL(urlFor(MODES[currentMode].path));
+        finishToFull();
       }
     });
 }
