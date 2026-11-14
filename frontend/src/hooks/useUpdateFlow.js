@@ -64,6 +64,25 @@ export default function useUpdateFlow() {
   // So we can delay a card's appearance while PTT is held.
   const pendingAvailableRef = useRef(null);
 
+  // One-time chime when a new-feature surface opens — plays for
+  // 'whatsnew' (version changed) and 'fixes' (new changelog entries
+  // since last visit), but NOT for the installer 'update' surface,
+  // which is utilitarian and shouldn't ding.
+  const chimedForRef = useRef(null);
+  useEffect(() => {
+    if (surface !== 'whatsnew' && surface !== 'fixes') return;
+    const newestId = entries.length > 0 ? entries[0].id : null;
+    // Only chime once per distinct notification (guard against
+    // StrictMode double-invoke + any surface re-render).
+    if (newestId == null || chimedForRef.current === newestId) return;
+    chimedForRef.current = newestId;
+    try {
+      const snd = new Audio('/sounds/update_tone.wav');
+      snd.volume = 0.6;
+      snd.play().catch(() => {});
+    } catch {}
+  }, [surface, entries]);
+
   // ─── PTT bridge — track hold state so required cards wait for release.
   // The Electron shell emits nexus:ptt down/up from the OS-level key hook.
   useEffect(() => {
