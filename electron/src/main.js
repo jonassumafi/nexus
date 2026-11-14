@@ -25,8 +25,14 @@ const NEXUS_URL = process.env.NEXUS_URL || 'https://nexus-missions.space';
 // app.getPath('userData') here reliably on every Electron version, so
 // we compute the path ourselves using the OS convention Electron uses
 // for userData (matching productName / name in package.json).
+//
+// Lives in userData (%APPDATA%\nexus-companion-udp on Windows) with the
+// rest of the app's settings, so "remove settings" on uninstall covers it.
+// app.getPath('userData') is readable before ready; only setPath has to
+// happen pre-ready. The hand-built path below is a fallback only.
 const APP_DIR_NAME = 'Nexus Companion';
 function prefsDir() {
+  try { const d = app.getPath('userData'); if (d) return d; } catch {}
   const home = os.homedir();
   if (process.platform === 'win32') {
     return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), APP_DIR_NAME);
@@ -403,6 +409,7 @@ function createWindow() {
   mainWindow.on('unmaximize', persistBounds);
   // Keep "Nexus <version>" instead of each page's own <title>.
   mainWindow.on('page-title-updated', (e) => e.preventDefault());
+  attachWindowShortcuts(mainWindow); // F12 + zoom, only while focused
 }
 
 // ─── Radio-only window (v0.9.26+) ────────────────────────────────────────
@@ -1136,6 +1143,46 @@ ipcMain.handle('nexus:zoom:set', (_e, v) => {
   return z;
 });
 
+// ─── Window-local shortcuts (F12, zoom) ───────────────────────────────────
+// globalShortcut captures a key system-wide: registering Ctrl+=/-/0 or F12
+// there takes them away from every other program while Nexus runs
+// (browser zoom, editors, game binds), even if the handler then ignores
+// the press because Nexus isn't focused. before-input-event only sees
+// keys typed into this window, and preventDefault also stops the default
+// menu's zoom accelerators from double-applying.
+function toggleDevTools() {
+  try {
+    const wc = mainWindow?.webContents;
+    if (!wc) return;
+    if (wc.isDevToolsOpened()) wc.closeDevTools();
+    else wc.openDevTools({ mode: 'detach' });
+  } catch (err) {
+    console.error('[main] devtools toggle failed:', err.message);
+  }
+}
+function zoomStep(delta) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const prefs = loadPrefs();
+  const current = clampZoom(prefs.interfaceZoom ?? 1);
+  const next = clampZoom(delta === 0 ? 1 : current + delta);
+  savePrefs({ interfaceZoom: next });
+  applyMainZoom(next);
+}
+// Radio-only intentionally gets no zoom (its HUD is the approved size).
+function attachWindowShortcuts(win) {
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F12' && !input.control && !input.alt && !input.shift) {
+      event.preventDefault(); toggleDevTools(); return;
+    }
+    if (!input.control || input.alt || input.meta) return;
+    const k = input.key, code = input.code;
+    if (k === '=' || k === '+' || code === 'NumpadAdd')            { event.preventDefault(); zoomStep(+0.05); }
+    else if (k === '-' || k === '_' || code === 'NumpadSubtract')  { event.preventDefault(); zoomStep(-0.05); }
+    else if (k === '0' || code === 'Numpad0')                      { event.preventDefault(); zoomStep(0); }
+  });
+}
+
 // ─── Safe-mode recovery ───────────────────────────────────────────────────
 // If a user ends up stuck in a broken mode (e.g. the renderer errors out
 // in a non-full mode), this hard-coded global shortcut forces the window
@@ -1154,37 +1201,10 @@ function registerSafeMode() {
     globalShortcut.register('CommandOrControl+Shift+Q', () => {
       try { app.quit(); } catch {}
     });
-    // DevTools openers — F12 is standard, Ctrl+Alt+D is a backup for
-    // when graphics-overlay software has hijacked F12.
-    const openDevTools = () => {
-      try {
-        const wc = mainWindow?.webContents;
-        if (!wc) return;
-        if (wc.isDevToolsOpened()) wc.closeDevTools();
-        else wc.openDevTools({ mode: 'detach' });
-      } catch (err) {
-        console.error('[main] devtools toggle failed:', err.message);
-      }
-    };
-    globalShortcut.register('F12', openDevTools);
-    globalShortcut.register('CommandOrControl+Alt+D', openDevTools);
-
-    // Interface zoom — Ctrl+= (zoom in), Ctrl+- (zoom out), Ctrl+0 (reset).
-    // Only active when the main window has focus so game bindings aren't
-    // hijacked when the player's elsewhere.
-    const zoomStep = (delta) => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      if (!mainWindow.isFocused()) return;
-      const prefs = loadPrefs();
-      const current = clampZoom(prefs.interfaceZoom ?? 1);
-      const next = clampZoom(delta === 0 ? 1 : current + delta);
-      savePrefs({ interfaceZoom: next });
-      applyMainZoom(next);
-    };
-    globalShortcut.register('CommandOrControl+=',    () => zoomStep(+0.05));
-    globalShortcut.register('CommandOrControl+Plus', () => zoomStep(+0.05));
-    globalShortcut.register('CommandOrControl+-',    () => zoomStep(-0.05));
-    globalShortcut.register('CommandOrControl+0',    () => zoomStep(0));
+    // DevTools backup opener for when graphics-overlay software has
+    // hijacked F12. Ctrl+Alt+D is rare enough to stay global; F12 and
+    // the zoom keys are window-local (attachWindowShortcuts below).
+    globalShortcut.register('CommandOrControl+Alt+D', toggleDevTools);
   } catch (err) {
     console.error('[main] safe-mode shortcut failed:', err.message);
   }
