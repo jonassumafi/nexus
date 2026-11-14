@@ -11,6 +11,22 @@ export default function Gate() {
   const [fading,  setFading]  = useState(false);
   const timeoutsRef = useRef([]);
 
+  // Returning-player check: prefs.hasCharacter is set once by Dashboard
+  // when authenticated + onboarding_complete + citizen_name. If it's
+  // true, we must never show the "Enter" button or the MS-DOS boot —
+  // the user goes straight to the resolved AuthContext destination.
+  // While we read the pref, render null (no "Enter" flash).
+  const [hasCharacter, setHasCharacter] = useState(undefined); // undefined=loading
+  useEffect(() => {
+    let cancelled = false;
+    const api = typeof window !== 'undefined' ? window.electronAPI : null;
+    if (!api?.prefs?.get) { setHasCharacter(false); return; }
+    Promise.resolve(api.prefs.get('hasCharacter'))
+      .then(v => { if (!cancelled) setHasCharacter(v === true); })
+      .catch(() => { if (!cancelled) setHasCharacter(false); });
+    return () => { cancelled = true; };
+  }, []);
+
   // Already authenticated and onboarded? Skip the intro completely —
   // nobody needs to re-watch the "click to initiate" countdown every
   // time they open the app.
@@ -21,6 +37,36 @@ export default function Gate() {
       navigate('/onboarding', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
+
+  // FIX 3: once we've resolved to a "stable login-gated screen" for a
+  // returning player (either unauthenticated → OAuth needed, or
+  // authenticated-but-not-onboarded → onboarding), the startup splash
+  // should consider socket_connect + heartbeat done so it can reveal.
+  // Fire-and-forget; splash guards against double-ok internally.
+  const chimedRef = useRef(false);
+  useEffect(() => {
+    if (chimedRef.current) return;
+    if (hasCharacter !== true) return;
+    const stable = !isAuthenticated || (isAuthenticated && user && !user.onboarding_complete);
+    if (!stable) return;
+    chimedRef.current = true;
+    const api = typeof window !== 'undefined' ? window.electronAPI : null;
+    try { api?.startup?.markStep?.('socket_connect', 'ok'); } catch {}
+    try { api?.startup?.markStep?.('heartbeat', 'ok'); } catch {}
+  }, [hasCharacter, isAuthenticated, user]);
+
+  // Returning player: NEVER show "Enter" or route through /splash. While
+  // AuthContext resolves, render null; once resolved we either sit tight
+  // (the useEffect above will navigate) or stay blank while the
+  // unauthenticated-returning-player path waits for OAuth / callback.
+  if (hasCharacter === undefined) return null;
+  if (hasCharacter === true) {
+    // All authenticated destinations are handled by the navigate effect
+    // above. For an unauthenticated returning player we render null here
+    // and let the normal OAuth flow kick in from the main-process /
+    // AuthCallback path. Do NOT fall through to beginSequence/`/splash`.
+    return null;
+  }
 
   // Render nothing for the one frame between mount and the useEffect's
   // navigate() firing — otherwise returning users see a brief flash of

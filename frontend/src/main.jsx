@@ -17,7 +17,6 @@ if (typeof window !== 'undefined' && window.electronAPI?.udp) {
 
 import Gate         from './pages/Gate.jsx';
 import Splash       from './pages/Splash.jsx';
-import StartupSplash from './pages/StartupSplash.jsx';
 import Dashboard    from './pages/Dashboard.jsx';
 import MissionBoard from './pages/MissionBoard.jsx';
 import ShipViewer   from './pages/ShipViewer.jsx';
@@ -103,7 +102,7 @@ function RouteGuard({ children }) {
   // redirected to /dashboard when auth wasn't ready, which caused the
   // dashboard to render cramped at 320×44 showing only the giant
   // "Nexus Interstellar" title. Companion view was removed in v0.9.27.
-  if (location.pathname === '/radio' || location.pathname === '/chat-popout' || location.pathname === '/startup') return children;
+  if (location.pathname === '/radio' || location.pathname === '/chat-popout') return children;
   // Unauthenticated users access everything else freely (Splash, etc.)
   if (!isAuthenticated) return children;
 
@@ -141,7 +140,6 @@ createRoot(document.getElementById('root')).render(
                 <Route path="/admin"          element={<Admin />} />
                 <Route path="/radio"          element={<RadioWidget />} />
                 <Route path="/chat-popout"    element={<GlobalChatPopout />} />
-                <Route path="/startup"        element={<StartupSplash />} />
               </Routes>
             </RouteGuard>
           } />

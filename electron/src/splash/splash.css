@@ -1,0 +1,82 @@
+/* Nexus returning-player splash. Bundled with the Electron shell so it
+   paints at renderer-ready with no network/cache dependency. Verbatim
+   port of loading_screen_installer_style.html's stage CSS. */
+:root {
+  color-scheme: dark;
+  --acc:#66AADD; --acc2:#00EEFF;
+  --bg0:#020C14; --bg1:#061018; --bg2:#0A1828; --bg3:#12263A;
+  --rim0:#1A3A50; --rim1:#2A5A7A;
+  --t1: color-mix(in srgb, var(--acc2) 12%, #f4f4f4);
+  --t2: color-mix(in srgb, var(--acc) 42%, #8c8c8c);
+  --lime:#44dd88; --red:#ff5544;
+  --inset: color-mix(in srgb, var(--bg0) 60%, #000);
+  --d2:160ms; --d3:280ms; --out:cubic-bezier(.2,.8,.2,1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: transparent; }
+body {
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; }
+
+.win { position: fixed; inset: 0; background: var(--bg0); border: 1px solid var(--rim1); display: flex; flex-direction: column; overflow: hidden; }
+.drag { position: absolute; top: 0; left: 0; right: 0; height: 22px; -webkit-app-region: drag; z-index: 3; }
+.body { position: relative; flex: 1; min-height: 0; }
+.scr { position: absolute; inset: 0; padding: 26px 30px 14px; display: flex; align-items: center; gap: 28px; }
+.scr > * { animation: rise var(--d3) var(--out) both; animation-delay: calc(var(--i,0) * 60ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.logo { width: 150px; flex: none; display: grid; place-items: center; border-right: 1px solid var(--rim0); align-self: stretch; }
+.logo svg { width: 100px; height: 100px; }
+.lg { overflow: visible; }
+.lg path { fill: none; stroke-width: 5; stroke-linecap: square; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 380ms var(--out) forwards; animation-delay: var(--dl, 0ms); }
+.lg .ink { stroke: var(--acc); }
+.lg .hot { stroke: var(--acc2); }
+.lg .cur { fill: var(--acc2); opacity: 0; animation: blink 1050ms steps(1) infinite; animation-delay: 640ms; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } }
+
+.wr { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ttl { font: 800 38px/1 system-ui, sans-serif; letter-spacing: .14em; color: var(--acc2); display: flex; }
+.ttl span { opacity: 0; animation: tp 1ms steps(1) forwards; animation-delay: calc(700ms + var(--k) * 55ms); }
+@keyframes tp { to { opacity: 1; } }
+.sub { font: 700 11px system-ui, sans-serif; letter-spacing: .3em; color: var(--acc); margin: 8px 0 14px; }
+
+.bar { position: relative; height: 12px; background: var(--inset); border: 1px solid var(--rim0); overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--acc2); transition: width var(--d2) linear; }
+.bar i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent); transform: translateX(-100%); animation: shine 1500ms linear infinite; }
+.bar::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 19px, rgba(0,0,0,.5) 19px 20px); pointer-events: none; }
+@keyframes shine { to { transform: translateX(100%); } }
+
+.pr { display: flex; justify-content: space-between; margin: 6px 0 8px; font: 600 11px system-ui, sans-serif; letter-spacing: .06em; color: var(--t2); }
+.pr b { color: var(--acc2); font-variant-numeric: tabular-nums; }
+
+.log { height: 76px; overflow: hidden; background: var(--inset); border: 1px solid var(--rim0); padding: 7px 10px; font: 11px/1.55 ui-monospace, Menlo, Consolas, monospace; display: flex; flex-direction: column; justify-content: flex-end; }
+.ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--t1); animation: lnin var(--d2) var(--out); }
+.ln .ok { color: var(--lime); margin-left: 8px; }
+.ln .offline { color: var(--t2); margin-left: 8px; }
+.ln .err-label { color: var(--red); margin-left: 8px; }
+.ln.err { color: var(--red); }
+.ln.old { color: var(--t2); }
+.actions { display: flex; gap: 10px; margin-top: 4px; }
+.actions button { font: 600 10px system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--acc2); background: transparent; border: 1px solid var(--rim1); padding: 3px 10px; cursor: pointer; }
+.actions button:hover { background: var(--bg2); }
+@keyframes lnin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.ft { height: 30px; flex: none; border-top: 1px solid var(--rim0); background: var(--bg1); display: flex; align-items: center; gap: 14px; padding: 0 14px; font: 600 10px system-ui, sans-serif; letter-spacing: .08em; color: var(--t2); }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 18px; height: 3px; background: var(--rim0); transition: background var(--d3); }
+.dots i.on { background: var(--acc2); }
+.dots i.done { background: var(--acc); }
+.ft .sp { flex: 1; }
+
+.cover { position: absolute; inset: 0; background: var(--bg0); opacity: 0; pointer-events: none; transition: opacity 380ms ease; z-index: 4; display: grid; place-items: center; }
+.cover b { font: 800 11px system-ui, sans-serif; letter-spacing: .3em; color: var(--lime); text-transform: uppercase; }
+.win.done .cover { opacity: 1; }
+
+body.reduced *, body.reduced *::before, body.reduced *::after { animation: none !important; transition: none !important; }
+body.reduced .lg path { stroke-dashoffset: 0 !important; }
+body.reduced .ttl span, body.reduced .lg .cur { opacity: 1 !important; }

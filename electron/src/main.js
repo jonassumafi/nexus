@@ -357,7 +357,12 @@ function createSplashWindow() {
   });
   splashActive = true;
   splashWindow.setAlwaysOnTop(true, 'floating');
-  splashWindow.loadURL(urlFor('/startup'));
+  // Load the bundled splash from disk. Skin id is passed as a query
+  // param so the splash picks its palette before first paint without
+  // needing an extra preload round-trip.
+  splashWindow.loadFile(path.join(__dirname, 'splash', 'index.html'), {
+    search: 'skin=' + encodeURIComponent(skin),
+  });
 
   splashWindow.once('ready-to-show', () => {
     try { splashWindow.show(); } catch {}

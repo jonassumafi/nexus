@@ -47,6 +47,27 @@ function checkToken() {
 export default function Splash() {
   const navigate = useNavigate();
 
+  // Belt-and-suspenders: a returning player must never see the MS-DOS
+  // boot. Gate.jsx already blocks the "Enter" path, but if anything else
+  // routes here (deep link, legacy sessionStorage flag, etc.), short-
+  // circuit straight to /dashboard.
+  const [returningBlocked, setReturningBlocked] = useState(false);
+  useEffect(() => {
+    const api = typeof window !== 'undefined' ? window.electronAPI : null;
+    if (!api?.prefs?.get) return;
+    let cancelled = false;
+    Promise.resolve(api.prefs.get('hasCharacter'))
+      .then(v => {
+        if (cancelled) return;
+        if (v === true) {
+          setReturningBlocked(true);
+          navigate('/dashboard', { replace: true });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [navigate]);
+
   const audios    = useRef({});
   const fadingRef = useRef(false);
 
@@ -243,6 +264,8 @@ export default function Splash() {
   }, [navigate]);
 
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
+
+  if (returningBlocked) return null;
 
   return (
     <div style={{
