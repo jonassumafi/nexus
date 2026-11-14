@@ -241,6 +241,11 @@ function normKey(k) {
 let pttDown = false;
 let mainWindow = null;
 let radioWindow = null;
+// Deferred maximize. createWindow sets this from saved state; the first
+// reveal path (splash handoff, ready-to-show fallback) applies it right
+// after calling show() so maximize()'s implicit-show doesn't flash the
+// window before the splash animates.
+let shouldStartMaximized = false;
 let keyboard = null;
 let currentMode = 'full';
 let radioExpanded = false;
@@ -458,7 +463,13 @@ function revealForSplash() {
 
   // Reduced motion: no fade, just swap.
   if (splashReducedMotion || !target) {
-    try { if (target) { target.setOpacity(1); target.show(); } } catch {}
+    try {
+      if (target) {
+        target.setOpacity(1);
+        target.show();
+        if (shouldStartMaximized) { try { target.maximize(); } catch {} }
+      }
+    } catch {}
     finish();
     return;
   }
@@ -466,6 +477,7 @@ function revealForSplash() {
   try {
     target.setOpacity(0);
     target.show();
+    if (shouldStartMaximized) { try { target.maximize(); } catch {} }
   } catch {}
   const started = Date.now();
   const DUR = 400;
@@ -566,12 +578,12 @@ function createWindow() {
     },
   });
 
-  // Restore a maximized full window as maximized (the on('maximize')
-  // handler snaps it flush to the work area) rather than as a normal
-  // window at the raw maximized bounds, which opened offset by -8px.
-  if (state.full && state.full.maximized) {
-    try { mainWindow.maximize(); } catch {}
-  }
+  // Restore a maximized full window as maximized. Electron's maximize()
+  // implicitly shows the window even when show:false, which would blow
+  // past the splash and flash the maximized dashboard before the
+  // startup animation. Defer the actual maximize() call until reveal
+  // so the splash owns the first-paint experience.
+  shouldStartMaximized = !!(state.full && state.full.maximized);
 
   if (state.pinnedModes.full) {
     // Pin level: 'floating' (not 'screen-saver').
@@ -663,6 +675,7 @@ function createWindow() {
     try {
       mainWindow.setOpacity(0);
       mainWindow.show();
+      if (shouldStartMaximized) { try { mainWindow.maximize(); } catch {} }
       const started = Date.now();
       const DUR = 200;
       const tick = () => {
