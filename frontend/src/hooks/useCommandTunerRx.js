@@ -314,7 +314,7 @@ export function useCommandTunerRx(opts = {}) {
           const source = ctx.createMediaStreamSource(stream);
           const chain = buildSrsChain(ctx, spec.rxEffect);
           const gain = ctx.createGain();
-          gain.gain.value = Math.max(0, Math.min(3, 1.8 * (volumeRef.current ?? 1.0)));
+          gain.gain.value = Math.max(0, Math.min(3, 1.08 * (volumeRef.current ?? 1.0)));
           if (chain) {
             source.connect(chain.input);
             chain.output.connect(gain);

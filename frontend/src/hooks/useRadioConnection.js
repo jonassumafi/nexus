@@ -659,7 +659,7 @@ export function useRadioConnection({
   const setRxVolume = useCallback((v) => {
     const clamped = Math.max(0, Math.min(1.5, Number(v) || 0));
     rxVolumeRef.current = clamped;
-    const scaled = Math.max(0, Math.min(3, 1.8 * clamped));
+    const scaled = Math.max(0, Math.min(3, 1.08 * clamped));
     for (const a of Object.values(peerAudiosRef.current)) {
       try { a.volume = scaled; } catch {}
     }
