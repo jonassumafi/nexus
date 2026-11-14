@@ -405,8 +405,9 @@ export function useCommandTunerRx(opts = {}) {
     let f = null;
     try { f = localStorage.getItem('nexus_command_tune'); } catch {}
     if (!f) return;
-    autoTunedRef.current = true;
-    const id = setTimeout(() => { try { joinFrequency(f); } catch {} }, 150);
+    // Flag set when the join runs, not before: a re-render that cancels
+    // the timer must leave room for the effect to reschedule.
+    const id = setTimeout(() => { autoTunedRef.current = true; try { joinFrequency(f); } catch {} }, 150);
     return () => clearTimeout(id);
   }, [socket, joinFrequency]);
 

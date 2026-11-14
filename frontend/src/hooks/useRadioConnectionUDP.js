@@ -514,10 +514,13 @@ export function useRadioConnectionUDP({
       if (raw) saved = JSON.parse(raw);
     } catch {}
     if (!saved || !saved.freq) return;
-    autoTunedRef.current = true;
     // Schedule after a tick so the srsSpec effect at mount has a chance
     // to set the current rig's band byte before the first UDP open.
+    // Mark done only when the join actually runs: if a re-render cancels
+    // the timer (cleanup below), the effect re-runs and reschedules.
+    // Setting the flag before scheduling left the radio IDLE for good.
     const id = setTimeout(() => {
+      autoTunedRef.current = true;
       try { joinFrequency(saved.freq, saved.missionId || null); } catch {}
     }, 150);
     return () => clearTimeout(id);

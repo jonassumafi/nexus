@@ -543,8 +543,10 @@ export function useRadioConnection({
       if (raw) saved = JSON.parse(raw);
     } catch {}
     if (!saved || !saved.freq) return;
-    autoTunedRef.current = true;
+    // Flag set when the join runs, not before: a re-render that cancels
+    // the timer must leave room for the effect to reschedule.
     const id = setTimeout(() => {
+      autoTunedRef.current = true;
       try { joinFrequency(saved.freq, saved.missionId || null); } catch {}
     }, 150);
     return () => clearTimeout(id);
