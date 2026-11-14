@@ -16,7 +16,12 @@ export function useSocket(token) {
 
     socketRef.current = socket;
 
-    socket.on('connect', () => setConnected(true));
+    socket.on('connect', () => {
+      setConnected(true);
+      // Notify the startup splash (if the returning-player splash is
+      // still running) that the socket is live. Fire-and-forget.
+      try { window.electronAPI?.startup?.markStep?.('socket_connect', 'ok'); } catch {}
+    });
     socket.on('disconnect', () => setConnected(false));
 
     // Clean exit path: on Electron's cleanup-before-quit broadcast,

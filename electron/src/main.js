@@ -259,6 +259,191 @@ function sendToActive(channel, payload) {
   try { activeWebContents()?.send(channel, payload); } catch {}
 }
 
+// ─── Returning-player startup splash (v1.x) ───────────────────────────────
+// Frameless 560x340 installer-style window shown before the dashboard
+// reveals, ONLY for players who already have a character
+// (prefs.hasCharacter === true). New players still see the MS-DOS
+// Splash.jsx exactly as before. The splash renderer drives WHEN the
+// reveal happens; main just creates it, forwards step events, and runs
+// the 0.4 s fade handoff.
+let splashWindow = null;
+let splashActive = false;       // true between createSplashWindow + fade-handoff
+let splashReducedMotion = false;
+// Log any step events that fire before the splash's IPC listener is up,
+// then replay them on 'did-finish-load'. Without this, cache_clear
+// (which usually completes before the splash paints) would be lost.
+const pendingSplashSteps = [];
+
+function sendToSplash(channel, payload) {
+  try {
+    if (!splashWindow || splashWindow.isDestroyed()) return;
+    splashWindow.webContents.send(channel, payload);
+  } catch {}
+}
+
+function broadcastStartupStep(name, status) {
+  if (!name) return;
+  const payload = { name, status: status || 'ok' };
+  if (splashWindow && !splashWindow.isDestroyed() && !splashWindow.webContents.isLoading()) {
+    try { splashWindow.webContents.send('nexus:startup:broadcast-step', payload); } catch {}
+  } else {
+    pendingSplashSteps.push(payload);
+  }
+}
+
+function isReturningPlayer() {
+  try { return !!loadPrefs().hasCharacter; } catch { return false; }
+}
+
+// Read the saved skin id from skin.json (written by the renderer via
+// nexus:save-skin). Falls back silently to deepblue if the file is
+// missing or malformed.
+function loadSavedSkin() {
+  try {
+    const raw = fs.readFileSync(path.join(app.getPath('userData'), 'skin.json'), 'utf8');
+    const j = JSON.parse(raw);
+    const id = typeof j?.skin === 'string' ? j.skin.trim() : '';
+    return id || 'deepblue';
+  } catch { return 'deepblue'; }
+}
+
+// Minimal skin → background-color map for the splash window chrome.
+// Keeps the skin table in StartupSplash.jsx authoritative; this is just
+// the --bg0 value we need before React has mounted.
+const SKIN_BG0 = {
+  deepblue:   '#020C14',
+  obsidian:   '#0a0a0c',
+  ember:      '#0c0806',
+  oxide:      '#0e0607',
+  olivedrab:  '#090b06',
+  violetvoid: '#0a0612',
+  abyss:      '#04100f',
+  dune:       '#100e0c',
+  carbonpink: '#030304',
+};
+
+function createSplashWindow() {
+  if (splashWindow && !splashWindow.isDestroyed()) return splashWindow;
+
+  const WIDTH = 560, HEIGHT = 340;
+  const area = screen.getPrimaryDisplay().workArea;
+  const x = Math.round(area.x + (area.width  - WIDTH)  / 2);
+  const y = Math.round(area.y + (area.height - HEIGHT) / 2);
+  const skin = loadSavedSkin();
+  const bg = SKIN_BG0[skin] || SKIN_BG0.deepblue;
+
+  splashWindow = new BrowserWindow({
+    x, y, width: WIDTH, height: HEIGHT,
+    frame: false,
+    transparent: false,
+    hasShadow: true,
+    backgroundColor: bg,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    autoHideMenuBar: true,
+    title: `Nexus ${app.getVersion()}`,
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      backgroundThrottling: false,
+    },
+  });
+  splashActive = true;
+  splashWindow.setAlwaysOnTop(true, 'floating');
+  splashWindow.loadURL(urlFor('/startup'));
+
+  splashWindow.once('ready-to-show', () => {
+    try { splashWindow.show(); } catch {}
+  });
+
+  splashWindow.webContents.on('did-finish-load', () => {
+    // Replay anything that fired before the renderer subscribed.
+    const queue = pendingSplashSteps.splice(0);
+    for (const p of queue) {
+      try { splashWindow.webContents.send('nexus:startup:broadcast-step', p); } catch {}
+    }
+  });
+
+  splashWindow.on('closed', () => { splashWindow = null; });
+  // Suppress page-title updates like the other windows.
+  splashWindow.on('page-title-updated', (e) => e.preventDefault());
+
+  return splashWindow;
+}
+
+// Reveal handoff: fade splash 1→0 while main (or radio) fades 0→1 over
+// 400 ms, then destroy the splash. Drops into radio-only mode after the
+// fade if that was the last used mode. Idempotent; a second call no-ops.
+let handoffStarted = false;
+function revealForSplash() {
+  if (handoffStarted) return;
+  handoffStarted = true;
+  const savedMode = (() => {
+    try {
+      const raw = fs.readFileSync(STATE_PATH(), 'utf8');
+      const j = JSON.parse(raw);
+      return j && j.mode === 'radio' ? 'radio' : 'full';
+    } catch { return 'full'; }
+  })();
+
+  const target = (mainWindow && !mainWindow.isDestroyed()) ? mainWindow : null;
+  const splash = (splashWindow && !splashWindow.isDestroyed()) ? splashWindow : null;
+
+  const finish = () => {
+    try { splash && !splash.isDestroyed() && splash.destroy(); } catch {}
+    splashActive = false;
+    if (savedMode === 'radio') {
+      try { switchMode('radio'); } catch (err) {
+        console.warn('[splash] switchMode(radio) failed:', err?.message);
+      }
+    }
+  };
+
+  // Reduced motion: no fade, just swap.
+  if (splashReducedMotion || !target) {
+    try { if (target) { target.setOpacity(1); target.show(); } } catch {}
+    finish();
+    return;
+  }
+
+  try {
+    target.setOpacity(0);
+    target.show();
+  } catch {}
+  const started = Date.now();
+  const DUR = 400;
+  const tick = () => {
+    const t = Math.min(1, (Date.now() - started) / DUR);
+    try { if (target && !target.isDestroyed()) target.setOpacity(t); } catch {}
+    try { if (splash && !splash.isDestroyed()) splash.setOpacity(1 - t); } catch {}
+    if (t < 1) setTimeout(tick, 16);
+    else finish();
+  };
+  tick();
+}
+
+// IPC: step from a renderer (e.g. useSocket.js on 'connect', Dashboard
+// on heartbeat). One-way; main re-broadcasts to the splash.
+ipcMain.on('nexus:startup:step', (_e, payload) => {
+  const name = payload && typeof payload.name === 'string' ? payload.name : null;
+  const status = payload && typeof payload.status === 'string' ? payload.status : 'ok';
+  if (!name) return;
+  broadcastStartupStep(name, status);
+});
+ipcMain.on('nexus:startup:ready', () => {
+  revealForSplash();
+});
+ipcMain.on('nexus:startup:reduced-motion', (_e, reduced) => {
+  splashReducedMotion = !!reduced;
+});
+
 // ─── Window creation ──────────────────────────────────────────────────────
 function createWindow() {
   const state = loadState();
@@ -373,6 +558,7 @@ function createWindow() {
   session.defaultSession.clearCache()
     .catch(() => {})
     .finally(() => {
+      broadcastStartupStep('cache_clear', 'ok');
       mainWindow.loadURL(urlFor(MODES[currentMode].path));
     });
 
@@ -416,6 +602,10 @@ function createWindow() {
   let revealed = false;
   const reveal = () => {
     if (revealed || !mainWindow || mainWindow.isDestroyed()) return;
+    // When the returning-player splash is running, it is the single
+    // source of truth for reveal. Skip the built-in fade entirely;
+    // revealForSplash() below drives both windows' opacity together.
+    if (splashActive) return;
     revealed = true;
     clearTimeout(revealTimer);
     // Already shown by the tray / a second launch: don't fade from 0.
@@ -441,6 +631,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', reveal);
 
   mainWindow.webContents.on('did-finish-load', () => {
+    broadcastStartupStep('renderer_load', 'ok');
     // Fresh state, not createWindow's snapshot: this fires again on every
     // mode switch, and the pin button must show the new mode's pin.
     mainWindow.webContents.send('nexus:window-state', {
@@ -910,6 +1101,7 @@ function startKeyHook() {
       firePttUp(matchTuner(`Mouse${e.button}`));
     });
     uIOhook.start();
+    broadcastStartupStep('ptt_hook', 'ok');
 
     console.log('[main] global key hook active (uiohook-napi), PTT key =', currentPttKey);
     setTimeout(() => {
@@ -917,6 +1109,10 @@ function startKeyHook() {
     }, 2000);
   } catch (err) {
     console.error('[main] key hook failed:', err.message);
+    // PTT hook failure shouldn't block the splash — the app still runs,
+    // the user just can't transmit without a fix. Mark offline so the
+    // reveal proceeds.
+    broadcastStartupStep('ptt_hook', 'offline');
     setTimeout(() => {
       sendToActive('nexus:hook-status', { ok: false, error: err.message });
     }, 2000);
@@ -1535,6 +1731,15 @@ app.on('second-instance', () => {
   // If the primary is on its way out (tray Quit, auto-update restart),
   // don't try to show a window that's about to be destroyed.
   if (isQuitting) return;
+  // If the returning-player splash is still up, focus it instead of the
+  // (hidden) main window. Spec: a second launch must never open a
+  // second splash.
+  if (splashActive && splashWindow && !splashWindow.isDestroyed()) {
+    if (!splashWindow.isVisible()) splashWindow.show();
+    if (splashWindow.isMinimized()) splashWindow.restore();
+    splashWindow.focus();
+    return;
+  }
   const w = activeWindow();
   if (!w) return;
   if (!w.isVisible()) w.show();
@@ -1574,10 +1779,35 @@ app.whenReady().then(() => {
     console.error('[diag]', err.message);
   }
 
+  // Returning-player splash: open it first so it paints before anything
+  // else. The main window is still created immediately below (hidden
+  // via show:false in createWindow), so real startup work (clearCache,
+  // loadURL, radio connection in-renderer) runs in parallel. The splash
+  // never gates the app, only the reveal.
+  if (isReturningPlayer()) {
+    try { createSplashWindow(); } catch (err) {
+      console.error('[splash] create failed:', err?.message);
+      splashActive = false;
+    }
+  }
+
   createWindow();
   startKeyHook();
   registerSafeMode();
   createTray();
+
+  // If the splash is in play, run the update check right away so the
+  // "Checking for updates" log line can resolve inside the 3.5 s floor
+  // instead of waiting for the usual 4 s delay. Unpacked dev builds
+  // short-circuit inside electron-updater.
+  if (splashActive) {
+    autoUpdater.checkForUpdates()
+      .catch((err) => {
+        console.warn('[updater] splash check failed:', err?.message);
+        broadcastStartupStep('update_check', 'offline');
+      });
+  }
+
   // First check 4s after launch (lets the renderer mount its IPC listeners),
   // then every 10 min while running. Unpacked dev builds no-op internally.
   const runCheck = () => {
@@ -1607,33 +1837,44 @@ autoUpdater.on('checking-for-update', () => {
   sendToActive('nexus:update:checking');
 });
 autoUpdater.on('update-available', (info) => {
-  sendToActive('nexus:update:available', {
+  const payload = {
     version: info?.version,
     releaseDate: info?.releaseDate,
     releaseNotes: info?.releaseNotes,
-  });
+  };
+  sendToActive('nexus:update:available', payload);
+  sendToSplash('nexus:update:available', payload);
 });
 autoUpdater.on('update-not-available', () => {
   sendToActive('nexus:update:none');
+  sendToSplash('nexus:update:none');
+  broadcastStartupStep('update_check', 'ok');
 });
 autoUpdater.on('download-progress', (p) => {
-  sendToActive('nexus:update:progress', {
+  const payload = {
     percent: Math.round(p?.percent || 0),
     bytesPerSecond: p?.bytesPerSecond || 0,
     transferred: p?.transferred || 0,
     total: p?.total || 0,
-  });
+  };
+  sendToActive('nexus:update:progress', payload);
+  sendToSplash('nexus:update:progress', payload);
 });
 autoUpdater.on('update-downloaded', (info) => {
   updatePhase = 'downloaded';
-  sendToActive('nexus:update:ready', {
+  const payload = {
     version: info?.version,
     releaseNotes: info?.releaseNotes,
-  });
+  };
+  sendToActive('nexus:update:ready', payload);
+  sendToSplash('nexus:update:ready', payload);
 });
 autoUpdater.on('error', (err) => {
   console.warn('[updater] error:', err?.message);
   sendToActive('nexus:update:error', { message: err?.message });
+  sendToSplash('nexus:update:error', { message: err?.message });
+  // A failed update check never blocks the splash — degrade to offline.
+  broadcastStartupStep('update_check', 'offline');
 });
 
 ipcMain.handle('nexus:update:checkNow', async () => {

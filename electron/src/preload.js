@@ -183,6 +183,36 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
   },
 
+  // Returning-player startup splash (frameless 560x340 window shown
+  // before the dashboard reveals; see StartupSplash.jsx + createSplashWindow
+  // in main.js). The splash is the single source of truth for WHEN the
+  // main window appears; main.js forwards step events from both main-side
+  // (cache_clear, renderer_load, update_check, ptt_hook) and renderer-side
+  // (socket_connect, heartbeat) sources via nexus:startup:broadcast-step.
+  startup: {
+    // Renderer (any renderer) → main: a startup step completed / degraded.
+    // Status: 'ok' | 'offline' | 'error'. Safe to call when no splash is
+    // open; main.js drops it on the floor.
+    markStep(name, status) {
+      return ipcRenderer.send('nexus:startup:step', { name, status: status || 'ok' });
+    },
+    // Splash renderer only: subscribe to the aggregated step broadcast.
+    onBroadcastStep(handler) {
+      const listener = (_e, payload) => handler(payload || {});
+      ipcRenderer.on('nexus:startup:broadcast-step', listener);
+      return () => ipcRenderer.removeListener('nexus:startup:broadcast-step', listener);
+    },
+    // Splash renderer only: all steps done + floor passed, reveal the main
+    // window. Main does the fade + destroys the splash.
+    signalReady() {
+      return ipcRenderer.send('nexus:startup:ready');
+    },
+    // Splash renderer only: tell main whether to skip the reveal fade.
+    reportReducedMotion(reduced) {
+      return ipcRenderer.send('nexus:startup:reduced-motion', !!reduced);
+    },
+  },
+
   // Interface zoom — Full dashboard webContents.setZoomFactor.
   // Range 0.75..1.5, persisted to prefs.json. Radio-only is unaffected;
   // its HUD is an approved fixed footprint.

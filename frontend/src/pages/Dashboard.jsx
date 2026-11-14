@@ -2751,6 +2751,26 @@ export default function Dashboard() {
     setFeedEvents(prev => [stamped, ...prev].slice(0, 50));
   }, []);
 
+  // Mark this install as "returning player" the first time an
+  // authenticated, onboarded user with a citizen_name reaches the
+  // dashboard. The Electron main process reads prefs.hasCharacter at
+  // launch to decide between the MS-DOS Splash (new player) and the
+  // installer-style StartupSplash (returning). Fire-and-forget; we
+  // never clear this on logout. Also fires the "heartbeat" step for
+  // the StartupSplash if it's still running.
+  useEffect(() => {
+    if (!me) return;
+    const onboarded = me.onboarding_complete === true || !!me.onboarding_complete;
+    const hasName = !!me.citizen_name;
+    const authed = (() => {
+      try { return !!localStorage.getItem('nexus_token'); } catch { return false; }
+    })();
+    if (authed && onboarded && hasName) {
+      try { window.electronAPI?.prefs?.set?.('hasCharacter', true); } catch {}
+      try { window.electronAPI?.startup?.markStep?.('heartbeat', 'ok'); } catch {}
+    }
+  }, [me]);
+
   useEffect(() => {
     fetchMe();
     fetchMissions();

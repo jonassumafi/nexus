@@ -1,4 +1,6 @@
 [
+  { "id": 163, "version": "0.9.30", "date": "2026-11-14",
+    "tag": "new", "text": "Returning players now get an installer-style startup splash with live step log instead of the full MS-DOS boot — reveals into the dashboard (or Radio-only, if that was your last view) once startup finishes" },
   { "id": 162, "version": "0.9.29", "date": "2026-11-14",
     "tag": "better", "text": "Friends now see you go offline within a second of a clean quit, and within about 30 seconds if the app crashes or loses power" },
   { "id": 161, "version": "0.9.29", "date": "2026-11-14",
