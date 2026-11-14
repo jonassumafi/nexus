@@ -433,16 +433,35 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
         </div>
       </div>
 
-      {/* Body */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+      {/* Body — two columns at normal width, stacks to one column
+          below ~900 px so the dialog stays usable on 4K + high DPI
+          and narrow companion-sized dashboards. */}
+      <style>{`
+        .shipreg-body { flex:1; display:flex; flex-direction:row; overflow:hidden; min-height:0; }
+        .shipreg-body > .shipreg-col-left  { width:40%; border-right:1px solid var(--rim0); }
+        .shipreg-body > .shipreg-col-right { width:60%; }
+        .shipreg-col-left, .shipreg-col-right {
+          padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;
+          min-height:0; min-width:0;
+        }
+        @media (max-width: 900px) {
+          .shipreg-body { flex-direction:column; overflow-y:auto; }
+          .shipreg-body > .shipreg-col-left,
+          .shipreg-body > .shipreg-col-right {
+            width:100%; overflow-y:visible; border-right:0;
+          }
+          .shipreg-body > .shipreg-col-left {
+            border-bottom:1px solid var(--rim0);
+          }
+        }
+        @media (max-height: 700px) {
+          .shipreg-col-left, .shipreg-col-right { padding:14px; gap:12px; }
+        }
+      `}</style>
+      <div className="shipreg-body">
 
-        {/* Left column 40% */}
-        <div style={{
-          width: '40%',
-          padding: 20, overflowY: 'auto',
-          borderRight: '1px solid var(--rim0)',
-          display: 'flex', flexDirection: 'column', gap: 16,
-        }}>
+        {/* Left column 40% at wide widths, full width stacked below 900px */}
+        <div className="shipreg-col-left">
 
           {/* Callsign */}
           <div>
@@ -530,12 +549,8 @@ function RegistrationForm({ me, specs, onClose, onSuccess }) {
           </div>
         </div>
 
-        {/* Right column 60% */}
-        <div style={{
-          width: '60%',
-          padding: 20, overflowY: 'auto',
-          display: 'flex', flexDirection: 'column', gap: 12,
-        }}>
+        {/* Right column 60% at wide widths, full width stacked below 900px */}
+        <div className="shipreg-col-right">
 
           {/* Instructions panel */}
           <div className="raised" style={{
