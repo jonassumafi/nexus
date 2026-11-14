@@ -371,7 +371,33 @@ function createSplashWindow() {
     }
   });
 
-  splashWindow.on('closed', () => { splashWindow = null; });
+  // ── The splash may delay the dashboard, never hide it. ──
+  // While splashActive, the main window's own reveal is suppressed and
+  // only the splash page's signalReady() shows it. The splash is a web
+  // route, so offline / server down / a bad deploy / a script error
+  // would otherwise leave Nexus invisible (tray icon only). Reveal the
+  // dashboard immediately if the page can't load, crashes or is closed,
+  // and in any case after SPLASH_MAX_MS (above the page's own 20 s
+  // "still working" state).
+  const SPLASH_MAX_MS = 25000;
+  const capTimer = setTimeout(() => {
+    if (!handoffStarted) console.warn('[splash] no ready signal after ' + SPLASH_MAX_MS + ' ms, revealing');
+    revealForSplash();
+  }, SPLASH_MAX_MS);
+  splashWindow.webContents.on('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
+    if (!isMainFrame || code === -3) return; // -3 = aborted (redirect), not a failure
+    console.warn('[splash] page failed to load:', code, desc);
+    revealForSplash();
+  });
+  splashWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.warn('[splash] renderer gone:', details?.reason);
+    revealForSplash();
+  });
+  splashWindow.on('closed', () => {
+    clearTimeout(capTimer);
+    splashWindow = null;
+    if (!handoffStarted) revealForSplash(); // closed by the user (Alt+F4)
+  });
   // Suppress page-title updates like the other windows.
   splashWindow.on('page-title-updated', (e) => e.preventDefault());
 

@@ -1,6 +1,6 @@
 {
   "name": "nexus-companion",
-  "version": "0.9.29",
+  "version": "0.9.30",
   "description": "Nexus Interstellar Traffic System — Electron companion with global push-to-talk for in-game play alongside Star Citizen.",
   "private": true,
   "main": "src/main.js",
