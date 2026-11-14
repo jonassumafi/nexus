@@ -430,6 +430,9 @@ function PowerHoldIB({ powered, onToggle }) {
       </button>
     );
   }
+  // Radio-only .ib buttons are compact (24×22, 12-px icon). Bump just
+  // enough to fit a ring that clears the icon, without blowing out the
+  // strip / settings-panel layout.
   return (
     <button
       className="ib"
@@ -438,11 +441,11 @@ function PowerHoldIB({ powered, onToggle }) {
       title="Hold to turn off"
       style={{
         position: 'relative',
-        width: 36, height: 36,
+        width: 26, height: 26,
         ...(holding ? { borderColor: 'var(--red)', color: 'var(--red)' } : null),
       }}
     >
-      <HoldRing progress={progress} variant="danger" size={36} />
+      <HoldRing progress={progress} variant="danger" size={26} />
       <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex' }}>{POWER_SVG}</span>
       {showHint && (
         <span
