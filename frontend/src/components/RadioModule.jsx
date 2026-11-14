@@ -55,7 +55,7 @@ function PowerBtn({ onClick, powered }) {
       title={powered ? 'Hold to turn off' : 'Power on radio'}
       style={{
         position: 'relative',
-        width: 32, minHeight: 0,
+        width: 36, height: 36, minHeight: 0,
         display: 'grid', placeItems: 'center',
         borderRadius: 5, padding: 0, flex: 'none',
         border: (flash || holding)
@@ -79,7 +79,7 @@ function PowerBtn({ onClick, powered }) {
         WebkitUserSelect: 'none',
       }}
     >
-      {powered && <HoldRing progress={progress} variant="danger" size={32} />}
+      {powered && <HoldRing progress={progress} variant="danger" size={36} />}
       <span style={{ position: 'relative', zIndex: 1 }}>⏻</span>
       {showHint && (
         <span

@@ -438,10 +438,11 @@ function PowerHoldIB({ powered, onToggle }) {
       title="Hold to turn off"
       style={{
         position: 'relative',
+        width: 36, height: 36,
         ...(holding ? { borderColor: 'var(--red)', color: 'var(--red)' } : null),
       }}
     >
-      <HoldRing progress={progress} variant="danger" size={28} />
+      <HoldRing progress={progress} variant="danger" size={36} />
       <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex' }}>{POWER_SVG}</span>
       {showHint && (
         <span

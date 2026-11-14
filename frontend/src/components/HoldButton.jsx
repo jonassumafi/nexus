@@ -183,11 +183,16 @@ export default function HoldButton({
   );
 }
 
-// Small helper for icon-sized buttons that want a radial ring overlay.
-// Render alongside the icon to show hold progress.
-export function HoldRing({ progress, variant = 'danger', size = 26 }) {
+// Radial progress ring overlay for icon-sized hold buttons. Centers on
+// the parent via translate(-50%,-50%) so it works regardless of parent
+// layout (grid, flex, inline-block, etc.) and regardless of whether
+// the parent has a border or padding. Pick a size that leaves visible
+// clearance around the icon — the circle should circumscribe the
+// icon, not sit on top of it. Icon ≈14 px → size ≥ 30; icon ≈16 px →
+// size ≥ 34.
+export function HoldRing({ progress, variant = 'danger', size = 32, strokeWidth = 2 }) {
   const stroke = variant === 'danger' ? 'var(--red, #FF5544)' : 'var(--acc, #66AADD)';
-  const r = (size - 3) / 2;
+  const r = (size - strokeWidth) / 2;
   const c = 2 * Math.PI * r;
   const dash = c * progress;
   return (
@@ -195,13 +200,17 @@ export function HoldRing({ progress, variant = 'danger', size = 26 }) {
       aria-hidden="true"
       width={size} height={size} viewBox={`0 0 ${size} ${size}`}
       style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        transform: 'rotate(-90deg)',
+        position: 'absolute',
+        top: '50%', left: '50%',
+        width: size, height: size,
+        transform: 'translate(-50%, -50%) rotate(-90deg)',
+        pointerEvents: 'none',
       }}
     >
       <circle
         cx={size / 2} cy={size / 2} r={r}
-        fill="none" stroke={stroke} strokeWidth="2"
+        fill="none" stroke={stroke} strokeWidth={strokeWidth}
+        strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
         style={{ transition: 'stroke-dasharray 60ms linear' }}
       />

@@ -60,19 +60,23 @@ function DisconnectHoldButton({ powerBtnRef, onConfirm }) {
     hintText: 'Hold to disconnect',
     onComplete: () => { try { onConfirm?.(); } catch {} },
   });
+  // Larger than a normal .ib.sm so the 32-px ring circumscribes the
+  // 14-px power icon with clear visible clearance instead of sitting
+  // right on top of it.
   return (
     <button
       ref={powerBtnRef}
-      className="ib sm dng"
+      className="ib dng"
       data-tip={showHint ? 'Hold to disconnect' : 'Hold to disconnect'}
       aria-label="Disconnect (hold 6 seconds)"
       {...bindProps}
       style={{
         position: 'relative',
+        width: 32, height: 32,
         ...(holding ? { color: 'var(--red)', borderColor: 'var(--red)' } : null),
       }}
     >
-      <HoldRing progress={progress} variant="danger" size={26} />
+      <HoldRing progress={progress} variant="danger" size={32} />
       <I name="power" />
     </button>
   );
