@@ -2588,6 +2588,15 @@ export default function Dashboard() {
   const [openSettingsTuner, setOpenSettingsTuner] = useState(null); // 'crew' | 'command' | null
   const [isMuted, setIsMuted]               = useState(false);
   const [micSensitivity, setMicSensitivity] = useState(100);
+
+  // Tray menu "Toggle mic mute" flips the dashboard mute from outside
+  // the window. Matches the in-view button so Radio-only + Full see
+  // consistent state.
+  useEffect(() => {
+    const api = typeof window !== 'undefined' ? window.electronAPI : null;
+    if (!api?.onTrayMuteToggle) return;
+    return api.onTrayMuteToggle(() => setIsMuted(m => !m));
+  }, []);
   // Transport selection — no longer user-toggleable. The UDP sibling build
   // is detected via the UDP Electron shell appending ?udp=1 to the URL, or
   // (in a pure-UDP Vite bundle, if we ever ship one) via VITE_NEXUS_UDP_ONLY.

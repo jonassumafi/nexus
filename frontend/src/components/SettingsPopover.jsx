@@ -51,6 +51,26 @@ export default function SettingsPopover({ anchorRef, onClose, onOpenRadioPicker,
   };
   const resetZoom = () => handleZoom(100);
 
+  // "When I close the window" — 'quit' (default) or 'tray'. Stored in
+  // prefs.json. Applied by main.js on the next X-click; no restart
+  // needed.
+  const [closeBehavior, setCloseBehavior] = useState('quit');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const v = await electron?.prefs?.get?.('closeBehavior');
+        if (cancelled) return;
+        setCloseBehavior(v === 'tray' ? 'tray' : 'quit');
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [electron]);
+  const pickCloseBehavior = async (next) => {
+    setCloseBehavior(next);
+    try { await electron?.prefs?.set?.('closeBehavior', next); } catch {}
+  };
+
   // Hardware acceleration — read from the Electron prefs file so
   // we can offer a Restart-now button when the user flips it.
   const [hwAccel, setHwAccel] = useState(null); // null = unknown yet
@@ -182,6 +202,53 @@ export default function SettingsPopover({ anchorRef, onClose, onOpenRadioPicker,
           />
           <div style={{ fontSize: 10, color: 'var(--fg3)', marginTop: 2 }}>
             Shortcuts: Ctrl + = / Ctrl + - / Ctrl + 0
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--rim0, #1A3A50)', margin: '4px 0 0' }} />
+
+        {/* "When I close the window" — Quit completely (default) vs
+            Minimize to tray. Writes closeBehavior pref; main.js reads
+            it on every X-click. First two times someone quits via X
+            with the default, the shell shows a one-off notification
+            pointing at this setting. */}
+        <div>
+          <div style={{
+            fontSize: 11, color: 'var(--fg2)', letterSpacing: '0.04em',
+            marginBottom: 6,
+          }}>
+            When I close the window
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[
+              { v: 'quit', label: 'Quit completely' },
+              { v: 'tray', label: 'Minimize to tray' },
+            ].map(opt => {
+              const active = closeBehavior === opt.v;
+              return (
+                <button
+                  key={opt.v}
+                  onClick={() => pickCloseBehavior(opt.v)}
+                  style={{
+                    flex: 1,
+                    background: active
+                      ? 'color-mix(in srgb, var(--acc, #66AADD) 22%, var(--bg2, #0A1828))'
+                      : 'var(--bg2, #0A1828)',
+                    border: `1px solid ${active ? 'var(--acc, #66AADD)' : 'var(--rim1, #2A5A7A)'}`,
+                    color: active ? 'var(--fg0)' : 'var(--fg2)',
+                    font: '600 11px Inter, system-ui, sans-serif',
+                    padding: '6px 8px',
+                    borderRadius: 3,
+                    cursor: 'pointer',
+                  }}
+                >{opt.label}</button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--fg3)', marginTop: 4, lineHeight: 1.35 }}>
+            {closeBehavior === 'tray'
+              ? 'Radios keep running when the window is closed. Use the tray icon to re-open or quit.'
+              : 'Closing the window quits Nexus.'}
           </div>
         </div>
 

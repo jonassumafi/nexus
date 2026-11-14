@@ -11,7 +11,7 @@
 //   • Always-on-top pin
 //   • Native OS-level global PTT key hook (press + release)
 
-const { app, BrowserWindow, session, ipcMain, screen, globalShortcut, Menu, Tray } = require('electron');
+const { app, BrowserWindow, session, ipcMain, screen, globalShortcut, Menu, Tray, Notification } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
@@ -78,6 +78,38 @@ if (_prefsAtStart.hardwareAcceleration === false) {
 // window; actual quit only happens via the tray menu or an auto-update
 // restart, which both set this true before firing app.quit().
 let isQuitting = false;
+
+// "When I close the window": 'quit' (default — Quit completely) or
+// 'tray' (Minimize to tray and keep radios running). Stored in
+// prefs.json. The first two times someone clicks X with the default
+// setting, we pop a Windows notification pointing out the tray option.
+function getCloseBehavior() {
+  const v = loadPrefs().closeBehavior;
+  return v === 'tray' ? 'tray' : 'quit';
+}
+function getTrayNoticeCount() {
+  const n = Number(loadPrefs().closeBehaviorNoticeCount);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+function bumpTrayNoticeCount() {
+  savePrefs({ closeBehaviorNoticeCount: getTrayNoticeCount() + 1 });
+}
+function maybeShowTrayHint() {
+  const count = getTrayNoticeCount();
+  if (count >= 2) return;
+  bumpTrayNoticeCount();
+  try {
+    if (!Notification.isSupported || !Notification.isSupported()) return;
+    const n = new Notification({
+      title: 'Nexus quit',
+      body: 'Tip: you can keep Nexus running in the tray instead. Settings → "When I close the window" → Minimize to tray.',
+      silent: true,
+    });
+    n.show();
+  } catch (err) {
+    console.warn('[tray-hint] notification failed:', err?.message);
+  }
+}
 
 // UDP-only sibling build. Set at build time via electron-builder.udp.yml's
 // cross-env, or detected at runtime via the product name baked in by
@@ -387,11 +419,21 @@ function createWindow() {
   mainWindow.on('resize', persistBounds);
   mainWindow.on('closed', () => { mainWindow = null; stopKeyHook(); });
 
-  // Close-to-tray: Discord-style. X hides the window but keeps the app
-  // running in the tray. The user has to pick Quit from the tray menu
-  // (or an auto-update restart sets isQuitting=true) to actually exit.
+  // Close respects the "When I close the window" setting. Default is
+  // Quit completely (one shared cleanup routine runs). Minimize to tray
+  // keeps radios running. First two times someone quits via X with the
+  // default, we pop a one-off Windows notification pointing at the tray
+  // option — after two, we never nag again.
   mainWindow.on('close', (e) => {
-    if (!isQuitting) { e.preventDefault(); mainWindow.hide(); }
+    if (isQuitting) return;
+    if (getCloseBehavior() === 'tray') {
+      e.preventDefault();
+      mainWindow.hide();
+      return;
+    }
+    e.preventDefault();
+    maybeShowTrayHint();
+    requestQuit('window-close');
   });
 
   // Maximize-to-work-area fix. Frameless Electron windows overshoot
@@ -475,10 +517,18 @@ function createRadioWindow() {
   radioWindow.on('move', persistRadioBounds);
   radioWindow.on('closed', () => { radioWindow = null; });
 
-  // Close-to-tray parity with mainWindow: X hides, actual quit only
-  // happens via tray or isQuitting.
+  // Mirrors mainWindow close logic: respect "When I close the window"
+  // setting, show the tray-hint the first two times when default=quit.
   radioWindow.on('close', (e) => {
-    if (!isQuitting) { e.preventDefault(); radioWindow.hide(); }
+    if (isQuitting) return;
+    if (getCloseBehavior() === 'tray') {
+      e.preventDefault();
+      radioWindow.hide();
+      return;
+    }
+    e.preventDefault();
+    maybeShowTrayHint();
+    requestQuit('window-close');
   });
 
   radioWindow.on('page-title-updated', (e) => e.preventDefault());
@@ -1211,43 +1261,52 @@ function registerSafeMode() {
   }
 }
 
-// System tray — right-click menu with mode options + quit.
-// Lets the user escape a broken state even if the renderer is unresponsive.
+// System tray — Open dashboard, Radio-only, Toggle mute, Quit. Icon
+// exists in both views (Full dashboard + Radio-only). Clicking the
+// icon opens the dashboard; the right-click menu covers everything
+// else. Quit routes through the shared cleanup routine.
 let tray = null;
+function showAndFocusActive() {
+  try {
+    const w = activeWindow();
+    if (!w) return;
+    if (!w.isVisible()) w.show();
+    if (w.isMinimized()) w.restore();
+    w.focus();
+  } catch {}
+}
+function openDashboardFromTray() {
+  if (currentMode !== 'full') {
+    try { switchMode('full'); } catch {}
+  }
+  showAndFocusActive();
+}
 function createTray() {
   try {
     const iconPath = path.join(__dirname, '..', 'build', 'icon.png');
     tray = new Tray(iconPath);
     tray.setToolTip('Nexus Companion');
     const menu = Menu.buildFromTemplate([
-      { label: 'Full dashboard',   click: () => switchMode('full') },
-      { label: 'Radio-only (compact)', click: () => switchMode('radio') },
-      { type: 'separator' },
-      { label: 'Show window', click: () => {
-          try {
-            const w = activeWindow();
-            w?.show(); w?.focus();
-          } catch {}
+      { label: 'Open dashboard',   click: () => openDashboardFromTray() },
+      { label: 'Radio-only',       click: () => {
+          try { switchMode('radio'); } catch {}
+          showAndFocusActive();
         } },
-      { label: 'Reset layout', click: () => {
+      { type: 'separator' },
+      { label: 'Toggle mic mute',  click: () => {
           try {
-            // Also unpins every mode: a pinned window is the usual reason
-            // someone reaches for "Reset layout".
-            saveState({ mode: 'full', full: {}, radio: {}, radioExpanded: false,
-              pinned: false, pinnedModes: { full: false, radio: false } });
-            switchMode('full', { force: true });
+            for (const w of BrowserWindow.getAllWindows()) {
+              if (w.isDestroyed()) continue;
+              w.webContents.send('nexus:tray:mute-toggle');
+            }
           } catch {}
         } },
       { type: 'separator' },
-      { label: 'Quit Nexus', click: () => requestQuit('tray-menu') },
+      { label: 'Quit Nexus',       click: () => requestQuit('tray-menu') },
     ]);
     tray.setContextMenu(menu);
-    tray.on('click', () => {
-      try {
-        const w = activeWindow();
-        w?.show(); w?.focus();
-      } catch {}
-    });
+    // Clicking the tray icon always opens the dashboard, per spec.
+    tray.on('click', openDashboardFromTray);
   } catch (err) {
     console.error('[main] tray failed:', err.message);
   }

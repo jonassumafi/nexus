@@ -1,4 +1,6 @@
 [
+  { "id": 159, "version": "0.9.29", "date": "2026-11-14",
+    "tag": "new", "text": "New setting: \"When I close the window\" — Quit completely (default) or Minimize to tray. Tray menu gains Open dashboard, Radio-only, Toggle mic mute and Quit" },
   { "id": 158, "version": "0.9.28", "date": "2026-11-14",
     "tag": "new", "text": "Tuning a frequency now plays a Signal Lock animation — digits scramble and resolve left-to-right while a bar locks in underneath" },
   { "id": 157, "version": "0.9.28", "date": "2026-11-14",

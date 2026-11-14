@@ -477,6 +477,16 @@ export default function RadioTwinTiles() {
     crew.setMuted?.(muted);
     cmd.setMuted?.(muted);
   }, [muted, crew, cmd]);
+
+  // Tray menu "Toggle mic mute" — flips the same muted state the
+  // in-view mute button touches, with matching sound.
+  useEffect(() => {
+    const api = typeof window !== 'undefined' ? window.electronAPI : null;
+    if (!api?.onTrayMuteToggle) return;
+    return api.onTrayMuteToggle(() => {
+      setMuted(m => { (m ? playUnmute : playMute)(); return !m; });
+    });
+  }, []);
   useEffect(() => {
     if (crew.micPermission === 'prompt' || crew.micPermission === 'denied') crew.requestMicPermission?.();
   }, [crew.micPermission]); // eslint-disable-line react-hooks/exhaustive-deps

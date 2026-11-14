@@ -136,6 +136,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Detachable Global Chat popout (frameless, pinnable, adjustable opacity).
+  // Tray → renderer: mute-toggle request from the system-tray menu.
+  // Fired on every open webContents; whichever component owns the
+  // mute state (RadioTwinTiles today) toggles.
+  onTrayMuteToggle(handler) {
+    const listener = () => handler();
+    ipcRenderer.on('nexus:tray:mute-toggle', listener);
+    return () => ipcRenderer.removeListener('nexus:tray:mute-toggle', listener);
+  },
+
   chatPopout: {
     open:        () => ipcRenderer.invoke('nexus:chatPopout:open'),
     close:       () => ipcRenderer.invoke('nexus:chatPopout:close'),
