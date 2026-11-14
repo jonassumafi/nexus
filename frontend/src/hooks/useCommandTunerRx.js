@@ -587,7 +587,15 @@ export function useCommandTunerRx(opts = {}) {
         // receive handler.
         if (prev.length === 0 && !isPTTActive) {
           try {
-            const rc = getRadioChrome(audioCtxRef.current);
+            const ctx = audioCtxRef.current;
+            // Chromium auto-suspends inactive contexts. Without this
+            // resume the ding-ding goes to a frozen context and no
+            // peer hears the incoming cue, even though the transmit
+            // self-cue fired fine on the sender's side.
+            if (ctx && ctx.state === 'suspended') {
+              try { ctx.resume().catch(() => {}); } catch {}
+            }
+            const rc = getRadioChrome(ctx);
             playCommandKeyUp(rc);
           } catch {}
         }

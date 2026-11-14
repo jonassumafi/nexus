@@ -11,7 +11,7 @@
     },
     "command": {
       "name": "Command",
-      "description": "Two single-tone dings (ding-ding) preceding the click — flags priority traffic so you can tell the Command channel apart from Crew at a glance.",
+      "description": "Four single-tone dings (ding-ding-ding-ding) preceding the click — flags priority traffic so you can tell the Command channel apart from Crew at a glance.",
       "pre": {
         "kind": "chord",
         "freqs": [1500],
@@ -20,7 +20,7 @@
         "attackMs": 6,
         "releaseMs": 60,
         "waveform": "sine",
-        "repeat": 2,
+        "repeat": 4,
         "gapMs": 170
       },
       "up":   ["/sounds/radio/RADIO_TRANS_START.wav"],
