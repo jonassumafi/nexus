@@ -406,7 +406,20 @@ function createWindow() {
   // fades are skipped because setOpacity fights Windows' native
   // minimize animation on a frameless window (per spec: "if the
   // custom title bar prevents it, skip it").
-  mainWindow.once('ready-to-show', () => {
+  //
+  // ready-to-show waits for the web app's first paint, which takes ~7 s
+  // on a cold cache (the cache is cleared every launch) and longer when
+  // the server is unreachable. Nothing on screen for that long reads as
+  // "didn't launch", so reveal after REVEAL_FALLBACK_MS regardless; the
+  // window's dark backgroundColor shows until the page paints (no white).
+  const REVEAL_FALLBACK_MS = 1000;
+  let revealed = false;
+  const reveal = () => {
+    if (revealed || !mainWindow || mainWindow.isDestroyed()) return;
+    revealed = true;
+    clearTimeout(revealTimer);
+    // Already shown by the tray / a second launch: don't fade from 0.
+    if (mainWindow.isVisible()) { try { mainWindow.setOpacity(1); } catch {} return; }
     try {
       mainWindow.setOpacity(0);
       mainWindow.show();
@@ -423,7 +436,9 @@ function createWindow() {
       console.warn('[main] fade-in failed:', err?.message);
       try { mainWindow.setOpacity(1); mainWindow.show(); } catch {}
     }
-  });
+  };
+  const revealTimer = setTimeout(reveal, REVEAL_FALLBACK_MS);
+  mainWindow.once('ready-to-show', reveal);
 
   mainWindow.webContents.on('did-finish-load', () => {
     // Fresh state, not createWindow's snapshot: this fires again on every
