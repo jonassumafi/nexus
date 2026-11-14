@@ -120,7 +120,7 @@ function Companion() {
   // to 100 for new installs and rescales legacy pre-quadratic values.
   const [rxVolume, setRxVolume] = useState(() => {
     const v = Number(localStorage.getItem('nexus_rx_volume'));
-    return Number.isFinite(v) && v >= 0 && v <= 150 ? v : 100;
+    return Number.isFinite(v) && v >= 0 && v <= 150 ? v : 20;
   });
   useEffect(() => {
     try { localStorage.setItem('nexus_rx_volume', String(rxVolume)); } catch {}

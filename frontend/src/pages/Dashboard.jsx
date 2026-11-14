@@ -2623,8 +2623,8 @@ export default function Dashboard() {
   const [rxVolume, setRxVolume] = useState(() => {
     try {
       const v = Number(localStorage.getItem('nexus_rx_volume'));
-      return Number.isFinite(v) && v >= 0 && v <= 150 ? v : 100;
-    } catch { return 100; }
+      return Number.isFinite(v) && v >= 0 && v <= 150 ? v : 20;
+    } catch { return 20; }
   });
   useEffect(() => {
     try { localStorage.setItem('nexus_rx_volume', String(rxVolume)); } catch {}

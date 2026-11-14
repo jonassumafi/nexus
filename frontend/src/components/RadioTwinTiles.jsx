@@ -431,7 +431,7 @@ export default function RadioTwinTiles() {
   });
   const [rxVolume, setRxVolume] = useState(() => {
     const v = Number(localStorage.getItem('nexus_rx_volume'));
-    return Number.isFinite(v) && v >= 0 ? v : 100;
+    return Number.isFinite(v) && v >= 0 ? v : 20;
   });
   const [muted, setMuted] = useState(false);
 

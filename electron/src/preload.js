@@ -144,4 +144,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     minimize:    () => ipcRenderer.invoke('nexus:chatPopout:minimize'),
     isOpen:      () => ipcRenderer.invoke('nexus:chatPopout:isOpen'),
   },
+
+  // App preferences (persisted to a small JSON file next to userData).
+  // Currently just hardwareAcceleration — flipped off, Electron reads
+  // this before app.whenReady() on next launch and calls
+  // app.disableHardwareAcceleration().
+  prefs: {
+    get: (key) => ipcRenderer.invoke('nexus:prefs:get', key),
+    set: (key, value) => ipcRenderer.invoke('nexus:prefs:set', key, value),
+  },
+  app: {
+    relaunch: () => ipcRenderer.invoke('nexus:app:relaunch'),
+  },
 });

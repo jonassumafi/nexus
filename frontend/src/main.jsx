@@ -53,11 +53,15 @@ try {
   if (localStorage.getItem('nexus_rx_volume_v2') !== '1') {
     const raw = localStorage.getItem('nexus_rx_volume');
     const old = Number(raw);
-    let next = 100;
+    // Default landed at 20 % in v0.9.27 — much quieter so new
+    // operators aren't blasted on first tune. Returning players who
+    // had a saved value keep whatever they had (the migration only
+    // rescales existing slider values to match the new curve).
+    let next = 20;
     if (Number.isFinite(old) && old >= 0 && old <= 150) {
       const oldAudio = Math.min(1, 1.8 * (old / 100));
       next = Math.round(100 * Math.sqrt(oldAudio));
-      if (!Number.isFinite(next) || next < 0) next = 100;
+      if (!Number.isFinite(next) || next < 0) next = 20;
       if (next > 150) next = 150;
     }
     localStorage.setItem('nexus_rx_volume', String(next));

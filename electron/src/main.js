@@ -14,9 +14,59 @@
 const { app, BrowserWindow, session, ipcMain, screen, globalShortcut, Menu, Tray } = require('electron');
 const path = require('path');
 const fs   = require('fs');
+const os   = require('os');
 const { autoUpdater } = require('electron-updater');
 
 const NEXUS_URL = process.env.NEXUS_URL || 'https://nexus-missions.space';
+
+// ─── Preferences file (read BEFORE whenReady) ────────────────────────────
+// A small JSON file for settings that must be applied before the app is
+// ready — currently just the hardware-acceleration toggle. We can't use
+// app.getPath('userData') here reliably on every Electron version, so
+// we compute the path ourselves using the OS convention Electron uses
+// for userData (matching productName / name in package.json).
+const APP_DIR_NAME = 'Nexus Companion';
+function prefsDir() {
+  const home = os.homedir();
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), APP_DIR_NAME);
+  }
+  if (process.platform === 'darwin') {
+    return path.join(home, 'Library', 'Application Support', APP_DIR_NAME);
+  }
+  return path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), APP_DIR_NAME);
+}
+const PREFS_PATH = () => path.join(prefsDir(), 'prefs.json');
+function loadPrefs() {
+  try { return JSON.parse(fs.readFileSync(PREFS_PATH(), 'utf8')) || {}; }
+  catch { return {}; }
+}
+function savePrefs(partial) {
+  try {
+    const prev = loadPrefs();
+    const next = { ...prev, ...partial };
+    fs.mkdirSync(prefsDir(), { recursive: true });
+    fs.writeFileSync(PREFS_PATH(), JSON.stringify(next, null, 2));
+    return next;
+  } catch (err) {
+    console.error('[prefs] save failed:', err.message);
+    return null;
+  }
+}
+
+// Read the HW-accel pref BEFORE whenReady — Electron requires
+// disableHardwareAcceleration() to be called pre-ready. Default is ON
+// (i.e. do nothing). Players flip this when their compositor leaves
+// ghosted paint artifacts.
+const _prefsAtStart = loadPrefs();
+if (_prefsAtStart.hardwareAcceleration === false) {
+  try {
+    app.disableHardwareAcceleration();
+    console.log('[gpu] hardware acceleration DISABLED via prefs.json');
+  } catch (err) {
+    console.error('[gpu] disableHardwareAcceleration failed:', err.message);
+  }
+}
 
 // Close-to-tray flag. The X button on the custom title bar hides the
 // window; actual quit only happens via the tray menu or an auto-update
@@ -915,6 +965,14 @@ function openChatPopout() {
     title: 'Nexus Chat',
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     alwaysOnTop: false,
+    // v0.9.27 — compositing fix: don't show until the first paint has
+    // committed. Prior builds made the window visible immediately with
+    // transparent:true, and on some GPUs the initial empty-paint
+    // transition left ghost rectangles / smeared text behind the
+    // panel. paintWhenInitiallyHidden ensures the renderer paints
+    // before `show`; the once('ready-to-show') handler flips it on.
+    show: false,
+    paintWhenInitiallyHidden: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -924,6 +982,14 @@ function openChatPopout() {
     },
   });
   chatPopout.loadURL(urlFor('/chat-popout'));
+  chatPopout.once('ready-to-show', () => {
+    if (!chatPopout || chatPopout.isDestroyed()) return;
+    try { chatPopout.show(); chatPopout.focus(); } catch {}
+    // Nudge a repaint after show so the compositor flushes any
+    // stale layer from pre-show state. Harmless when the first
+    // paint was already clean.
+    try { chatPopout.webContents.invalidate(); } catch {}
+  });
   chatPopout.on('closed', () => { chatPopout = null; });
 }
 
@@ -932,6 +998,9 @@ ipcMain.handle('nexus:chatPopout:close',   () => { try { chatPopout?.close(); } 
 ipcMain.handle('nexus:chatPopout:setOpacity', (_e, value) => {
   const v = Math.max(0.15, Math.min(1, Number(value) || 1));
   try { chatPopout?.setOpacity(v); } catch {}
+  // Force a repaint so the new opacity doesn't stack visually with
+  // whatever the compositor was last showing.
+  try { chatPopout?.webContents?.invalidate(); } catch {}
   return v;
 });
 ipcMain.handle('nexus:chatPopout:togglePin', () => {
@@ -942,6 +1011,29 @@ ipcMain.handle('nexus:chatPopout:togglePin', () => {
 });
 ipcMain.handle('nexus:chatPopout:minimize', () => { try { chatPopout?.minimize(); } catch {} });
 ipcMain.handle('nexus:chatPopout:isOpen',   () => !!chatPopout && !chatPopout.isDestroyed());
+
+// ─── App preferences file ────────────────────────────────────────────────
+// Backs settings that need to survive restarts and, in the case of
+// hardwareAcceleration, be read before app.whenReady(). Handler keeps
+// the renderer side one call away from a get/set/relaunch cycle.
+ipcMain.handle('nexus:prefs:get', (_e, key) => {
+  const p = loadPrefs();
+  return key ? p[key] : p;
+});
+ipcMain.handle('nexus:prefs:set', (_e, key, value) => {
+  if (!key) return false;
+  savePrefs({ [key]: value });
+  return true;
+});
+ipcMain.handle('nexus:app:relaunch', () => {
+  try {
+    isQuitting = true;
+    app.relaunch();
+    app.exit(0);
+  } catch (err) {
+    console.error('[app:relaunch] failed:', err.message);
+  }
+});
 
 // ─── Safe-mode recovery ───────────────────────────────────────────────────
 // If a user ends up stuck in a broken mode (e.g. the renderer errors out
@@ -1061,6 +1153,19 @@ if (process.platform === 'win32') {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
+  // Diagnostics: log GPU feature status + primary display scale so a
+  // tester's compositing bug can be reasoned about from the log file.
+  // Cheap, one-shot.
+  try {
+    const gpu = app.getGPUFeatureStatus?.();
+    const d = screen.getPrimaryDisplay();
+    console.log('[gpu] feature status:', JSON.stringify(gpu));
+    console.log('[gpu] scaleFactor=' + d.scaleFactor + ' size=' + d.size.width + 'x' + d.size.height);
+    console.log('[gpu] hardwareAcceleration pref=' + (_prefsAtStart.hardwareAcceleration === false ? 'OFF' : 'ON'));
+  } catch (err) {
+    console.error('[gpu diag]', err.message);
+  }
+
   createWindow();
   startKeyHook();
   registerSafeMode();

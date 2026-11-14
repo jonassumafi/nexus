@@ -20,10 +20,15 @@ import { useSocketContext } from '../context/SocketContext';
 import { playKeystroke, preloadKeystroke } from '../utils/keystrokeSfx';
 import FriendMarkerIcon from './FriendMarkerIcon';
 import OpacityIcon from './OpacityIcon';
+import {
+  readWindowOpacity,
+  writeWindowOpacity,
+  onWindowOpacityChange,
+  WINDOW_OPACITY_MIN,
+} from '../utils/windowOpacity';
 
 const UNREAD_KEY  = 'nexus_chat_last_seen_ts';
 const RECT_KEY    = 'nexus_chat_popover_rect';
-const OPACITY_KEY = 'nexus_chat_opacity';
 const SEEN_DETACH_KEY = 'nexus_chat_seen_detach_hint';
 
 const MIN_W = 300, MIN_H = 240;
@@ -53,17 +58,11 @@ function readRect() {
 function writeRect(r) {
   try { localStorage.setItem(RECT_KEY, JSON.stringify(r)); } catch {}
 }
-// Floor opacity at 0.4 — low enough to see through, high enough that the
-// chat stays legible and clickable. Earlier floor of 0.15 let users drag
-// the slider to a point where the panel appeared only as a faded ghost
-// and was effectively unclickable.
-const OPACITY_MIN = 0.4;
-function readOpacity() {
-  try { const v = Number(localStorage.getItem(OPACITY_KEY)); return v >= OPACITY_MIN && v <= 1 ? v : 1; } catch { return 1; }
-}
-function writeOpacity(v) {
-  try { localStorage.setItem(OPACITY_KEY, String(v)); } catch {}
-}
+// Opacity floor / store now lives in utils/windowOpacity — shared with
+// the main Settings panel's Window-opacity slider so both affordances
+// read and write the same value. Range 0.25–1.0.
+const OPACITY_MIN = WINDOW_OPACITY_MIN;
+function readOpacity() { return readWindowOpacity(); }
 
 function readLastSeen()  { try { return Number(localStorage.getItem(UNREAD_KEY)) || 0; } catch { return 0; } }
 function writeLastSeen(ts) { try { localStorage.setItem(UNREAD_KEY, String(ts)); } catch {} }
@@ -211,11 +210,16 @@ export default function GlobalChat({ open, onOpenChange, anchorRef, markSeen, mo
   // Electron so the whole BrowserWindow becomes transparent (which is
   // what the user needs when it's overlaying Star Citizen).
   useEffect(() => {
-    writeOpacity(opacity);
+    writeWindowOpacity(opacity);
     if (isPopout && electron?.chatPopout?.setOpacity) {
       electron.chatPopout.setOpacity(opacity).catch(() => {});
     }
   }, [opacity, isPopout, electron]);
+
+  // Keep in sync with the Settings-panel Window-opacity slider.
+  useEffect(() => {
+    return onWindowOpacityChange((v) => { setOpacity(v); });
+  }, []);
 
   const send = useCallback(async () => {
     const text = draft.trim();
