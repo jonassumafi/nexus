@@ -4,6 +4,7 @@ import api from '../services/api';
 import { buildSpacesuitChain } from '../utils/spacesuitFilter';
 import { getRadioChrome, getOutboundDelay, channelColor } from '../utils/radioChrome';
 import { buildSrsChain, ensureCvsdWorkletLoaded } from '../utils/srsChain';
+import { addOrReplacePeer, dedupePeerList } from '../utils/peerList';
 
 // Apply a per-frequency color on top of the operator's base profile.
 // Idempotent — safe to call every time the freq changes or chain rebuilds.
@@ -727,7 +728,7 @@ export function useRadioConnection({
     const onRoomPeers = async ({ frequency, tunerId, peers: list }) => {
       if ((tunerId ?? 'right') !== 'right') return;
       if (frequency !== currentFreqRef.current) return;
-      setPeers(Array.isArray(list) ? list : []);
+      setPeers(dedupePeerList(list));
       // Initiate offers to all existing peers (full-mesh).
       for (const peer of (list || [])) {
         try {
@@ -748,10 +749,7 @@ export function useRadioConnection({
 
     const onPeerJoined = (peer) => {
       if (!forThisTuner(peer)) return;
-      setPeers(prev => {
-        if (prev.some(p => p.socketId === peer.socketId)) return prev;
-        return [...prev, peer];
-      });
+      setPeers(prev => addOrReplacePeer(prev, peer));
       new Audio('/sounds/freq_connect.mp3').play().catch(() => {});
       // The new peer initiates the offer to us — no action needed here.
     };

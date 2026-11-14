@@ -25,6 +25,7 @@ import CUE_SETS from '../data/cueSets.json';
 import { buildSpacesuitChain } from '../utils/spacesuitFilter';
 import { buildSrsChain, ensureCvsdWorkletLoaded } from '../utils/srsChain';
 import { getRadioChrome } from '../utils/radioChrome';
+import { addOrReplacePeer, dedupePeerList } from '../utils/peerList';
 
 const TUNER_ID = 'left';
 const COMMAND_CUE = CUE_SETS?.sets?.command || null;
@@ -496,7 +497,7 @@ export function useCommandTunerRx(opts = {}) {
     const onRoomPeers = async ({ frequency, tunerId, peers: list }) => {
       if (tunerId !== TUNER_ID) return;
       if (frequency !== currentFreqRef.current) return;
-      setPeers(Array.isArray(list) ? list : []);
+      setPeers(dedupePeerList(list));
       for (const peer of (list || [])) {
         try {
           const pc = await createPeerConnection(peer.socketId);
@@ -514,9 +515,9 @@ export function useCommandTunerRx(opts = {}) {
 
     const onPeerJoined = (payload) => {
       if (!matches(payload)) return;
-      setPeers(prev => prev.find(p => p.socketId === payload.socketId) ? prev : [...prev, {
+      setPeers(prev => addOrReplacePeer(prev, {
         userId: payload.userId, citizenName: payload.citizenName, socketId: payload.socketId,
-      }]);
+      }));
       try { new Audio('/sounds/freq_connect.mp3').play().catch(() => {}); } catch {}
     };
 

@@ -6,6 +6,7 @@ import { getRadioChrome, getOutboundDelay, channelColor } from '../utils/radioCh
 import { buildSrsChain, ensureCvsdWorkletLoaded } from '../utils/srsChain';
 import { createUdpVoiceTx } from '../utils/udpVoiceTx';
 import { createUdpVoiceRx } from '../utils/udpVoiceRx';
+import { addOrReplacePeer, dedupePeerList } from '../utils/peerList';
 
 // Parallel Crew hook that uses the UDP relay instead of WebRTC. The DSP
 // chain (spacesuit → SRS → chrome click/bed/SELCAL/channel color) is
@@ -673,15 +674,12 @@ export function useRadioConnectionUDP({
     const onRoomPeers = ({ frequency, tunerId, peers: list }) => {
       if ((tunerId ?? 'right') !== 'right') return;
       if (frequency !== currentFreqRef.current) return;
-      setPeers(Array.isArray(list) ? list : []);
+      setPeers(dedupePeerList(list));
     };
 
     const onPeerJoined = (peer) => {
       if (!forThisTuner(peer)) return;
-      setPeers(prev => {
-        if (prev.some(p => p.socketId === peer.socketId)) return prev;
-        return [...prev, peer];
-      });
+      setPeers(prev => addOrReplacePeer(prev, peer));
       new Audio('/sounds/freq_connect.mp3').play().catch(() => {});
     };
 
