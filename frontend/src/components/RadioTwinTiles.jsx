@@ -904,6 +904,8 @@ export default function RadioTwinTiles() {
                     className="fi"
                     defaultValue={ch.freq}
                     maxLength={5}
+                    placeholder="50–350"
+                    title="Type a frequency between 50.0 and 350.0"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter')  { e.preventDefault(); commitFreq(ch.c, e.currentTarget.value); }
                       if (e.key === 'Escape') { setEditing(null); }

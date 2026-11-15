@@ -105,8 +105,8 @@ export default function FreqTuneInput({
           if (e.key === 'Escape') { onCancel?.(); e.currentTarget.blur(); }
         }}
         onBlur={fireCommit}
-        placeholder="---.-"
-        title="Type a frequency and press TUNE (or Enter)"
+        placeholder="50.0 – 350.0"
+        title="Type a frequency between 50.0 and 350.0, then press TUNE or Enter"
         style={{
           // Digits layer sits above the dot overlay.
           position: 'relative',
