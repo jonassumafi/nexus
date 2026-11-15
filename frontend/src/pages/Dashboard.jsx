@@ -3229,7 +3229,13 @@ export default function Dashboard() {
         <div ref={leftColumnRef} style={{
           position: 'relative',
           borderRight: `1px solid ${C.border}`,
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
+          // overflow:hidden on the outer + an inner overflow:auto on
+          // the mission list handles the normal case. minHeight:0 is
+          // the key that lets flex items actually shrink below their
+          // content size — without it, the inner scroller can be
+          // pushed below zero height and stops scrolling entirely.
+          overflow: 'hidden', minHeight: 0,
         }}>
           {!missionListCollapsed && (
             <ColumnResizeHandle side="right" columnRef={leftColumnRef} setWidth={setLeftWidth} />
@@ -3390,7 +3396,16 @@ export default function Dashboard() {
         <div ref={rightColumnRef} style={{
           position: 'relative',
           borderLeft: `1px solid ${C.border}`,
-          display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', height: '100%',
+          // Outer scroll for the right column — when the window is
+          // short, the radios stack can't fit next to the activity
+          // feed, so the whole column scrolls. The activity feed
+          // below keeps its own independent scroller (capped height)
+          // so mouse-wheel-over-feed scrolls the feed and
+          // mouse-wheel-over-radios scrolls the column. Native browser
+          // behavior handles the "which one do I scroll?" question
+          // based on what the pointer is hovering over.
+          overflow: 'hidden auto', minHeight: 0,
         }}>
           {!rightColCollapsed && (
             <ColumnResizeHandle side="left" columnRef={rightColumnRef} setWidth={setRightWidth} />
@@ -3467,7 +3482,17 @@ export default function Dashboard() {
               »
             </button>
           </div>
-          <div style={{ flex: feedCollapsed ? '0 0 auto' : 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{
+            // Cap the feed's own scroll area so it never consumes the
+            // whole right column — otherwise radios below get squeezed
+            // out of view and the operator has no path to them.
+            flex: feedCollapsed ? '0 0 auto' : '0 1 auto',
+            maxHeight: feedCollapsed ? undefined : '50vh',
+            overflowY: 'auto',
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
             <div className="sh">
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="live-dot" />
