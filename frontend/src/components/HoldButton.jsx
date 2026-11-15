@@ -183,37 +183,52 @@ export default function HoldButton({
   );
 }
 
-// Radial progress ring overlay for icon-sized hold buttons. Centers on
-// the parent via translate(-50%,-50%) so it works regardless of parent
-// layout (grid, flex, inline-block, etc.) and regardless of whether
-// the parent has a border or padding. Pick a size that leaves visible
-// clearance around the icon — the circle should circumscribe the
-// icon, not sit on top of it. Icon ≈14 px → size ≥ 30; icon ≈16 px →
-// size ≥ 34.
-export function HoldRing({ progress, variant = 'danger', size = 32, strokeWidth = 2 }) {
-  const stroke = variant === 'danger' ? 'var(--red, #FF5544)' : 'var(--acc, #66AADD)';
-  const r = (size - strokeWidth) / 2;
-  const c = 2 * Math.PI * r;
-  const dash = c * progress;
+// Progress overlay for icon-sized hold buttons. Renders a conic-gradient
+// wedge that sweeps clockwise from 12 o'clock, filling the whole button
+// as progress climbs — much more visible than a thin SVG stroke at icon
+// sizes. Adds a brightening red halo as the hold nears completion so
+// the user feels the commitment build. Centered via translate so it
+// works regardless of parent layout.
+export function HoldRing({ progress, variant = 'danger', size = 32 }) {
+  const color = variant === 'danger' ? 'var(--red, #FF5544)' : 'var(--acc, #66AADD)';
+  // Clockwise fill. conic-gradient starts at 12 o'clock when
+  // from=0deg (default). 100% = full disc.
+  const deg = Math.max(0, Math.min(360, progress * 360));
+  const fillAlpha = 0.28 + 0.22 * progress; // gets more saturated near the end
+  const haloAlpha = 0.25 + 0.55 * progress;
   return (
-    <svg
-      aria-hidden="true"
-      width={size} height={size} viewBox={`0 0 ${size} ${size}`}
-      style={{
-        position: 'absolute',
-        top: '50%', left: '50%',
-        width: size, height: size,
-        transform: 'translate(-50%, -50%) rotate(-90deg)',
-        pointerEvents: 'none',
-      }}
-    >
-      <circle
-        cx={size / 2} cy={size / 2} r={r}
-        fill="none" stroke={stroke} strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${c}`}
-        style={{ transition: 'stroke-dasharray 60ms linear' }}
+    <>
+      {/* Pie-wedge fill behind the icon. */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          width: size, height: size,
+          transform: 'translate(-50%, -50%)',
+          borderRadius: '50%',
+          background: `conic-gradient(from -90deg, ` +
+            `color-mix(in srgb, ${color} ${Math.round(fillAlpha * 100)}%, transparent) 0deg, ` +
+            `color-mix(in srgb, ${color} ${Math.round(fillAlpha * 100)}%, transparent) ${deg}deg, ` +
+            `transparent ${deg}deg, transparent 360deg)`,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
       />
-    </svg>
+      {/* Outer halo that brightens as the hold approaches completion. */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: '50%', left: '50%',
+          width: size + 6, height: size + 6,
+          transform: 'translate(-50%, -50%)',
+          borderRadius: '50%',
+          boxShadow: `0 0 ${Math.round(4 + 10 * progress)}px color-mix(in srgb, ${color} ${Math.round(haloAlpha * 100)}%, transparent)`,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+    </>
   );
 }
