@@ -32,6 +32,7 @@ import RadioPickerModal from './RadioPickerModal';
 import api from '../services/api';
 import { playMute, playUnmute } from '../utils/audioFx';
 import HoldButton, { useHold, HoldRing } from './HoldButton';
+import TuneDotWave from './TuneDotWave';
 
 // Short mechanical cues shared with Full / Companion for the three
 // radio-chrome toggles that live in this overlay. Lock + power reuse
@@ -148,6 +149,7 @@ function injectStyles() {
   flex: 1; display: flex; align-items: center; gap: 6px;
   height: 24px; padding: 0 8px; border-radius: 4px;
   position: relative; white-space: nowrap; cursor: pointer;
+  overflow: hidden;              /* clip the tune dot-wave overlay */
   transition: border-color .15s, box-shadow .15s, opacity .2s;
 }
 .rov .chip.sel {
@@ -606,6 +608,7 @@ export default function RadioTwinTiles() {
   };
   const [shakeTick, setShakeTick]   = useState({ 0: 0, 1: 0 });  // refuse-shake pulses
   const [ringTick, setRingTick]     = useState({ 0: 0, 1: 0 });  // lock-ring pulses
+  const [tuneTick, setTuneTick]     = useState({ 0: 0, 1: 0 });  // tune-confirmation dot-wave swell
   const [lkbadTick, setLkbadTick]   = useState({ 0: 0, 1: 0 });  // lock-flash-red pulses
 
   const rootRef = useRef(null);
@@ -774,12 +777,19 @@ export default function RadioTwinTiles() {
     const n = Number(String(raw || '').trim().replace(',', '.'));
     if (!Number.isFinite(n) || n < 50 || n > 350) { setEditing(null); return; }
     const normalized = n.toFixed(1);
+    // Fire the tune-confirmation dot wave only when the committed
+    // frequency actually differs from what's currently tuned on this
+    // chip — never on the initial restore or a no-op commit.
+    const currentOnChip = c === 0 ? chips[0].freq : chips[1].freq;
+    if (String(currentOnChip) !== String(normalized)) {
+      setTuneTick(prev => ({ ...prev, [c]: prev[c] + 1 }));
+    }
     try {
       if (c === 0) crew.joinFrequency(normalized);
       else         cmd.joinFrequency(normalized);
     } catch {}
     setEditing(null);
-  }, [crew, cmd]);
+  }, [crew, cmd, chips]);
 
   const onWheel = (e) => {
     const chipEl = e.target.closest('[data-c]');
@@ -792,6 +802,9 @@ export default function RadioTwinTiles() {
     const current = Number(ch.freq);
     if (!Number.isFinite(current)) return;
     const next = (current + (e.deltaY < 0 ? 0.1 : -0.1)).toFixed(1);
+    if (String(ch.freq) !== String(next)) {
+      setTuneTick(prev => ({ ...prev, [c]: prev[c] + 1 }));
+    }
     try {
       if (c === 0) crew.joinFrequency(next);
       else         cmd.joinFrequency(next);
@@ -875,6 +888,7 @@ export default function RadioTwinTiles() {
                 }}
                 title={ch.label}
               >
+                <TuneDotWave trigger={tuneTick[ch.c]} />
                 <span
                   key={`ring-${ringTick[ch.c]}`}
                   className={`lkind pop1`}

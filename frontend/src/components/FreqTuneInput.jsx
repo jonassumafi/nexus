@@ -3,13 +3,14 @@
 // button gives an explicit click target so the user doesn't have to
 // click outside the box to finalize.
 //
-// Shared by every view that renders a radio tile (currently Full and
-// Radio-only; Companion was removed in v0.9.27).
+// Shared by every view that renders a full-size radio tile (Crew and
+// Command on the Full dashboard). The Radio-only strip uses its own
+// chip renderer in RadioTwinTiles.jsx.
 //
-// Note: the v0.9.28 "Signal Lock" scramble-and-resolve tune animation
-// was removed because it was broken. Tuning now commits directly with
-// no overlay. The radio engine behavior is unchanged — this was pure
-// cosmetics.
+// Visual overlay: TuneDotWave sits inside the glass behind the digits
+// and plays a soft swell when the user commits a new different
+// frequency. The digits themselves are never transformed, colored or
+// faded by this feature.
 //
 // Props:
 //   value          current frequency string (empty allowed while editing)
@@ -20,7 +21,8 @@
 //   lcdFontSize    override — compact modes want a smaller readout
 //   playTune       optional tune-click sound hook
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import TuneDotWave from './TuneDotWave';
 
 export default function FreqTuneInput({
   value,
@@ -33,21 +35,58 @@ export default function FreqTuneInput({
 }) {
   const inputRef = useRef(null);
 
+  // Tune-confirmation swell trigger. Only fires on value changes that
+  // follow a real user interaction with this input — guards against
+  // the initial value prop load (app start, reconnect, window show).
+  const [waveTrigger, setWaveTrigger] = useState(0);
+  const interactedRef = useRef(false);
+  const prevValRef    = useRef(value);
+  const firstRunRef   = useRef(true);
+  const markInteracted = () => { interactedRef.current = true; };
+
+  useEffect(() => {
+    const prev = prevValRef.current;
+    prevValRef.current = value;
+    if (firstRunRef.current) { firstRunRef.current = false; return; }
+    if (!interactedRef.current) return;   // not yet touched by this user
+    if (!value) return;                   // skip transitions into empty
+    if (prev === value) return;           // only on real differences
+    setWaveTrigger(t => t + 1);
+  }, [value]);
+
   return (
-    <div style={{
-      position: 'relative',
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-    }}>
+    <div
+      style={{
+        // position:relative so TuneDotWave's inset:0 lands here.
+        // overflow:hidden clips both the SVG corners and any digits
+        // to the rounded glass edge.
+        position: 'relative',
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        overflow: 'hidden',
+        borderRadius: 4,
+        // The glass look (background + inset shadow) now lives on the
+        // wrapper so the overlay can sit inside behind the digits.
+        background: 'var(--lcd-glass)',
+        boxShadow: '0 2px 6px #000 inset',
+      }}
+    >
+      <TuneDotWave trigger={waveTrigger} />
       <input
         ref={inputRef}
         type="text"
         inputMode="decimal"
         className={`lcd${transmitting ? ' tx' : ''}`}
         value={value}
-        onChange={e => { if (playTune) playTune(); onChange?.(e.target.value); }}
+        onFocus={markInteracted}
+        onChange={e => {
+          markInteracted();
+          if (playTune) playTune();
+          onChange?.(e.target.value);
+        }}
         onKeyDown={e => {
+          markInteracted();
           if (e.key === 'Enter')  { e.currentTarget.blur(); }
           if (e.key === 'Escape') { onCancel?.(); e.currentTarget.blur(); }
         }}
@@ -55,6 +94,9 @@ export default function FreqTuneInput({
         placeholder="---.-"
         title="Type a frequency and press TUNE (or Enter)"
         style={{
+          // Digits layer sits above the dot overlay.
+          position: 'relative',
+          zIndex: 1,
           width: '100%',
           fontSize: lcdFontSize,
           padding: `3px 60px 3px 10px`, // right pad reserves space for TUNE button
@@ -63,6 +105,12 @@ export default function FreqTuneInput({
           userSelect: 'auto',
           WebkitUserSelect: 'auto',
           WebkitAppRegion: 'no-drag',
+          // Glass styling moved to the wrapper; input is transparent
+          // over the overlay.
+          background: 'transparent',
+          border: 0,
+          boxShadow: 'none',
+          outline: 'none',
         }}
       />
 
@@ -73,6 +121,7 @@ export default function FreqTuneInput({
         // can swallow the button press.
         onMouseDown={e => {
           e.preventDefault();                 // keep focus on the input
+          markInteracted();
           onCommit?.();
           inputRef.current?.blur();
         }}
