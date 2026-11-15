@@ -479,6 +479,11 @@ export default function MissionBoardV2({ missions, selectedMissionId, onSelect, 
           >+ NEW MISSION</button>
         </div>
       )}
+      {missions.length === 0 && (
+        <div className="empty" style={{ padding: '18px 12px', color: 'var(--fg3)', fontSize: 12 }}>
+          No active missions — click the green button above to create one.
+        </div>
+      )}
       {GROUP_DEFS.map(g => {
         const items = groups[g.key];
         const ghosts = ghostsByGroup[g.key] || [];

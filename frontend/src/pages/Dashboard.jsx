@@ -3309,9 +3309,12 @@ export default function Dashboard() {
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {loadingMissions ? (
                 <div className="empty">Scanning{dots}</div>
-              ) : missions.length === 0 ? (
-                <div className="empty">No active missions</div>
               ) : (
+                /* Render MissionBoardV2 unconditionally (even when the
+                   mission list is empty) so the green "+ NEW MISSION"
+                   header button is always reachable. Without this,
+                   players with no active missions had no way to open
+                   the Create Mission flow from the board at all. */
                 <MissionBoardV2
                   missions={missions}
                   selectedMissionId={selectedMission?._id ?? null}
