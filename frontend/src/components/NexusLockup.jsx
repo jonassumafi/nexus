@@ -1,13 +1,13 @@
 // Horizontal or stacked lockup: NexusMark + "NEXUS" wordmark (+ optional
-// "SHIP MANAGEMENT" subtitle). All sizes derive from `height` so the
-// lockup scales cleanly. Per logo_e_spec section 4.
+// "INTERSTELLAR TRAFFIC SYSTEM" subtitle). All sizes derive from `height`
+// so the lockup scales cleanly. Per logo_e_spec section 4.
 
 import NexusMark from './NexusMark';
 
 export default function NexusLockup({
   height = 48,
   orientation = 'horizontal',    // 'horizontal' | 'stacked'
-  subtitle = true,               // show "SHIP MANAGEMENT"
+  subtitle = true,               // show "INTERSTELLAR TRAFFIC SYSTEM"
   animate = false,
   mono = false,
 }) {
@@ -39,7 +39,7 @@ export default function NexusLockup({
           letterSpacing: '0.3em',
           color: 'var(--fg2)',
           marginTop: subGap,
-        }}>SHIP MANAGEMENT</span>
+        }}>INTERSTELLAR TRAFFIC SYSTEM</span>
       )}
     </div>
   );
@@ -53,7 +53,7 @@ export default function NexusLockup({
         gap: markGap,
       }}
       role="img"
-      aria-label="Nexus Ship Management"
+      aria-label="Nexus Interstellar Traffic System"
     >
       <NexusMark size={H} animate={animate} mono={mono} />
       {wordmark}

@@ -151,7 +151,7 @@
           + '<div class="logo">' + logoSVG() + '</div>'
           + '<div class="wr">'
           +   '<div class="ttl" aria-label="NEXUS">' + title + '</div>'
-          +   '<div class="sub" style="--i:3">' + (scenario === 'repair' ? 'REPAIR' : 'SHIP MANAGEMENT') + '</div>'
+          +   '<div class="sub" style="--i:3">' + (scenario === 'repair' ? 'REPAIR' : 'INTERSTELLAR TRAFFIC SYSTEM') + '</div>'
           +   '<div class="ver" style="--i:4">Version <b>' + esc(ctx?.version || '0.0.0') + '</b> · ' + fmtBytes(ctx?.manifest?.size) + ((scenario === 'update' || scenario === 'repair') ? '' : ' · your settings stay put') + '</div>'
           +   existingLine
           +   '<div class="acts" style="--i:5">' + actions + '</div>'
