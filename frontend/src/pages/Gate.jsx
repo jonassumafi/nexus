@@ -72,6 +72,41 @@ export default function Gate() {
     try { window.location.href = '/api/auth/discord'; } catch {}
   }, [hasCharacter, isAuthenticated, user]);
 
+  // Keyboard handler — any key press. Behavior:
+  //   • Not clicked yet → start the sequence (so pressing a key feels
+  //     like clicking the button).
+  //   • Already clicked and animating → fast-forward past the pulse.
+  // NOTE: this and the cleanup effect MUST live above the conditional
+  // returns below. React's rules-of-hooks require the same hook call
+  // order every render — if these effects sit after the early
+  // `return null`, the hook count changes when hasCharacter resolves,
+  // triggering React error 310 ("rendered fewer hooks than expected").
+  useEffect(() => {
+    const onKey = (e) => {
+      // Ignore modifier-only presses so Ctrl-Shift-F etc. aren't swallowed.
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+      if (!clicked) beginSequence();
+      else fastForward();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [clicked]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+      if (window.__nexus_hdd && sessionStorage.getItem('hdd_started') !== 'true') {
+        try {
+          window.__nexus_hdd.pause();
+          window.__nexus_hdd.src = '';
+          window.__nexus_hdd.load();
+        } catch {}
+        window.__nexus_hdd = null;
+      }
+    };
+  }, []);
+
   if (hasCharacter === undefined) return null;
   if (hasCharacter === true) return null;
 
@@ -118,36 +153,6 @@ export default function Gate() {
   };
 
   const handleClick = () => beginSequence();
-
-  // Keyboard handler — any key press. Behavior:
-  //   • Not clicked yet → start the sequence (so pressing a key feels
-  //     like clicking the button).
-  //   • Already clicked and animating → fast-forward past the pulse.
-  useEffect(() => {
-    const onKey = (e) => {
-      // Ignore modifier-only presses so Ctrl-Shift-F etc. aren't swallowed.
-      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
-      if (!clicked) beginSequence();
-      else fastForward();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [clicked]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    return () => {
-      timeoutsRef.current.forEach(clearTimeout);
-      timeoutsRef.current = [];
-      if (window.__nexus_hdd && sessionStorage.getItem('hdd_started') !== 'true') {
-        try {
-          window.__nexus_hdd.pause();
-          window.__nexus_hdd.src = '';
-          window.__nexus_hdd.load();
-        } catch {}
-        window.__nexus_hdd = null;
-      }
-    };
-  }, []);
 
   const electron = typeof window !== 'undefined' ? window.electronAPI : null;
 
