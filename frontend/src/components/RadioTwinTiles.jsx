@@ -627,11 +627,16 @@ export default function RadioTwinTiles() {
     let last = { w: 0, h: 0 };
     const ro = new ResizeObserver((entries) => {
       for (const e of entries) {
-        // offsetWidth/Height include padding + border; the measurement
-        // the window needs. contentRect excludes padding, which would
-        // leave a 4 px gap at the edges.
-        const w = Math.ceil(el.offsetWidth);
-        const h = Math.ceil(el.offsetHeight);
+        // getBoundingClientRect() returns the ACTUAL rendered pixel
+        // size — zoom included. offsetWidth/Height on a zoomed
+        // element report the unscaled layout size, so with .rov's
+        // zoom:1.2 the window was being sized to 1/1.2 of the real
+        // content width. Since .rov is anchored right:0, the missing
+        // ~17 % spilled off the LEFT edge of the window, which is why
+        // CREW's leading "C" and the drag grip were clipped.
+        const rect = el.getBoundingClientRect();
+        const w = Math.ceil(rect.width);
+        const h = Math.ceil(rect.height);
         if (w === last.w && h === last.h) continue;
         last = { w, h };
         try { api.resize(w, h); } catch {}
