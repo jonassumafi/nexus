@@ -1,33 +1,66 @@
-// UpdateCard — single centered card for the whole update flow plus the
-// "what is new" and "fixes since your last visit" surfaces. Required
-// update states have no close affordance (no Escape, no scrim click).
+// UpdateCard — single centered card for the whole update flow and the
+// Recent fixes card. Required update states have no close affordance
+// (no Escape, no scrim click). The Recent fixes surface is closeable.
 //
 // Surfaces:
-//   update     → available | downloading | ready | installing | failed
-//   whatsnew   → list card, closeable
-//   fixes      → list card, closeable
+//   update  → available | downloading | ready | installing | failed
+//   recent  → one list card, closeable; eyebrow reads either
+//             "LIVE NOW" (same app version, web-only lines) or
+//             "UPDATED TO <version>" (after an installer update)
 //
-// Driven entirely by useUpdateFlow. Mount once per view (Full, Companion).
+// Driven entirely by useUpdateFlow. Mount once inside the Full dashboard
+// only. Radio-only and Chat popout do NOT mount this component, so they
+// never surface update UI or chimes.
 
 import { useEffect, useRef } from 'react';
 
-const TAG_LABEL = { new: 'New', better: 'Better', fix: 'Fix' };
-const TAG_COLOR = { new: 'var(--lime, #44dd88)', better: 'var(--acc2, #00eeff)', fix: 'var(--amber, #ffbb33)' };
-const TAG_CLASS = { new: 'n', better: 'i', fix: 'f' };
+// Splash-style bracket mark: circle + dot + cross. 30x30 viewBox so the
+// stroke proportions match the splash exactly.
+const BracketMark = ({ size = 22 }) => (
+  <svg
+    viewBox="0 0 30 30"
+    width={size}
+    height={size}
+    aria-hidden="true"
+    style={{ fill: 'none', stroke: 'var(--acc2)', strokeWidth: 1.6, flex: 'none' }}
+  >
+    <circle cx="15" cy="15" r="11" />
+    <circle cx="15" cy="15" r="5" />
+    <path d="M15 1v6M15 23v6M1 15h6M23 15h6" strokeLinecap="round" />
+  </svg>
+);
 
-export default function UpdateCard({ flow, compact = false }) {
+// 24-segment rule, lime-on-rim0 like the splash's segmented bar.
+function SegRule({ fill = 24 }) {
+  const cells = [];
+  for (let i = 0; i < 24; i++) {
+    cells.push(<i key={i} className={`nx-uc-seg-i ${i < fill ? 'on' : ''}`} />);
+  }
+  return <div className="nx-uc-seg">{cells}</div>;
+}
+
+function Brand({ label = '', trailing = '' }) {
+  return (
+    <div className="nx-uc-brand">
+      <BracketMark />
+      <b>NEXUS</b>
+      {label && <span className="nx-uc-brand-lbl">{label}</span>}
+      {trailing && <span className="nx-uc-brand-tr">{trailing}</span>}
+    </div>
+  );
+}
+
+export default function UpdateCard({ flow }) {
   const { surface, state } = flow;
 
   // Notification chime. Fires exactly when the badge appears on screen,
   // because this component is only mounted inside the Full dashboard;
   // Radio-only and the installer launcher never render it, so neither
   // ever makes noise. Keyed per surface so each distinct notification
-  // chimes only once. Focus-gated so an autostart into an empty room
-  // defers the ding until the player's next focus event.
+  // chimes only once. Focus-gated.
   //
-  //   surface=update   → update_tone.wav
-  //   surface=whatsnew → feature_tone.wav
-  //   surface=fixes    → feature_tone.wav
+  //   surface=update → update_tone.wav
+  //   surface=recent → feature_tone.wav
   const chimedKeyRef = useRef(null);
   useEffect(() => {
     if (surface === 'none') return;
@@ -36,10 +69,10 @@ export default function UpdateCard({ flow, compact = false }) {
     if (surface === 'update') {
       src = '/sounds/update_tone.wav';
       key = `update:${flow.version || 'unknown'}`;
-    } else if (surface === 'whatsnew' || surface === 'fixes') {
+    } else if (surface === 'recent') {
       src = '/sounds/feature_tone.wav';
       const newestId = flow.entries?.[0]?.id ?? null;
-      key = `${surface}:${newestId ?? 'none'}`;
+      key = `recent:${newestId ?? 'none'}`;
     }
     if (!src || !key || chimedKeyRef.current === key) return;
 
@@ -73,8 +106,8 @@ export default function UpdateCard({ flow, compact = false }) {
     return cleanup;
   }, [surface, flow.version, flow.entries]);
 
-  // Lock Escape for required update surfaces. Closeable surfaces handle
-  // Escape themselves via onClose.
+  // Lock Escape for required update surfaces. Recent surface handles
+  // Escape via onClose.
   useEffect(() => {
     if (surface === 'none') return;
     const isRequired = surface === 'update';
@@ -89,8 +122,8 @@ export default function UpdateCard({ flow, compact = false }) {
 
   if (surface === 'none') return null;
 
-  const sizeClass = compact ? 'nx-uc nx-uc--sm' : 'nx-uc';
-  const dismissable = surface === 'whatsnew' || surface === 'fixes';
+  const isUpdate = surface === 'update';
+  const isRecent = surface === 'recent';
 
   return (
     <>
@@ -100,16 +133,16 @@ export default function UpdateCard({ flow, compact = false }) {
         role="dialog"
         aria-modal="true"
         onMouseDown={(e) => {
-          // Block pointer events to the window behind. Closeable surfaces
-          // do NOT dismiss on backdrop click — only via their button.
+          // Block pointer events to the window behind. No backdrop
+          // dismiss for any surface — close via the card button.
           e.stopPropagation();
         }}
       >
-        <div className={sizeClass}>
-          {surface === 'update' && state === 'available' && (
+        <div className={`nx-uc ${isUpdate ? 'nx-uc--ctr' : ''}`}>
+          {isUpdate && state === 'available' && (
             <AvailableBody version={flow.version} onDownload={flow.onDownload} />
           )}
-          {surface === 'update' && state === 'downloading' && (
+          {isUpdate && state === 'downloading' && (
             <DownloadingBody
               version={flow.version}
               pct={flow.pct}
@@ -117,35 +150,27 @@ export default function UpdateCard({ flow, compact = false }) {
               total={flow.totalBytes}
             />
           )}
-          {surface === 'update' && state === 'ready' && (
+          {isUpdate && state === 'ready' && (
             <ReadyBody version={flow.version} onInstall={flow.onInstall} />
           )}
-          {surface === 'update' && state === 'installing' && (
+          {isUpdate && state === 'installing' && (
             <InstallingBody version={flow.version} />
           )}
-          {surface === 'update' && state === 'failed' && (
+          {isUpdate && state === 'failed' && (
             <FailedBody
               version={flow.version}
               message={flow.errorMessage}
               onRetry={flow.onRetry}
             />
           )}
-          {surface === 'whatsnew' && (
-            <ListBody
-              kind="new"
+          {isRecent && (
+            <RecentBody
+              reason={flow.recentReason}
               version={flow.version}
               entries={flow.entries}
               onClose={flow.onClose}
             />
           )}
-          {surface === 'fixes' && (
-            <ListBody
-              kind="fixes"
-              entries={flow.entries}
-              onClose={flow.onClose}
-            />
-          )}
-          {!dismissable && null}
         </div>
       </div>
     </>
@@ -155,6 +180,8 @@ export default function UpdateCard({ flow, compact = false }) {
 function AvailableBody({ version, onDownload }) {
   return (
     <>
+      <Brand label="update" />
+      <SegRule fill={0} />
       <div className="nx-uc-chk nx-uc-chk--info">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 4v11M7.5 11l4.5 4.5 4.5-4.5M5 20h14" />
@@ -166,7 +193,6 @@ function AvailableBody({ version, onDownload }) {
           {version ? `Version ${version} is ready to download` : 'A newer version is ready to download'}
         </div>
       </div>
-      <div className="nx-uc-c">Download to adopt the most recent features and fixes.</div>
       <button className="nx-uc-btn nx-uc-btn--p" onClick={onDownload} autoFocus>Download</button>
     </>
   );
@@ -175,11 +201,14 @@ function AvailableBody({ version, onDownload }) {
 function DownloadingBody({ version, pct, bytes, total }) {
   const totalMB = total ? (total / (1024 * 1024)) : null;
   const doneMB  = bytes ? (bytes / (1024 * 1024)) : null;
+  // Fill ratio for the 24-seg bar.
+  const fill = Math.max(0, Math.min(24, Math.round((pct / 100) * 24)));
   return (
     <>
+      <Brand label="update" />
       <div className="nx-uc-c">{version ? `Updating Nexus to ${version}` : 'Updating Nexus'}</div>
       <div className="nx-uc-big">{pct}<small>%</small></div>
-      <div className="nx-uc-thin"><u style={{ width: `${pct}%` }} /></div>
+      <SegRule fill={fill} />
       <div className="nx-uc-c">
         {totalMB && doneMB
           ? `${doneMB.toFixed(1)} of ${totalMB.toFixed(1)} MB`
@@ -192,6 +221,8 @@ function DownloadingBody({ version, pct, bytes, total }) {
 function ReadyBody({ version, onInstall }) {
   return (
     <>
+      <Brand label="update" />
+      <SegRule fill={24} />
       <div className="nx-uc-chk">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 12.5l4.5 4.5L19 7" />
@@ -210,8 +241,9 @@ function ReadyBody({ version, onInstall }) {
 function InstallingBody({ version }) {
   return (
     <>
+      <Brand label="update" />
       <div className="nx-uc-c">{version ? `Installing ${version}` : 'Installing'}</div>
-      <div className="nx-uc-thin nx-uc-thin--ind"><u /></div>
+      <SegRule fill={12} />
       <div className="nx-uc-c">Nexus will reopen by itself</div>
     </>
   );
@@ -220,6 +252,7 @@ function InstallingBody({ version }) {
 function FailedBody({ version, message, onRetry }) {
   return (
     <>
+      <Brand label="update" />
       <div className="nx-uc-chk nx-uc-chk--er">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 7v6M12 16.6v.1" />
@@ -230,50 +263,45 @@ function FailedBody({ version, message, onRetry }) {
         <div className="nx-uc-ttl">Update did not finish</div>
         <div className="nx-uc-sub">Your current version still works. Check your connection and try again.</div>
       </div>
-      {(message || version) && (
-        <div className="nx-uc-code">
-          {message ? `${message}` : 'update-error'}{version ? ` · v${version}` : ''}
-        </div>
-      )}
+      <div className="nx-uc-code">
+        update-error: {message || 'unknown'}{version ? ` · v${version}` : ''}
+      </div>
       <button className="nx-uc-btn nx-uc-btn--p" onClick={onRetry} autoFocus>Retry</button>
     </>
   );
 }
 
-function ListBody({ kind, version, entries, onClose }) {
-  const eyebrow = kind === 'new'
-    ? { className: 'nx-uc-eb nx-uc-eb--g', text: version ? `Updated to ${version}` : 'Updated' }
-    : { className: 'nx-uc-eb', text: 'Fixes since your last visit' };
-  const title = kind === 'new' ? 'What is new' : 'Recent fixes';
-  const btnText = kind === 'new' ? 'Continue' : 'Got it';
-  const footer = kind === 'new' ? null : 'Already applied. No restart needed.';
+function RecentBody({ reason, version, entries, onClose }) {
+  const eyebrow = reason === 'updated'
+    ? `UPDATED TO ${version || ''}`.trim()
+    : 'LIVE NOW';
+  const footer = reason === 'updated'
+    ? 'Installed. You are on the latest version.'
+    : 'No restart needed. Already applied.';
 
   return (
-    <div className="nx-uc-list">
+    <>
+      <Brand label="recent fixes" />
+      <SegRule fill={24} />
       <div>
-        <div className={eyebrow.className}>{eyebrow.text}</div>
-        <div className="nx-uc-h2">{title}</div>
+        <div className="nx-uc-eb">{eyebrow}</div>
+        <div className="nx-uc-h2">Recent fixes</div>
       </div>
-      <ul className="nx-uc-nl">
+      <ul className="nx-uc-bl">
         {entries.map((e) => (
-          <li key={e.id}>
-            <span className={`nx-uc-tag nx-uc-tag--${TAG_CLASS[e.tag] || 'i'}`}>
-              {TAG_LABEL[e.tag] || e.tag}
-            </span>
-            <span>{e.text}</span>
-          </li>
+          <li key={e.id}>{e.text}</li>
         ))}
       </ul>
-      {footer && <div className="nx-uc-c">{footer}</div>}
-      <button className="nx-uc-btn nx-uc-btn--p" onClick={onClose} autoFocus>{btnText}</button>
-    </div>
+      <div className="nx-uc-c nx-uc-c--mono">{footer}</div>
+      <button className="nx-uc-btn nx-uc-btn--p" onClick={onClose} autoFocus>Got it</button>
+    </>
   );
 }
 
 const CSS = `
 .nx-uc-scrim {
   position: fixed; inset: 0; z-index: 9998;
-  background: color-mix(in srgb, var(--bg0, #020C14) 66%, transparent);
+  background: color-mix(in srgb, var(--bg0) 66%, transparent);
   backdrop-filter: blur(2px);
   display: flex; align-items: center; justify-content: center;
   padding: 14px;
@@ -281,129 +309,141 @@ const CSS = `
 }
 .nx-uc {
   width: 100%; max-width: 420px;
-  padding: 36px 32px 28px;
+  padding: 18px 18px 16px;
   border-radius: 10px;
-  background: var(--bg1, #061018);
-  border: 1px solid var(--rim1, #2A5A7A);
+  background: var(--bg1);
+  border: 1px solid var(--rim1);
   box-shadow: 0 24px 50px rgba(0,0,0,.65);
-  display: grid; gap: 18px;
-  text-align: center;
-  color: var(--fg0, #f2f6f8);
+  display: grid; gap: 13px;
+  text-align: left;
+  color: var(--t1);
   animation: nx-uc-in .28s cubic-bezier(.2,.8,.2,1);
 }
-.nx-uc--sm {
-  max-width: 300px; padding: 18px 14px 14px; gap: 11px;
-}
+.nx-uc--ctr { text-align: center; }
+.nx-uc--ctr .nx-uc-brand { justify-content: center; }
+.nx-uc--ctr .nx-uc-c { text-align: center; }
 @keyframes nx-uc-in { from { opacity: 0; transform: translateY(10px) scale(.97); } }
 @media (prefers-reduced-motion: reduce) { .nx-uc { animation: none; } }
 
+.nx-uc-brand {
+  display: flex; align-items: center; gap: 9px;
+}
+.nx-uc-brand b {
+  font: 800 11px Inter, system-ui, sans-serif;
+  letter-spacing: .3em;
+  color: var(--t1);
+}
+.nx-uc-brand-lbl {
+  font: 700 10px Inter, system-ui, sans-serif;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--t2);
+}
+.nx-uc-brand-tr {
+  margin-left: auto;
+  font: 500 10px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--t3);
+}
+
+.nx-uc-seg {
+  display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px;
+}
+.nx-uc-seg-i {
+  height: 4px; background: var(--rim0); border-radius: 1px;
+}
+.nx-uc-seg-i.on {
+  background: linear-gradient(90deg, var(--lime), color-mix(in srgb, var(--lime) 55%, var(--acc2)));
+}
+
 .nx-uc-ttl { font: 700 17px Inter, system-ui, sans-serif; letter-spacing: .01em; }
-.nx-uc--sm .nx-uc-ttl { font-size: 15px; }
-.nx-uc-sub { font: 500 12px/1.5 Inter, system-ui, sans-serif; color: var(--fg2, #8a98a4); margin-top: 3px; }
-.nx-uc-c { font: 500 12px/1.5 Inter, system-ui, sans-serif; color: var(--fg2, #8a98a4); }
-.nx-uc-c--center { text-align: center; }
+.nx-uc-sub { font: 500 12px/1.5 Inter, system-ui, sans-serif; color: var(--t2); margin-top: 3px; }
+.nx-uc-c {
+  font: 500 12px/1.5 Inter, system-ui, sans-serif;
+  color: var(--t2);
+}
+.nx-uc-c--mono {
+  font: 500 11px ui-monospace, Menlo, Consolas, monospace;
+  color: var(--t3);
+}
 
 .nx-uc-big {
-  font: 800 66px/1 Inter, system-ui, sans-serif;
+  font: 800 54px/1 Inter, system-ui, sans-serif;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--fg0, #f2f6f8);
+  color: var(--t1);
+  text-align: center;
 }
-.nx-uc-big small { font: 600 20px Inter, system-ui, sans-serif; color: var(--fg2, #8a98a4); margin-left: 2px; }
-.nx-uc--sm .nx-uc-big { font-size: 44px; }
-.nx-uc--sm .nx-uc-big small { font-size: 16px; }
-
-.nx-uc-thin {
-  height: 4px; border-radius: 2px;
-  background: var(--rim0, #1A3A50); overflow: hidden;
-}
-.nx-uc-thin u {
-  display: block; height: 100%;
-  background: linear-gradient(90deg, var(--acc, #66AADD), var(--acc2, #00EEFF));
-  transition: width .25s linear;
-}
-.nx-uc-thin--ind u { width: 30%; animation: nx-uc-sl 1.1s ease-in-out infinite; }
-@keyframes nx-uc-sl { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+.nx-uc-big small { font: 600 20px Inter, system-ui, sans-serif; color: var(--t2); margin-left: 2px; }
 
 .nx-uc-chk {
-  width: 62px; height: 62px; border-radius: 50%;
+  width: 54px; height: 54px; border-radius: 50%;
   margin: 0 auto;
   display: grid; place-items: center;
-  border: 2px solid var(--lime, #44dd88);
-  color: var(--lime, #44dd88);
+  border: 2px solid var(--lime);
+  color: var(--lime);
 }
-.nx-uc--sm .nx-uc-chk { width: 48px; height: 48px; }
-.nx-uc-chk--er { border-color: var(--red, #ff5544); color: var(--red, #ff5544); }
-.nx-uc-chk--info { border-color: var(--acc2, #00EEFF); color: var(--acc2, #00EEFF); }
-.nx-uc-chk svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.nx-uc--sm .nx-uc-chk svg { width: 20px; height: 20px; }
+.nx-uc-chk--er { border-color: var(--red); color: var(--red); }
+.nx-uc-chk--info { border-color: var(--acc2); color: var(--acc2); }
+.nx-uc-chk svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
 .nx-uc-btn {
-  width: 100%; height: 42px;
+  width: 100%; height: 40px;
   padding: 0 16px;
   font: 700 12px Inter, system-ui, sans-serif; letter-spacing: .03em;
-  border: 1px solid var(--rim1, #2A5A7A);
+  border: 1px solid var(--rim1);
   border-radius: 6px;
-  color: var(--fg0, #f2f6f8);
-  background: linear-gradient(180deg, var(--bg3, #12263A), var(--bg2, #0A1828));
+  color: var(--t1);
+  background: linear-gradient(180deg, var(--bg3), var(--bg2));
+  box-shadow: 0 3px 0 var(--under);
   cursor: pointer;
   transition: transform .08s, box-shadow .08s, border-color .08s;
 }
-.nx-uc--sm .nx-uc-btn { height: 38px; font-size: 11px; }
-.nx-uc-btn:hover { border-color: var(--acc, #66AADD); }
-.nx-uc-btn:active { transform: translateY(1px); }
+.nx-uc-btn:hover { border-color: var(--acc); }
+.nx-uc-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--under); }
 .nx-uc-btn--p {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--acc, #66AADD) 42%, var(--bg2, #0A1828)), color-mix(in srgb, var(--acc, #66AADD) 18%, var(--bg1, #061018)));
-  border-color: var(--acc, #66AADD);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 42%, var(--bg2)), color-mix(in srgb, var(--acc) 18%, var(--bg1)));
+  border-color: var(--acc);
 }
 
 .nx-uc-code {
   font: 500 11px/1.5 ui-monospace, Menlo, Consolas, monospace;
   padding: 6px 8px;
-  background: color-mix(in srgb, var(--bg0, #020C14) 60%, #000);
-  border: 1px solid var(--rim0, #1A3A50);
+  background: var(--inset);
+  border: 1px solid var(--rim0);
   border-radius: 3px;
-  color: var(--fg2, #8a98a4);
+  color: var(--t2);
   text-align: left;
   overflow-wrap: anywhere;
 }
 
-.nx-uc-list { text-align: left; display: grid; gap: 14px; }
 .nx-uc-eb {
-  font: 700 10.5px Inter, system-ui, sans-serif;
-  letter-spacing: .1em; text-transform: uppercase;
-  color: var(--fg2, #8a98a4);
+  font: 700 10px ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--lime);
+  text-align: left;
 }
-.nx-uc-eb--g { color: var(--lime, #44dd88); }
 .nx-uc-h2 {
-  font: 800 22px/1.2 Inter, system-ui, sans-serif;
+  font: 800 20px/1.2 Inter, system-ui, sans-serif;
   margin-top: 2px;
-  color: var(--fg0, #f2f6f8);
+  color: var(--t1);
+  text-align: left;
 }
-.nx-uc--sm .nx-uc-h2 { font-size: 18px; }
 
-.nx-uc-nl { list-style: none; display: grid; }
-.nx-uc-nl li {
-  display: flex; gap: 10px; align-items: baseline;
-  padding: 9px 0;
-  border-top: 1px solid var(--rim0, #1A3A50);
-  font: 500 12.5px/1.4 Inter, system-ui, sans-serif;
-  color: var(--fg0, #f2f6f8);
+.nx-uc-bl { list-style: none; display: grid; margin: 0; padding: 0; text-align: left; }
+.nx-uc-bl li {
+  position: relative;
+  padding: 8px 0 8px 18px;
+  border-top: 1px solid var(--rim0);
+  font: 500 12.5px/1.45 Inter, system-ui, sans-serif;
+  color: var(--t1);
 }
-.nx-uc-nl li:first-child { border-top: 0; }
-.nx-uc-nl li span:last-child { min-width: 0; overflow-wrap: anywhere; }
-.nx-uc-tag {
-  flex: none; width: 62px;
-  font: 700 9px Inter, system-ui, sans-serif;
-  letter-spacing: .1em; text-transform: uppercase;
-  text-align: center;
-  padding: 2px 0;
-  border-radius: 2px;
-  border: 1px solid;
+.nx-uc-bl li:first-child { border-top: 0; }
+.nx-uc-bl li::before {
+  content: "";
+  position: absolute; left: 2px; top: 14px;
+  width: 6px; height: 6px;
+  background: var(--lime);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--lime) 70%, transparent);
 }
-.nx-uc-tag--n { color: var(--lime, #44dd88); border-color: color-mix(in srgb, var(--lime, #44dd88) 50%, transparent); }
-.nx-uc-tag--f { color: var(--amber, #ffbb33); border-color: color-mix(in srgb, var(--amber, #ffbb33) 50%, transparent); }
-.nx-uc-tag--i { color: var(--acc2, #00EEFF); border-color: color-mix(in srgb, var(--acc2, #00EEFF) 45%, transparent); }
-.nx-uc--sm .nx-uc-tag { width: 52px; }
-
 `;

@@ -26,6 +26,7 @@ import useMyRadio from '../hooks/useMyRadio';
 import RadioPickerModal from '../components/RadioPickerModal';
 import BugReportModal from '../components/BugReportModal';
 import UpdateCard from '../components/UpdateCard';
+import FixesBadge from '../components/FixesBadge';
 import useUpdateFlow from '../hooks/useUpdateFlow';
 import GlobalChat, { useChatUnread } from '../components/GlobalChat';
 import MissionBoardV2 from '../components/MissionBoardV2';
@@ -2923,7 +2924,11 @@ export default function Dashboard() {
       color: C.amber,
       overflow: 'hidden',
     }}>
-      <TitleBar title="NEXUS" subtitle="Dashboard" />
+      <TitleBar
+        title="NEXUS"
+        subtitle="Dashboard"
+        brandTrailing={<FixesBadge flow={updateFlow} />}
+      />
       <BugReportModal open={showBugReport} onClose={() => setShowBugReport(false)} />
       <RadioPickerModal open={showRadioPicker} onClose={() => setShowRadioPicker(false)} tunerId="right" />
       <RadioPickerModal open={showCommandRadioPicker} onClose={() => setShowCommandRadioPicker(false)} tunerId="left" />

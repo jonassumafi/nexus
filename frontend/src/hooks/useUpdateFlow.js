@@ -1,19 +1,21 @@
-// useUpdateFlow — state machine that drives the Update card and Radio
-// title-bar pill. Wraps the Electron auto-updater IPC, the changelog
-// endpoint, and the first-seen bookkeeping.
+// useUpdateFlow — state machine that drives the Update card and the
+// Recent fixes card + reopen badge. Wraps the Electron auto-updater
+// IPC, the changelog endpoint, and the first-seen bookkeeping.
 //
 // Returned shape:
-//   { surface, state, version, pct, bytes, totalBytes, errorMessage,
-//     entries, previousVersion, onDownload, onInstall, onRetry, onClose }
+//   { surface, state, recentReason, version, pct, bytes, totalBytes,
+//     errorMessage, entries, unseenCount, hasEverSeen,
+//     onDownload, onInstall, onRetry, onClose, onReopen }
 //
-// `surface` is one of 'none' | 'update' | 'whatsnew' | 'fixes'.
+// `surface` is one of 'none' | 'update' | 'recent'.
 // `state`   is one of:
-//   update:    'available' | 'downloading' | 'ready' | 'installing' | 'failed'
-//   whatsnew:  'new'                 // first launch of new app version
-//   fixes:     'fixes'               // web-only fixes since last visit
+//   update:   'available' | 'downloading' | 'ready' | 'installing' | 'failed'
+//   recent:   'open'
+// `recentReason` is 'live' | 'updated' when surface === 'recent'.
 //
 // Dev switch — append ?updateDev=<state> to force a surface:
-//   available | downloading | ready | installing | failed | new | fixes | first | none
+//   available | downloading | ready | installing | failed |
+//   recent | recentUpdated | badge | none
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pttHold, pttRelease, whenReleased } from '../utils/pttGate';
@@ -53,24 +55,24 @@ export default function useUpdateFlow() {
 
   const [surface, setSurface]       = useState('none');
   const [state, setState]           = useState(null);
+  const [recentReason, setReason]   = useState(null);  // 'live' | 'updated'
   const [version, setVersion]       = useState(null);
   const [pct, setPct]               = useState(0);
   const [bytes, setBytes]           = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
   const [errorMessage, setErr]      = useState(null);
   const [entries, setEntries]       = useState([]);
-  const [previousVersion, setPrev]  = useState(null);
+  // Unseen count (player-visible rows newer than last-seen id). Drives
+  // the title-bar badge independent of whether the card is open.
+  const [unseenCount, setUnseen]    = useState(0);
+  // True once the current unseen batch has been dismissed, so the badge
+  // flips to its muted outlined state ("Recent fixes").
+  const [hasEverSeen, setEverSeen]  = useState(false);
 
   // So we can delay a card's appearance while PTT is held.
   const pendingAvailableRef = useRef(null);
 
-  // Chime placement lives in the badge components themselves (see
-  // UpdateCard) so the sound only fires when a badge is actually on
-  // screen — never from Radio-only, Chat popout, or any renderer
-  // that doesn't mount the card. Nothing to do here.
-
   // ─── PTT bridge — track hold state so required cards wait for release.
-  // The Electron shell emits nexus:ptt down/up from the OS-level key hook.
   useEffect(() => {
     const off = electron?.onPTT?.((payload) => {
       if (payload?.down) pttHold();
@@ -85,27 +87,30 @@ export default function useUpdateFlow() {
   useEffect(() => {
     if (!dev) return;
     const fakeEntries = [
-      { id: 142, version: '1.4.2', date: '2026-11-07', tag: 'new',    text: 'Compact twin tile radios' },
-      { id: 141, version: '1.4.2', date: '2026-11-07', tag: 'better', text: 'Unread badge on Messages' },
-      { id: 140, version: '1.4.2', date: '2026-11-07', tag: 'fix',    text: 'One window at startup' },
-      { id: 139, version: null,    date: '2026-11-05', tag: 'fix',    text: 'Messages no longer drop on reconnect' },
-      { id: 138, version: null,    date: '2026-11-05', tag: 'better', text: 'Faster roster loading on large channels' },
+      { id: 142, version: '1.4.2', date: '2026-11-07', text: 'Command chime now plays reliably for listeners' },
+      { id: 141, version: '1.4.2', date: '2026-11-07', text: 'Messages no longer drop on reconnect' },
+      { id: 140, version: '1.4.2', date: '2026-11-07', text: 'Roster loads faster on large channels' },
+      { id: 139, version: null,    date: '2026-11-05', text: 'You can now set the radio strip opacity' },
+      { id: 138, version: null,    date: '2026-11-05', text: 'Tuning confirms with a soft dot wave' },
     ];
     setEntries(fakeEntries);
+    setUnseen(fakeEntries.length);
     setVersion('1.4.2');
-    setPrev('1.4.1');
     setPct(62);
-    if (dev === 'available')   { setSurface('update'); setState('available'); }
+    setBytes(71.4 * 1024 * 1024);
+    setTotalBytes(115.2 * 1024 * 1024);
+    if (dev === 'available')         { setSurface('update'); setState('available'); }
     else if (dev === 'downloading') { setSurface('update'); setState('downloading'); }
-    else if (dev === 'ready')  { setSurface('update'); setState('ready'); }
-    else if (dev === 'installing') { setSurface('update'); setState('installing'); }
-    else if (dev === 'failed') { setSurface('update'); setState('failed'); setErr('update-error: ETIMEDOUT · v1.4.2'); }
-    else if (dev === 'new')    { setSurface('whatsnew'); setState('new'); }
-    else if (dev === 'fixes')  { setSurface('fixes'); setState('fixes'); }
+    else if (dev === 'ready')       { setSurface('update'); setState('ready'); }
+    else if (dev === 'installing')  { setSurface('update'); setState('installing'); }
+    else if (dev === 'failed')      { setSurface('update'); setState('failed'); setErr('ETIMEDOUT'); }
+    else if (dev === 'recent')          { setSurface('recent'); setState('open'); setReason('live'); }
+    else if (dev === 'recentUpdated')   { setSurface('recent'); setState('open'); setReason('updated'); }
+    else if (dev === 'badge')           { setSurface('none');   setState(null); setEverSeen(false); }
     else { setSurface('none'); setState(null); }
   }, [dev]);
 
-  // ─── First-launch detection + "what's new" / fixes on mount ────────
+  // ─── First-launch detection + Recent fixes on mount ──────────────────
   useEffect(() => {
     if (dev) return;
     let cancelled = false;
@@ -137,19 +142,18 @@ export default function useUpdateFlow() {
         : [];
       const trimmed = unseen.slice(0, 5);
 
-      if (versionChanged && trimmed.length > 0) {
-        setEntries(trimmed);
-        setPrev(lastVer);
-        setVersion(appVersion);
-        setSurface('whatsnew');
-        setState('new');
-      } else if (!versionChanged && trimmed.length > 0) {
-        setEntries(trimmed);
-        setSurface('fixes');
-        setState('fixes');
+      setEntries(trimmed);
+      setUnseen(unseen.length);
+      setEverSeen(false);
+
+      if (trimmed.length > 0) {
+        setSurface('recent');
+        setState('open');
+        setReason(versionChanged ? 'updated' : 'live');
+        if (versionChanged) setVersion(appVersion);
       } else if (versionChanged) {
-        // Version bumped but no unseen entries — nothing to show, but
-        // still record the new app version.
+        // Version bumped but no unseen entries — record the new app
+        // version so we don't re-fire on the next launch.
         writeLS(LS_LAST_APPVER, appVersion);
       }
     })();
@@ -168,14 +172,11 @@ export default function useUpdateFlow() {
     offs.push(api.on('available', (info) => {
       setVersion(info?.version || null);
       setErr(null);
-      // Defer card open if PTT is held — the player is mid-transmission.
       pendingAvailableRef.current = info?.version || null;
       whenReleased().then(() => {
         if (pendingAvailableRef.current === null) return;
         setSurface((s) => (s === 'update' ? s : 'update'));
         setState((st) => {
-          // Don't stomp a later state (downloading/ready) that may have
-          // raced ahead between release and resume.
           if (st === 'downloading' || st === 'ready' || st === 'installing') return st;
           return 'available';
         });
@@ -198,11 +199,6 @@ export default function useUpdateFlow() {
     }));
 
     offs.push(api.on('error', (e) => {
-      // Only a failed *download* flips the card to Failed. Offline/
-      // transient errors while sitting on Available or Ready (including
-      // the 0.9.25 shell's periodic re-checks, which skip while ready)
-      // leave those surfaces alone — the download itself hasn't gone
-      // wrong. Idle errors (no active surface) never open a card.
       setState((st) => {
         if (st === 'downloading') {
           setSurface('update');
@@ -239,21 +235,31 @@ export default function useUpdateFlow() {
   const onRetry = useCallback(() => { onDownload(); }, [onDownload]);
 
   const onClose = useCallback(() => {
-    // Only the whatsnew/fixes surfaces are closeable; required updates
-    // ignore this call.
-    if (surface === 'whatsnew' || surface === 'fixes') {
-      // Record the newest id as seen so we don't show again.
+    // Only the recent surface is closeable; required update ignores this.
+    if (surface === 'recent') {
       const newestId = entries.length > 0 ? entries[0].id : null;
       if (newestId != null) writeLS(LS_LAST_SEEN, newestId);
-      if (surface === 'whatsnew' && appVersion) writeLS(LS_LAST_APPVER, appVersion);
+      if (recentReason === 'updated' && appVersion) writeLS(LS_LAST_APPVER, appVersion);
       setSurface('none');
       setState(null);
+      setEverSeen(true);
+      setUnseen(0);
     }
-  }, [surface, entries, appVersion]);
+  }, [surface, recentReason, entries, appVersion]);
+
+  // Reopen handler for the title-bar badge. Opens the same card, keeps
+  // the recorded reason/entries. No chime (UpdateCard gates chimes on
+  // key-change, and reopen uses the same key).
+  const onReopen = useCallback(() => {
+    if (entries.length === 0) return;
+    setSurface('recent');
+    setState('open');
+    if (!recentReason) setReason('live');
+  }, [entries, recentReason]);
 
   return {
-    surface, state, version, pct, bytes, totalBytes,
-    errorMessage, entries, previousVersion,
-    onDownload, onInstall, onRetry, onClose,
+    surface, state, recentReason, version, pct, bytes, totalBytes,
+    errorMessage, entries, unseenCount, hasEverSeen,
+    onDownload, onInstall, onRetry, onClose, onReopen,
   };
 }
