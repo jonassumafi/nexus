@@ -773,26 +773,11 @@ export default function RadioModule({
       </div>
       {/* /rm-front */}
 
-      {/* Back face: settings rows */}
+      {/* Back face: settings rows. Rig-picker row removed — switching
+          rigs now lives in the main Settings popover (gear button in
+          the dashboard banner), so per-radio duplication was redundant. */}
       <div className="rm-face rm-back" ref={backRef} aria-hidden={!cfgOpen}>
         <div className="rm-row" style={{ '--i': 0 }}>
-          <span className="rm-lb" style={rowLabelStyle}>Radio</span>
-          <div style={rowCtlStyle}>
-            <button
-              onClick={() => { showSaved(); onOpenRigPicker?.(); }}
-              disabled={locked || !powered}
-              style={{
-                ...btn,
-                width: '100%', textAlign: 'left', justifyContent: 'flex-start',
-                opacity: (locked || !powered) ? 0.55 : 1,
-                cursor: (locked || !powered) ? 'not-allowed' : 'pointer',
-              }}
-              title={rigLabel || 'Change radio preset'}
-            >{rigShort || rigLabel || '(no rig)'}</button>
-          </div>
-        </div>
-
-        <div className="rm-row" style={{ '--i': 1 }}>
           <span className="rm-lb" style={rowLabelStyle}>PTT key</span>
           <div style={rowCtlStyle}>
             <div className={`rm-cap${capturing ? ' rm-armed' : ''}${capState === 'bad' ? ' rm-bad' : ''}${capState === 'got' ? ' rm-got' : ''}`}>
@@ -824,7 +809,7 @@ export default function RadioModule({
           </div>
         </div>
 
-        <div className="rm-row" style={{ '--i': 2 }}>
+        <div className="rm-row" style={{ '--i': 1 }}>
           <span className="rm-lb" style={rowLabelStyle}>Lock tuner</span>
           <div style={rowCtlStyle}>
             <span className="rm-val" style={{ color: 'var(--fg2)', minWidth: 62, textAlign: 'right' }}>
@@ -842,17 +827,10 @@ export default function RadioModule({
         </div>
 
         <div className="rm-row rm-foot" style={{ '--i': 5 }}>
-          {onOpenSettings && (
-            <button
-              onClick={() => { closeCfg(); onOpenSettings(); }}
-              style={{
-                ...btn,
-                background: 'none', borderColor: 'var(--rim0)', boxShadow: 'none',
-                color: 'var(--fg2)',
-              }}
-              title="Open the full voice-profile editor"
-            >Voice profile…</button>
-          )}
+          {/* Voice-profile button removed — rig selection (which drives
+              the voice profile) is now reachable from the main Settings
+              popover, and the other per-radio settings on this face
+              already cover what the operator needs to tune in-session. */}
           <span className={`rm-saved${savedShow ? ' rm-show' : ''}`} aria-live="polite">
             <span style={{ color: 'inherit' }}>✓</span> Saved
           </span>

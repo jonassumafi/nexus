@@ -23,7 +23,6 @@ import OnlineCount from '../components/OnlineCount';
 import FeedIcon from '../components/FeedIcon';
 import ActivityFeed from '../components/ActivityFeed';
 import useMyRadio from '../hooks/useMyRadio';
-import RadioRigBadge from '../components/RadioRigBadge';
 import RadioPickerModal from '../components/RadioPickerModal';
 import BugReportModal from '../components/BugReportModal';
 import UpdateCard from '../components/UpdateCard';
@@ -990,7 +989,6 @@ function TopBar({ me, rankList, missions, onSelectMission, onMissionBoard, onReg
         alignItems: 'center',
         zIndex: 5,
       }}>
-        <RadioRigBadge onClick={() => setShowRadioPicker(true)} />
         <IdCardWidget
           me={me}
           rpPct={rpPct}
