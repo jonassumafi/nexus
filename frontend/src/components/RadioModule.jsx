@@ -138,12 +138,10 @@ export default function RadioModule({
   const backRef = useRef(null);
   const frontRef = useRef(null);
   const gearBtnRef = useRef(null);
-  const prevFreqRef = useRef(freq || '');
   const prevPoweredRef = useRef(powered);
   const prevLockedRef = useRef(locked);
   const prevRxActiveRef = useRef(false);
 
-  const [rollChars, setRollChars] = useState(null);
   const [digitsAnim, setDigitsAnim] = useState(null);
   const [chipOverride, setChipOverride] = useState(null);
   const tailTimersRef = useRef({});
@@ -178,25 +176,10 @@ export default function RadioModule({
     return () => root.removeEventListener('pointerdown', onDown);
   }, []);
 
-  // Odometer digit roll when committed freq changes
-  useEffect(() => {
-    const next = freq || '';
-    const prev = prevFreqRef.current || '';
-    if (next === prev) return;
-    prevFreqRef.current = next;
-    if (!prev) return;
-    setRollChars({ prev, next, at: Date.now() });
-    const dp = dispRef.current;
-    if (dp) {
-      dp.classList.remove('rm-flash');
-      void dp.offsetWidth;
-      dp.classList.add('rm-flash');
-    }
-    const digitCount = next.replace(/\./g, '').length;
-    const dur = 280 + digitCount * 40 + 60;
-    const t = setTimeout(() => setRollChars(null), dur);
-    return () => clearTimeout(t);
-  }, [freq]);
+  // Previously: a digit-roll "odometer" overlay animated the old/new
+  // frequency digits when freq changed. Removed — the tune confirmation
+  // is now the dot-wave swell in FreqTuneInput; a second animation on
+  // the same change was fighting with it.
 
   // Power transitions on the digits display
   useEffect(() => {
@@ -492,46 +475,7 @@ export default function RadioModule({
     (cfgClosing ? ' rm-closing' : '') +
     (siblingSettingsOpen && !cfgOpen ? ' rm-dim' : '');
 
-  const renderOdometer = () => {
-    if (!rollChars) return null;
-    const { prev, next } = rollChars;
-    let k = 0;
-    return (
-      <div
-        className={`rm-digits ${digitsAnim || ''}`}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          font: '700 18px Inter',
-          pointerEvents: 'none',
-          background: 'var(--bg0)',
-          zIndex: 2,
-        }}
-      >
-        {next.split('').map((c, i) => {
-          if (c === '.') return <span key={i} className="rm-pt">.</span>;
-          const delay = k * 40;
-          const o = prev[i];
-          const changed = o !== undefined && o !== c;
-          k++;
-          return (
-            <span key={i} className="rm-dg">
-              {changed && o !== '.' && (
-                <span className="rm-o" style={{ animationDelay: `${delay}ms` }}>{o}</span>
-              )}
-              <span
-                className={changed ? 'rm-n rm-roll' : 'rm-n'}
-                style={changed ? { animationDelay: `${delay}ms` } : undefined}
-              >{c}</span>
-            </span>
-          );
-        })}
-      </div>
-    );
-  };
+  // renderOdometer removed — see note above the former useEffect.
 
   return (
     <div ref={cardRef} className={modClass} style={{
@@ -611,7 +555,6 @@ export default function RadioModule({
             className="rm-disp"
             style={{ flex: 1, minWidth: 0, opacity: powered ? 1 : 0.55, position: 'relative', borderRadius: 6 }}
           >
-            {renderOdometer()}
             <FreqTuneInput
               value={freqInput}
               onChange={(locked || !powered) ? () => {} : setFreqInput}

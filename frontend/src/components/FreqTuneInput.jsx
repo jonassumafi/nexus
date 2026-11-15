@@ -8,9 +8,11 @@
 // chip renderer in RadioTwinTiles.jsx.
 //
 // Visual overlay: TuneDotWave sits inside the glass behind the digits
-// and plays a soft swell when the user commits a new different
-// frequency. The digits themselves are never transformed, colored or
-// faded by this feature.
+// and plays a soft swell exactly once when the user commits a new,
+// different frequency via Enter, TUNE, or blur. The swell does NOT
+// fire on keystrokes, on the initial value load, on reconnect, or on
+// window show. The digits themselves are never transformed, colored
+// or faded by this feature.
 //
 // Props:
 //   value          current frequency string (empty allowed while editing)
@@ -35,24 +37,38 @@ export default function FreqTuneInput({
 }) {
   const inputRef = useRef(null);
 
-  // Tune-confirmation swell trigger. Only fires on value changes that
-  // follow a real user interaction with this input — guards against
-  // the initial value prop load (app start, reconnect, window show).
+  // Tune-confirmation swell. Fires inside fireCommit() — only when
+  // the user explicitly presses Enter, TUNE, or blurs the field and
+  // the typed value differs from what was last committed.
   const [waveTrigger, setWaveTrigger] = useState(0);
-  const interactedRef = useRef(false);
-  const prevValRef    = useRef(value);
-  const firstRunRef   = useRef(true);
-  const markInteracted = () => { interactedRef.current = true; };
+  const lastCommittedRef = useRef(value);
+  // Flag set on every keystroke onChange. The useEffect below uses it
+  // to tell "user typed, value prop changed because of my onChange"
+  // from "parent updated value programmatically (reconnect, engine
+  // sync, external navigate)." The former must NOT reset our
+  // last-committed baseline; the latter must.
+  const typingRef = useRef(false);
 
   useEffect(() => {
-    const prev = prevValRef.current;
-    prevValRef.current = value;
-    if (firstRunRef.current) { firstRunRef.current = false; return; }
-    if (!interactedRef.current) return;   // not yet touched by this user
-    if (!value) return;                   // skip transitions into empty
-    if (prev === value) return;           // only on real differences
-    setWaveTrigger(t => t + 1);
+    if (!typingRef.current) {
+      // Programmatic update — e.g. engine pushed a new tuned freq, the
+      // app just restored a saved frequency, or the parent reset the
+      // field. Treat as the new baseline for future commit comparisons.
+      lastCommittedRef.current = value;
+    }
+    typingRef.current = false;
   }, [value]);
+
+  const fireCommit = () => {
+    // Read live from the input ref — value prop may not have landed
+    // yet if the parent batches updates.
+    const typed = inputRef.current ? inputRef.current.value : value;
+    if (typed && typed !== lastCommittedRef.current) {
+      lastCommittedRef.current = typed;
+      setWaveTrigger(t => t + 1);
+    }
+    onCommit?.();
+  };
 
   return (
     <div
@@ -79,18 +95,16 @@ export default function FreqTuneInput({
         inputMode="decimal"
         className={`lcd${transmitting ? ' tx' : ''}`}
         value={value}
-        onFocus={markInteracted}
         onChange={e => {
-          markInteracted();
+          typingRef.current = true;
           if (playTune) playTune();
           onChange?.(e.target.value);
         }}
         onKeyDown={e => {
-          markInteracted();
           if (e.key === 'Enter')  { e.currentTarget.blur(); }
           if (e.key === 'Escape') { onCancel?.(); e.currentTarget.blur(); }
         }}
-        onBlur={() => onCommit?.()}
+        onBlur={fireCommit}
         placeholder="---.-"
         title="Type a frequency and press TUNE (or Enter)"
         style={{
@@ -121,8 +135,7 @@ export default function FreqTuneInput({
         // can swallow the button press.
         onMouseDown={e => {
           e.preventDefault();                 // keep focus on the input
-          markInteracted();
-          onCommit?.();
+          fireCommit();
           inputRef.current?.blur();
         }}
         title="Finalize tuning"
