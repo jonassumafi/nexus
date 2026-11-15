@@ -7,6 +7,7 @@ const { GoogleGenAI, Modality } = require('@google/genai');
 const User = require('../models/User');
 const Organization = require('../models/Organization');
 const PlatformConfig = require('../models/PlatformConfig');
+const Friend = require('../models/Friend');
 const { isAuthenticated } = require('../middleware/permissions');
 const { uploadPortrait, uploadPortraitFromBase64 } = require('../services/cloudinaryService');
 const { fetchLeaderboardPage } = require('../services/rpService');
@@ -101,6 +102,120 @@ router.put('/voice-profile', isAuthenticated, async (req, res) => {
 
     const user = await User.findByIdAndUpdate(req.user._id, { $set: updates }, { new: true });
     res.json(user.voice_profile);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/users/directory — paginated registry browse / predictive search
+// for the Friends panel's Everyone tab and the "Find a player" box. Never
+// returns the full registry; the client always pages or searches.
+//
+// Query: q (optional search), limit (default 50, cap 100), offset (default 0).
+// Sorts A→Z by display name. When q is given, ranks starts-with first, then
+// contains, then alphabetical within each group.
+//
+// Caller is excluded. `relation` is derived from the Friend model and is one
+// of: 'friend' | 'pending_out' | 'pending_in' | 'none'. `online` is derived
+// from the socket-manager presence set (global room).
+router.get('/directory', isAuthenticated, async (req, res) => {
+  try {
+    const meId = req.user._id;
+    const meStr = String(meId);
+
+    const qRaw = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const q = qRaw.toLowerCase();
+
+    let limit = parseInt(req.query.limit, 10);
+    if (!Number.isFinite(limit) || limit <= 0) limit = 50;
+    if (limit > 100) limit = 100;
+    let offset = parseInt(req.query.offset, 10);
+    if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+    // Total always reflects "every registered player except me" — unaffected by q.
+    const total = await User.countDocuments({ _id: { $ne: meId } });
+
+    // Pull the field set needed to rank + shape. We page in-memory after an
+    // index-friendly case-insensitive name sort. Scale note: users are
+    // small docs and the registry size here is in the low thousands at
+    // most for the foreseeable future, so a single collation-sorted
+    // find is fine. If this ever bites, a text index + aggregation
+    // replacement is straightforward.
+    const filter = { _id: { $ne: meId } };
+    if (q) {
+      const esc = qRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.$or = [
+        { citizen_name: { $regex: esc, $options: 'i' } },
+        { username:     { $regex: esc, $options: 'i' } },
+      ];
+    }
+
+    const all = await User.find(filter)
+      .select('citizen_name username avatar discord_avatar_hash org_id')
+      .populate('org_id', 'name')
+      .collation({ locale: 'en', strength: 2 })
+      .sort({ citizen_name: 1, username: 1 })
+      .lean();
+
+    // Rank starts-with-q first, then contains-q, then A→Z. When no query,
+    // the DB sort already has them A→Z; rank buckets stay at 2 for all.
+    const displayName = (u) => u.citizen_name || u.username || 'Unknown';
+    const rank = (u) => {
+      if (!q) return 2;
+      const n = displayName(u).toLowerCase();
+      if (n.startsWith(q)) return 0;
+      if (n.includes(q))   return 1;
+      return 2;
+    };
+    const sorted = all
+      .map(u => ({ u, r: rank(u), n: displayName(u) }))
+      .sort((x, y) => (x.r - y.r) || x.n.localeCompare(y.n, undefined, { sensitivity: 'base' }));
+
+    const matched = sorted.length;
+    const page = sorted.slice(offset, offset + limit).map(x => x.u);
+
+    // Relations: single query covering every id in this page.
+    const pageIds = page.map(u => u._id);
+    const relRows = await Friend.find({
+      $or: [
+        { a: meId, b: { $in: pageIds } },
+        { b: meId, a: { $in: pageIds } },
+      ],
+    }).lean();
+    const relByUser = new Map();
+    for (const row of relRows) {
+      const otherId = String(row.a) === meStr ? String(row.b) : String(row.a);
+      if (row.status === 'accepted') {
+        relByUser.set(otherId, 'friend');
+      } else if (row.status === 'pending') {
+        relByUser.set(otherId, String(row.requester) === meStr ? 'pending_out' : 'pending_in');
+      }
+    }
+
+    // Live online derived from sockets in the global room.
+    const io = req.app.get('io');
+    let onlineSet = new Set();
+    try {
+      if (io) {
+        const sockets = await io.in('global').fetchSockets();
+        onlineSet = new Set(sockets.map(s => String(s.userId)));
+      }
+    } catch {}
+
+    const users = page.map(u => {
+      const uid = String(u._id);
+      return {
+        id: uid,
+        name: displayName(u),
+        handle: u.username || '',
+        avatar: u.avatar || null,
+        org: u.org_id?.name || null,
+        online: onlineSet.has(uid),
+        relation: relByUser.get(uid) || 'none',
+      };
+    });
+
+    res.json({ total, matched: q ? matched : total, users });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

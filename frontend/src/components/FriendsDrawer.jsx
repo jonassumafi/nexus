@@ -1,8 +1,13 @@
-// Right-side friends drawer: Add-by-handle, tabs (Friends | Requests),
-// filter field, rows with Message + Borrow + kebab (Remove only).
-// Overlays — does not push layout.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// Right-side friends drawer. Three tabs: Friends | Requests | Everyone.
+// The top box is now a "Find a player" field with a predictive dropdown
+// that queries /api/users/directory. The Send request button keeps its
+// legacy behavior (exact-handle send). Friend request flow is untouched —
+// Add / Accept call the existing hook (onSend / onAccept), so the green
+// accepted-friend banner and socket fan-out from backend/routes/friends.js
+// still fire exactly as before.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FriendMarkerIcon from './FriendMarkerIcon';
+import api from '../services/api';
 
 const STYLE_ID = 'friends-drawer-styles';
 function injectStyles() {
@@ -21,7 +26,7 @@ function injectStyles() {
 .fd-hd b{font:700 12px Inter;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
 .fd-x{margin-left:auto;background:none;border:0;color:var(--fg3);cursor:pointer;width:26px;height:26px;display:grid;place-items:center;font-size:18px}
 .fd-x:hover{color:var(--fg0)}
-.fd-add{padding:10px 14px;border-bottom:1px solid var(--rim0);display:flex;gap:6px}
+.fd-add{position:relative;padding:10px 14px;border-bottom:1px solid var(--rim0);display:flex;gap:6px}
 .fd-add input{flex:1;background:var(--bg0);border:1px solid var(--rim1);color:var(--fg1);padding:7px 10px;font:12px Inter}
 .fd-add input.shake{animation:fd-shake 320ms ease-out;border-color:var(--red)}
 @keyframes fd-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
@@ -30,26 +35,31 @@ function injectStyles() {
 .fd-msg{padding:4px 14px 10px;color:var(--fg3);font-size:11px}
 .fd-msg.err{color:var(--red)}
 .fd-tabs{display:flex;border-bottom:1px solid var(--rim0);background:var(--bg0)}
-.fd-tab{flex:1;padding:10px;background:none;border:0;color:var(--fg3);font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent}
+.fd-tab{flex:1;padding:10px;background:none;border:0;color:var(--fg3);font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .fd-tab:hover{color:var(--fg0)}
 .fd-tab[aria-selected=true]{color:var(--cyan);border-bottom-color:var(--cyan)}
-.fd-tab .fd-badge{display:inline-block;margin-left:5px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--cyan);color:#001418;font:800 10px/16px Inter;text-align:center}
+.fd-tab .fd-badge{display:inline-block;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--cyan);color:#001418;font:800 10px/16px Inter;text-align:center}
 .fd-filter{padding:10px 14px;border-bottom:1px solid var(--rim0)}
 .fd-filter input{width:100%;background:var(--bg0);border:1px solid var(--rim0);color:var(--fg1);padding:6px 9px;font:12px Inter}
-.fd-body{flex:1;overflow-y:auto}
+.fd-body{flex:1;overflow-y:auto;min-height:0}
 .fd-group{padding:6px 14px 2px;color:var(--fg3);font:700 10px Inter;letter-spacing:.14em;text-transform:uppercase}
+.fd-group.stk{position:sticky;top:0;background:var(--bg1);z-index:2;border-bottom:1px solid var(--rim0);padding:5px 14px}
 .fd-row{display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--rim0)}
 .fd-row:hover{background:color-mix(in srgb,var(--bg2) 60%,transparent)}
-.fd-av{position:relative;width:32px;height:32px;border:1px solid var(--rim1);background:var(--bg0);overflow:hidden;flex:none;padding:0;cursor:pointer}
+.fd-av{position:relative;width:32px;height:32px;border:1px solid var(--rim1);background:var(--bg0);overflow:hidden;flex:none;padding:0;cursor:pointer;display:grid;place-items:center;color:var(--fg2);font:800 11px Inter}
 .fd-av img{width:100%;height:100%;object-fit:cover;display:block}
 .fd-dot{position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--bg1)}
 .fd-dot.on{background:var(--lime);box-shadow:0 0 6px var(--lime)}
 .fd-nm{min-width:0;flex:1}
 .fd-nm b{display:block;font:600 12px Inter;color:var(--fg0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fd-nm b mark{background:none;color:var(--acc,var(--cyan));padding:0}
 .fd-nm small{display:block;color:var(--fg3);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fd-act{display:flex;gap:6px;align-items:center}
 .fd-pm{height:26px;padding:0 11px;background:linear-gradient(180deg,var(--bg3),var(--bg2));border:1px solid var(--rim1);color:var(--cyan);font:700 10px Inter;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
 .fd-pm:hover{border-color:var(--cyan)}
+.fd-pm.primary{color:var(--fg0);border-color:var(--cyan);background:linear-gradient(180deg,color-mix(in srgb,var(--cyan) 38%,var(--bg2)),color-mix(in srgb,var(--cyan) 16%,var(--bg1)))}
+.fd-pm.lime{color:#04140b;border-color:var(--lime);background:linear-gradient(180deg,#2fbd7c,#1e9a5e)}
+.fd-pm[disabled]{opacity:.5;cursor:default}
 .fd-ib{position:relative;width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--rim0);background:var(--bg2);color:var(--fg2);cursor:pointer}
 .fd-ib:hover{color:var(--cyan);border-color:var(--cyan)}
 .fd-ib[disabled]{opacity:.4;cursor:default}
@@ -67,6 +77,16 @@ function injectStyles() {
 .fd-req-btn{padding:4px 10px;border:1px solid var(--rim1);background:linear-gradient(180deg,var(--bg3),var(--bg2));color:var(--cyan);font:700 10px Inter;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
 .fd-req-btn.primary{background:linear-gradient(180deg,#2fbd7c,#1e9a5e);border-color:#43d88f;color:#04140b}
 .fd-req-btn.danger{color:var(--red);border-color:color-mix(in srgb,var(--red) 55%,transparent)}
+.fd-stat{font:700 10px Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);padding:0 8px;height:26px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.fd-stat.pend{color:var(--amber,#FFBB33)}
+.fd-stat.fr{color:var(--lime)}
+.fd-dd{position:absolute;left:14px;right:14px;top:100%;margin-top:-1px;z-index:40;background:var(--bg2);border:1px solid var(--cyan);box-shadow:0 16px 30px rgba(0,0,0,.7)}
+.fd-dd .fd-row{padding:7px 10px}
+.fd-dd .hint{padding:6px 12px;font:500 10.5px Inter;color:var(--fg3);border-bottom:1px solid var(--rim0)}
+.fd-dd .more{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font:700 11px Inter;letter-spacing:.08em;color:var(--cyan);text-transform:uppercase;width:100%;background:none;border:0;border-top:1px solid var(--rim0);cursor:pointer}
+.fd-dd .more:hover{background:var(--bg3)}
+.fd-dd .more span{color:var(--fg3);letter-spacing:0;text-transform:none;font-weight:500}
+.fd-sentinel{height:1px}
 @media (prefers-reduced-motion:reduce){ .fd{animation:none} .fd-add input.shake{animation:none} }
 `;
   document.head.appendChild(s);
@@ -81,6 +101,36 @@ function BorrowIcon() {
   );
 }
 
+// Initials for the fallback avatar tile when a user has no portrait.
+function initials(name) {
+  return String(name || '')
+    .split(/[\s_0-9]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('');
+}
+
+// Render a name with the matched substring tinted in var(--acc). We only
+// tint the first occurrence — matches the reference spec and keeps the
+// rendering cheap. Falls back to plain text when there's no query.
+function HighlightedName({ name, query }) {
+  if (!query) return <>{name}</>;
+  const lower = name.toLowerCase();
+  const idx = lower.indexOf(query.toLowerCase());
+  if (idx < 0) return <>{name}</>;
+  const end = idx + query.length;
+  return (
+    <>
+      {name.slice(0, idx)}
+      <mark>{name.slice(idx, end)}</mark>
+      {name.slice(end)}
+    </>
+  );
+}
+
+const PAGE_SIZE = 50;
+
 export default function FriendsDrawer({
   open, onClose,
   friends, received, sent,
@@ -89,14 +139,34 @@ export default function FriendsDrawer({
   returnFocusRef,
 }) {
   const [tab, setTab] = useState('friends');
-  const [handle, setHandle] = useState('');
+  const [handle, setHandle] = useState('');          // top input doubles as search + send-request handle
   const [err, setErr] = useState(null);
   const [shake, setShake] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState('');          // friends-tab filter
   const [menuFor, setMenuFor] = useState(null);
   const [confirmFor, setConfirmFor] = useState(null);
-  const inputRef = useRef(null);
-  const addRef   = useRef(null);
+
+  // Everyone-tab state
+  const [everyoneFilter, setEveryoneFilter] = useState('');
+  const [everyoneRows, setEveryoneRows] = useState([]);
+  const [everyoneTotal, setEveryoneTotal] = useState(0);
+  const [everyoneMatched, setEveryoneMatched] = useState(0);
+  const [everyoneOffset, setEveryoneOffset] = useState(0);
+  const [everyoneDone, setEveryoneDone] = useState(false);
+  const [everyoneLoading, setEveryoneLoading] = useState(false);
+
+  // Predictive-search dropdown state
+  const [ddOpen, setDdOpen] = useState(false);
+  const [ddRows, setDdRows] = useState([]);
+  const [ddTotal, setDdTotal] = useState(0);
+  const [ddQuery, setDdQuery] = useState('');        // the query the dropdown was fetched for
+
+  const addRootRef = useRef(null);
+  const addInputRef = useRef(null);
+  const bodyRef = useRef(null);
+  const sentinelRef = useRef(null);
+  const debounceRef = useRef(null);
+  const closeBtnRef = useRef(null);
 
   useEffect(() => { injectStyles(); }, []);
 
@@ -104,13 +174,31 @@ export default function FriendsDrawer({
     if (!open) return;
     const onKey = (e) => {
       if (e.key === 'Escape') {
+        if (ddOpen) {
+          e.stopPropagation();
+          setDdOpen(false);
+          return;
+        }
         e.stopPropagation();
         onClose?.();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, ddOpen]);
+
+  // Outside-click closes the predictive dropdown. Clicks inside the add
+  // row (input + Send button + dropdown) are preserved.
+  useEffect(() => {
+    if (!ddOpen) return;
+    const onDown = (e) => {
+      if (addRootRef.current && !addRootRef.current.contains(e.target)) {
+        setDdOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [ddOpen]);
 
   useEffect(() => {
     if (!open) {
@@ -132,11 +220,151 @@ export default function FriendsDrawer({
     setTimeout(() => setShake(false), 340);
   };
 
-  const submitAdd = async (e) => {
+  // ── Directory fetch helpers ───────────────────────────────────────────
+  const fetchDirectoryPage = useCallback(async (opts) => {
+    const { q = '', offset = 0, limit = PAGE_SIZE } = opts || {};
+    const params = { limit, offset };
+    if (q) params.q = q;
+    const { data } = await api.get('/users/directory', { params });
+    return data; // { total, matched, users }
+  }, []);
+
+  const loadEveryoneFirstPage = useCallback(async (q) => {
+    setEveryoneLoading(true);
+    try {
+      const data = await fetchDirectoryPage({ q: q || '', offset: 0, limit: PAGE_SIZE });
+      setEveryoneRows(data.users || []);
+      setEveryoneTotal(data.total || 0);
+      setEveryoneMatched(data.matched ?? data.total ?? 0);
+      setEveryoneOffset((data.users || []).length);
+      setEveryoneDone((data.users || []).length >= (data.matched ?? data.total ?? 0));
+    } catch {
+      setEveryoneRows([]);
+      setEveryoneDone(true);
+    } finally {
+      setEveryoneLoading(false);
+    }
+  }, [fetchDirectoryPage]);
+
+  const loadEveryoneNextPage = useCallback(async () => {
+    if (everyoneLoading || everyoneDone) return;
+    setEveryoneLoading(true);
+    try {
+      const data = await fetchDirectoryPage({ q: everyoneFilter || '', offset: everyoneOffset, limit: PAGE_SIZE });
+      const chunk = data.users || [];
+      setEveryoneRows(prev => [...prev, ...chunk]);
+      const newOffset = everyoneOffset + chunk.length;
+      setEveryoneOffset(newOffset);
+      const matchedTotal = data.matched ?? data.total ?? 0;
+      setEveryoneTotal(data.total || everyoneTotal);
+      setEveryoneMatched(matchedTotal);
+      if (chunk.length === 0 || newOffset >= matchedTotal) setEveryoneDone(true);
+    } catch {
+      setEveryoneDone(true);
+    } finally {
+      setEveryoneLoading(false);
+    }
+  }, [everyoneLoading, everyoneDone, everyoneOffset, everyoneFilter, everyoneTotal, fetchDirectoryPage]);
+
+  // Prime the Everyone tab the first time the drawer opens so the tab
+  // badge count ("Everyone • N") renders without clicking in.
+  useEffect(() => {
+    if (!open) return;
+    loadEveryoneFirstPage('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Debounced refetch when filter changes on Everyone tab.
+  useEffect(() => {
+    if (!open || tab !== 'everyone') return;
+    const t = setTimeout(() => loadEveryoneFirstPage(everyoneFilter.trim()), 180);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [everyoneFilter, tab, open]);
+
+  // IntersectionObserver on a sentinel at the bottom of the Everyone list
+  // triggers the next page. Disconnects/reconnects on tab change.
+  useEffect(() => {
+    if (tab !== 'everyone' || !sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) loadEveryoneNextPage();
+    }, { root: bodyRef.current || null, rootMargin: '120px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [tab, everyoneRows.length, everyoneDone, loadEveryoneNextPage]);
+
+  // ── Predictive dropdown ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    const q = handle.trim();
+    if (!q) {
+      setDdOpen(false);
+      setDdRows([]);
+      setDdTotal(0);
+      setDdQuery('');
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await fetchDirectoryPage({ q, offset: 0, limit: 3 });
+        setDdRows(data.users || []);
+        setDdTotal(data.matched ?? 0);
+        setDdQuery(q);
+        setDdOpen(true);
+      } catch {
+        setDdRows([]);
+        setDdTotal(0);
+        setDdQuery(q);
+        setDdOpen(true);
+      }
+    }, 150);
+    return () => clearTimeout(debounceRef.current);
+  }, [handle, open, fetchDirectoryPage]);
+
+  // Mutate local rows optimistically on Add / Accept so the row's action
+  // reflects the new relation immediately. The authoritative state still
+  // comes from useFriends' /friends/requests fetch triggered by onSend /
+  // onAccept.
+  const bumpRelation = useCallback((userId, next) => {
+    setEveryoneRows(prev => prev.map(r => String(r.id) === String(userId) ? { ...r, relation: next } : r));
+    setDdRows(prev => prev.map(r => String(r.id) === String(userId) ? { ...r, relation: next } : r));
+  }, []);
+
+  const addFromDirectory = useCallback(async (row) => {
+    // Reuse the existing /friends/request endpoint via the onSend hook.
+    const handleToSend = row.handle || row.name;
+    if (!handleToSend) return;
+    bumpRelation(row.id, 'pending_out');
+    const r = await onSend?.(handleToSend);
+    if (!r) return;
+    if (r.status === 'auto_accepted') bumpRelation(row.id, 'friend');
+    else if (r.status === 'sent' || r.status === 'already_sent') bumpRelation(row.id, 'pending_out');
+    else if (r.status === 'already_friend') bumpRelation(row.id, 'friend');
+    else if (r.status === 'self' || r.status === 'not_found') {
+      bumpRelation(row.id, 'none');
+    }
+  }, [bumpRelation, onSend]);
+
+  const acceptFromDirectory = useCallback(async (row) => {
+    // Received-side acceptance. The Friend row exists already; we need its
+    // requestId. Easiest reuse: hit the id-card endpoint which returns it.
+    try {
+      const { data: card } = await api.get(`/friends/${row.id}/card`);
+      if (card?.relationship === 'request_received' && card.requestId) {
+        bumpRelation(row.id, 'friend');
+        await onAccept?.(card.requestId);
+      }
+    } catch {}
+  }, [bumpRelation, onAccept]);
+
+  const submitSendRequest = async (e) => {
     e?.preventDefault?.();
     const h = handle.trim();
     if (!h) { setErr('Enter a handle.'); triggerShake(); return; }
     setErr(null);
+    setDdOpen(false);
     const r = await onSend?.(h);
     if (!r) return;
     switch (r.status) {
@@ -156,23 +384,63 @@ export default function FriendsDrawer({
   const friendsCount = (friends || []).length;
   const requestCount = (received || []).length;
 
+  // Dropdown payload: existing friends are filtered OUT of the client-side
+  // display (the server still returns them so we can know).
+  const ddVisible = ddRows.filter(r => r.relation !== 'friend');
+
   return (
     <aside className="fd" role="region" aria-label="Friends">
       <div className="fd-hd">
         <b>Friends</b>
-        <button ref={inputRef} className="fd-x" aria-label="Close friends drawer" onClick={onClose}>×</button>
+        <button ref={closeBtnRef} className="fd-x" aria-label="Close friends drawer" onClick={onClose}>×</button>
       </div>
 
-      <form className="fd-add" onSubmit={submitAdd}>
+      <form ref={addRootRef} className="fd-add" onSubmit={submitSendRequest} autoComplete="off">
         <input
-          ref={addRef}
+          ref={addInputRef}
           className={shake ? 'shake' : ''}
-          placeholder="Add by handle…"
+          placeholder="Find a player by name or handle…"
           value={handle}
           onChange={e => { setHandle(e.target.value); setErr(null); }}
-          aria-label="Friend handle"
+          onFocus={() => { if (handle.trim()) setDdOpen(true); }}
+          aria-label="Find a player"
         />
         <button type="submit">Send request</button>
+        {ddOpen && (
+          <div className="fd-dd" role="listbox" onMouseDown={e => e.preventDefault() /* keep input focused on item click */}>
+            <div className="hint">Matches in the player registry</div>
+            {ddVisible.length === 0 ? (
+              <div className="fd-empty" style={{ padding: '14px' }}>
+                No players found. Press “Send request” below for an exact handle.
+              </div>
+            ) : (
+              ddVisible.map(r => (
+                <DirectoryRow
+                  key={r.id}
+                  row={r}
+                  query={ddQuery}
+                  onAdd={() => addFromDirectory(r)}
+                  onAccept={() => acceptFromDirectory(r)}
+                />
+              ))
+            )}
+            {ddTotal > 3 && (
+              <button
+                type="button"
+                className="more"
+                onClick={() => {
+                  const q = handle.trim();
+                  setDdOpen(false);
+                  setTab('everyone');
+                  setEveryoneFilter(q);
+                  setHandle('');
+                }}
+              >
+                View all {ddTotal} matches <span>›</span>
+              </button>
+            )}
+          </div>
+        )}
       </form>
       {err && <div className="fd-msg err" role="alert">{err}</div>}
 
@@ -182,6 +450,9 @@ export default function FriendsDrawer({
         </button>
         <button role="tab" aria-selected={tab === 'requests'} className="fd-tab" onClick={() => setTab('requests')}>
           Requests{requestCount > 0 && <span className="fd-badge">{requestCount > 9 ? '9+' : requestCount}</span>}
+        </button>
+        <button role="tab" aria-selected={tab === 'everyone'} className="fd-tab" onClick={() => setTab('everyone')}>
+          Everyone <span className="fd-badge" style={{ background: 'var(--bg3)', color: 'var(--fg2)' }}>{everyoneTotal > 999 ? '999+' : everyoneTotal}</span>
         </button>
       </div>
 
@@ -234,7 +505,7 @@ export default function FriendsDrawer({
           {received.map(r => (
             <div key={r.requestId} className="fd-req">
               <button className="fd-av nx-tip" data-tip="Click to open profile" onClick={() => onOpenCard?.(r.userId, r.ref)} aria-label={`Open ${r.name}'s ID card`}>
-                {r.avatar ? <img src={r.avatar} alt="" /> : null}
+                {r.avatar ? <img src={r.avatar} alt="" /> : initials(r.name)}
               </button>
               <div className="fd-nm">
                 <b>{r.name}</b>
@@ -250,20 +521,127 @@ export default function FriendsDrawer({
           {sent.map(r => (
             <div key={r.requestId} className="fd-req">
               <button className="fd-av nx-tip" data-tip="Click to open profile" onClick={() => onOpenCard?.(r.userId)} aria-label={`Open ${r.name}'s ID card`}>
-                {r.avatar ? <img src={r.avatar} alt="" /> : null}
+                {r.avatar ? <img src={r.avatar} alt="" /> : initials(r.name)}
               </button>
               <div className="fd-nm">
                 <b>{r.name}</b>
                 <small>Request sent · waiting</small>
               </div>
               <div className="fd-act">
+                <span className="fd-stat pend">Pending</span>
                 <button className="fd-req-btn" onClick={() => onCancel?.(r.requestId)}>Cancel</button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {tab === 'everyone' && (
+        <>
+          <div className="fd-filter">
+            <input
+              placeholder="Filter players…"
+              value={everyoneFilter}
+              onChange={e => setEveryoneFilter(e.target.value)}
+              aria-label="Filter players"
+            />
+          </div>
+          <div className="fd-body" ref={bodyRef}>
+            <EveryoneList
+              rows={everyoneRows}
+              query={everyoneFilter.trim()}
+              onAdd={addFromDirectory}
+              onAccept={acceptFromDirectory}
+              onOpenCard={onOpenCard}
+            />
+            {!everyoneDone && (
+              <div className="fd-sentinel" ref={sentinelRef} />
+            )}
+            {everyoneLoading && <div className="fd-empty" style={{ padding: '12px' }}>Loading…</div>}
+            {!everyoneLoading && everyoneRows.length === 0 && (
+              <div className="fd-empty">No players match.</div>
+            )}
+          </div>
+        </>
+      )}
     </aside>
+  );
+}
+
+function EveryoneList({ rows, query, onAdd, onAccept, onOpenCard }) {
+  // Sticky letter headers when no filter is active. When filtering, we skip
+  // them (the list is already short + ranked).
+  if (!query) {
+    const out = [];
+    let lastLetter = '';
+    for (const r of rows) {
+      const letter = (r.name || '?')[0].toUpperCase();
+      if (letter !== lastLetter) {
+        lastLetter = letter;
+        out.push(<div key={`L${letter}`} className="fd-group stk">{letter}</div>);
+      }
+      out.push(
+        <DirectoryRow
+          key={r.id}
+          row={r}
+          query=""
+          onAdd={() => onAdd(r)}
+          onAccept={() => onAccept(r)}
+          onOpenCard={onOpenCard}
+        />
+      );
+    }
+    return <>{out}</>;
+  }
+  return (
+    <>
+      {rows.map(r => (
+        <DirectoryRow
+          key={r.id}
+          row={r}
+          query={query}
+          onAdd={() => onAdd(r)}
+          onAccept={() => onAccept(r)}
+          onOpenCard={onOpenCard}
+        />
+      ))}
+    </>
+  );
+}
+
+function DirectoryRow({ row, query, onAdd, onAccept, onOpenCard }) {
+  const avRef = useRef(null);
+  const sub = `${row.org || '—'} · ${row.online ? 'Online' : 'Offline'}`;
+  return (
+    <div className="fd-row">
+      <button
+        className="fd-av"
+        ref={avRef}
+        onClick={() => onOpenCard?.(row.id, avRef)}
+        aria-label={`Open ${row.name}'s ID card`}
+      >
+        {row.avatar ? <img src={row.avatar} alt="" /> : initials(row.name)}
+        <i className={`fd-dot${row.online ? ' on' : ''}`} />
+      </button>
+      <div className="fd-nm">
+        <b><HighlightedName name={row.name} query={query} /></b>
+        <small>{sub}</small>
+      </div>
+      <div className="fd-act">
+        {row.relation === 'none' && (
+          <button className="fd-pm primary" onClick={onAdd}>+ Add</button>
+        )}
+        {row.relation === 'pending_out' && (
+          <span className="fd-stat pend">Pending</span>
+        )}
+        {row.relation === 'pending_in' && (
+          <button className="fd-pm lime" onClick={onAccept}>Accept</button>
+        )}
+        {row.relation === 'friend' && (
+          <span className="fd-stat fr">✓ Friend</span>
+        )}
+      </div>
+    </div>
   );
 }
 
