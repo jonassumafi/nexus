@@ -9,7 +9,7 @@ const COLORS = {
   PURPLE: 11166429,  // #AA66DD
 };
 
-const FOOTER = { text: 'Nexus Interstellar Traffic System · nexus.app-palette.com' };
+const FOOTER = { text: 'Nexus Interstellar Traffic System · nexus-missions.space' };
 
 function dash(v) {
   if (v === undefined || v === null || v === '') return '—';
