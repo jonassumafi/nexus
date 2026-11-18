@@ -39,13 +39,17 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  // Crash-detection budget. pingInterval 10 s + pingTimeout 20 s means
-  // a client that lost power or had its process killed drops from
-  // friends' lists within ~30 s — the budget the lifecycle spec asks
-  // for. Clean quits still propagate immediately via the Electron
-  // cleanup routine disconnecting the socket.
-  pingInterval: 10000,
-  pingTimeout:  20000,
+  // Crash-detection budget. 25 s ping interval + 60 s timeout gives
+  // a comfortable margin for brief network hiccups (Cloudflare tunnel
+  // re-handshakes, Electron window briefly backgrounded by Star Citizen,
+  // etc.) without letting a truly dead client linger in presence for
+  // much more than 85 s. Clean quits still propagate instantly via the
+  // Electron cleanup routine broadcasting a socket.disconnect(). The
+  // previous 10 s / 20 s budget was too tight and caused visible
+  // "connected / disconnected" flapping for players on stable
+  // connections.
+  pingInterval: 25000,
+  pingTimeout:  60000,
 });
 
 app.use(cors({

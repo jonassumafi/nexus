@@ -3488,11 +3488,13 @@ export default function Dashboard() {
             </button>
           </div>
           <div style={{
-            // Cap the feed's own scroll area so it never consumes the
-            // whole right column — otherwise radios below get squeezed
-            // out of view and the operator has no path to them.
-            flex: feedCollapsed ? '0 0 auto' : '0 1 auto',
-            maxHeight: feedCollapsed ? undefined : '50vh',
+            // Activity feed grows to fill all space the radio cluster
+            // below doesn't claim. The radio cluster is pinned at
+            // natural height (flex: 0 0 auto on its wrapper), so this
+            // feed section expands to fill everything above it. In
+            // short windows the feed's internal overflow:auto handles
+            // long lists; in tall windows there's plenty of room.
+            flex: feedCollapsed ? '0 0 auto' : '1 1 0',
             overflowY: 'auto',
             minHeight: 0,
             display: 'flex',
@@ -3531,8 +3533,12 @@ export default function Dashboard() {
             )}
           </div>
           {/* v0.9.8 — Mirrored radio layout per the Radio Mirror Layouts
-              spec. One shared mic strip, two identical modules below. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              spec. One shared mic strip, two identical modules below.
+              The whole cluster is a rigid natural-height block pinned
+              to the bottom of the right column (flex:0 0 auto), so the
+              activity feed above gets all the leftover space. Radios
+              are NOT individually resizable in the vertical. */}
+          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
             <SharedMicStrip
               getLevel={getInputLevel}
               sensitivity={micSensitivity}
