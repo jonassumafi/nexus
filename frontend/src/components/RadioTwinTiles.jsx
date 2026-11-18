@@ -413,11 +413,11 @@ function shortName(n) {
   return s.length <= 20 ? s : s.slice(0, 16) + '…';
 }
 
-// Radio-only `ib`-sized power button. Turning OFF requires a 3-second
+// Radio-only `ib`-sized power button. Turning OFF requires a short
 // hold with a progress ring; turning ON stays a single click.
 function PowerHoldIB({ powered, onToggle }) {
   const { bindProps, progress, showHint, holding } = useHold({
-    holdMs: 3000,
+    holdMs: 1500,                               // was 3000 — too long felt broken
     hintText: 'Hold to turn off',
     onComplete: () => { try { onToggle?.(); } catch {} },
   });
@@ -439,7 +439,7 @@ function PowerHoldIB({ powered, onToggle }) {
     <button
       className="ib"
       {...bindProps}
-      aria-label="Power off (hold 3 seconds)"
+      aria-label="Power off (hold 1.5 seconds)"
       title="Hold to turn off"
       style={{
         position: 'relative',
@@ -482,7 +482,7 @@ export default function RadioTwinTiles() {
   const [voiceProfile, setVoiceProfile] = useState(null);
   const [pttKey, setPttKey] = useState(() => localStorage.getItem('nexus_ptt_key') || 'v');
   const [micDeviceId, setMicDeviceId] = useState(() => localStorage.getItem('nexus_mic_device_id') || null);
-  const [outputDeviceId] = useState(() => localStorage.getItem('nexus_output_device_id') || null);
+  const [outputDeviceId, setOutputDeviceId] = useState(() => localStorage.getItem('nexus_output_device_id') || null);
   const [micSensitivity, setMicSensitivity] = useState(() => {
     const v = Number(localStorage.getItem('nexus_mic_sensitivity'));
     return Number.isFinite(v) && v > 0 ? v : 100;
@@ -680,13 +680,18 @@ export default function RadioTwinTiles() {
     try { window.electronAPI?.setOpacity?.(opacityPct / 100); } catch {}
   }, [opacityPct]);
 
-  // Input device list (refreshes on devicechange).
-  const [inputDevices, setInputDevices] = useState([]);
+  // Input + output device lists (refreshes on devicechange). Browsers
+  // only populate labels after the user has granted mic permission, so
+  // the lists may appear generic ("Microphone", "Speaker") until the
+  // first getUserMedia succeeds.
+  const [inputDevices, setInputDevices]   = useState([]);
+  const [outputDevices, setOutputDevices] = useState([]);
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) return;
     const enumerate = () => {
       navigator.mediaDevices.enumerateDevices().then((devs) => {
         setInputDevices(devs.filter(d => d.kind === 'audioinput'));
+        setOutputDevices(devs.filter(d => d.kind === 'audiooutput'));
       }).catch(() => {});
     };
     enumerate();
@@ -1016,7 +1021,7 @@ export default function RadioTwinTiles() {
               </label>
             </div>
 
-            {/* Microphone */}
+            {/* Microphone + Speaker */}
             <div className="sg">
               <h5>Microphone</h5>
               <label>
@@ -1035,6 +1040,25 @@ export default function RadioTwinTiles() {
                   <option value="__default__">Default microphone</option>
                   {inputDevices.map((d) => (
                     <option key={d.deviceId} value={d.deviceId}>{d.label || 'Microphone'}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Output
+                <select
+                  value={outputDeviceId || '__default__'}
+                  onChange={(e) => {
+                    const v = e.target.value === '__default__' ? null : e.target.value;
+                    setOutputDeviceId(v);
+                    try {
+                      if (v) localStorage.setItem('nexus_output_device_id', v);
+                      else   localStorage.removeItem('nexus_output_device_id');
+                    } catch {}
+                  }}
+                >
+                  <option value="__default__">Default speakers</option>
+                  {outputDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>{d.label || 'Speakers'}</option>
                   ))}
                 </select>
               </label>

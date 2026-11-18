@@ -15,14 +15,14 @@ import { useHold, HoldRing } from './HoldButton';
 import './radioMotion.css';
 
 // Power toggle button. Turning ON is still a single click; turning OFF
-// requires a 3-second press-and-hold with a progress ring, so the
-// operator can't accidentally silence their radio mid-fight. Early
-// release cancels. When powered off, hover=cyan (restorative).
+// requires a short press-and-hold with a progress ring so the operator
+// can't accidentally silence their radio mid-fight, but not so long
+// that it feels broken. Early release cancels.
 function PowerBtn({ onClick, powered }) {
   const [hover, setHover] = useState(false);
   const [pressing, setPressing] = useState(false);
   const { bindProps, progress, holding, showHint } = useHold({
-    holdMs: 3000,
+    holdMs: 1500,                               // was 3000 — too long felt broken
     hintText: 'Hold to turn off',
     onComplete: () => { try { onClick?.(); } catch {} },
   });
@@ -81,7 +81,7 @@ function PowerBtn({ onClick, powered }) {
     >
       {powered && <HoldRing progress={progress} variant="danger" size={36} />}
       <span style={{ position: 'relative', zIndex: 1 }}>⏻</span>
-      {showHint && (
+      {powered && (hover || showHint) && (
         <span
           role="status"
           style={{
