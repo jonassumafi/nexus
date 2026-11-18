@@ -20,8 +20,32 @@ export default function SharedMicStrip({
   peersCount = null,    // number → shows a 👥 N chip; null → hidden
   isMuted = false,
   onToggleMute,
+  // Audio device pickers — exposed in the stacked (dashboard) view
+  // via a small "Audio devices" expandable row at the bottom of the
+  // strip. Compact mode omits it (Radio-only has its own pickers in
+  // the gear settings panel). Pass null/undefined to hide entirely.
+  micDeviceId = null,
+  setMicDeviceId,
+  outputDeviceId = null,
+  setOutputDeviceId,
 }) {
   const [level, setLevel] = useState(0);
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [inputDevices, setInputDevices]   = useState([]);
+  const [outputDevices, setOutputDevices] = useState([]);
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const enumerate = () => {
+      navigator.mediaDevices.enumerateDevices().then((devs) => {
+        setInputDevices(devs.filter(d => d.kind === 'audioinput'));
+        setOutputDevices(devs.filter(d => d.kind === 'audiooutput'));
+      }).catch(() => {});
+    };
+    enumerate();
+    navigator.mediaDevices.addEventListener?.('devicechange', enumerate);
+    return () => navigator.mediaDevices.removeEventListener?.('devicechange', enumerate);
+  }, []);
+  const showDevicePickers = !compact && (setMicDeviceId || setOutputDeviceId);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -267,6 +291,82 @@ export default function SharedMicStrip({
           fontSize: 11,
         }}>{rxVolume}%</span>
       </div>
+
+      {showDevicePickers && (
+        <div style={{
+          marginTop: 4,
+          borderTop: '1px solid var(--rim0)',
+          paddingTop: 6,
+        }}>
+          <button
+            type="button"
+            onClick={() => setDevicesOpen(o => !o)}
+            style={{
+              width: '100%', background: 'none', border: 0, padding: '2px 4px',
+              display: 'flex', alignItems: 'center', gap: 6,
+              font: '700 10px Inter, system-ui, sans-serif',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: 'var(--fg2)', cursor: 'pointer',
+            }}
+            aria-expanded={devicesOpen}
+          >
+            <span>{devicesOpen ? '▾' : '▸'}</span>
+            <span>Audio devices</span>
+          </button>
+          {devicesOpen && (
+            <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+              {setMicDeviceId && (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <span style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Microphone
+                  </span>
+                  <select
+                    value={micDeviceId || '__default__'}
+                    onChange={(e) => {
+                      const v = e.target.value === '__default__' ? null : e.target.value;
+                      setMicDeviceId(v);
+                    }}
+                    style={{
+                      background: 'var(--bg0)', color: 'var(--fg0)',
+                      border: '1px solid var(--rim0)', borderRadius: 3,
+                      padding: '4px 6px', fontSize: 11,
+                    }}
+                  >
+                    <option value="__default__">Default microphone</option>
+                    {inputDevices.map(d => (
+                      <option key={d.deviceId} value={d.deviceId}>{d.label || 'Microphone'}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {setOutputDeviceId && (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <span style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Speakers / Headphones
+                  </span>
+                  <select
+                    value={outputDeviceId || '__default__'}
+                    onChange={(e) => {
+                      const v = e.target.value === '__default__' ? null : e.target.value;
+                      setOutputDeviceId(v);
+                    }}
+                    style={{
+                      background: 'var(--bg0)', color: 'var(--fg0)',
+                      border: '1px solid var(--rim0)', borderRadius: 3,
+                      padding: '4px 6px', fontSize: 11,
+                    }}
+                  >
+                    <option value="__default__">Default speakers</option>
+                    {outputDevices.map(d => (
+                      <option key={d.deviceId} value={d.deviceId}>{d.label || 'Speakers'}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

@@ -3546,6 +3546,10 @@ export default function Dashboard() {
               rxVolume={rxVolume}
               setRxVolume={setRxVolume}
               isActive={micPermission === 'granted'}
+              micDeviceId={micDeviceId}
+              setMicDeviceId={setMicDeviceId}
+              outputDeviceId={outputDeviceId}
+              setOutputDeviceId={setOutputDeviceId}
             />
             <CrewRadioCard
               tunedFrequency={tunedFrequency}
