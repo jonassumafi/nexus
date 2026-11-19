@@ -38,6 +38,54 @@ reproduction.
 
 ---
 
+## 3. Voice doesn't cross Full ↔ Radio-only views
+
+**Symptom.** Three operators testing Crew voice together. They can
+hear each other ONLY when all three are in the same view. The moment
+one jumps from Radio-only to Full (or vice versa), that person is
+lost to the other two — no voice in either direction until they come
+back to the same view.
+
+**Expected behavior.** A player on Full and a player on Radio-only
+tuned to the same frequency should hear each other. View choice is
+just UI; the voice layer should be identical.
+
+**Where to look first.**
+- Full and Radio-only mount DIFFERENT top-level components:
+  `pages/Dashboard.jsx` → `useRadioConnectionUDP` for Crew.
+  `components/RadioTwinTiles.jsx` → also calls `useRadioConnectionUDP`,
+  but as a separate hook instance in a separate window.
+- The two views each live in their own BrowserWindow (`mainWindow` vs
+  `radioWindow`, see `electron/src/main.js:createRadioWindow`). Each
+  window's renderer is a separate Chromium process with its own socket
+  and its own UDP session. On a view switch the active window
+  changes; the inactive one's socket disconnects and leaves the
+  frequency room. The newly-active window joins fresh.
+- That handoff is where the race is. Probable candidates:
+  1. Both windows briefly claim to be in the same frequency room, or
+     the leaving window's `radio:leave` fires AFTER the new window's
+     `radio:join`, making the server kick the new session out as a
+     duplicate.
+  2. Server-side (`backend/services/socketManager.js` `radio:join`
+     handler + any dedupe-per-user logic) may evict existing sockets
+     on the same frequency for the same userId, taking the old one
+     down after the new one tried to join. Grep for `evict`, `kick`,
+     `replace`, `dup`.
+  3. The `electronAPI.udp.open` / `close` IPC in `main.js` only tracks
+     ONE live session globally. When the second view opens UDP it
+     closes the first — but if the first is still the "current" one
+     in the udp-voice module, the second's RX forwarder gets
+     installed on a session the main process immediately closes.
+- Historical context: commits `6953dc1` (Companion removal) and
+  `2e0a266` (stop closing AudioContext) were landed specifically to
+  fix a version of this bug for Companion. The same class of race
+  may have re-surfaced for the Full ↔ Radio-only pair.
+
+**Status.** Logged for future fix. Not yet triaged with live
+reproduction.
+
+---
+
 ## 2. Player names don't light up when transmitting on Command (maybe Crew too)
 
 **Symptom.** On the Command radio, when a peer is transmitting, their
