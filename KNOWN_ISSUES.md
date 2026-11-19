@@ -69,8 +69,14 @@ short moment, not overlap with it.
   emit nothing. The comment at line 596 says Chromium can auto-suspend
   the context even when the chain was alive moments earlier.
 
-**Status.** Logged for future fix. Not yet triaged with live
-reproduction.
+**Status (fixed 2026-11-15 in `1883525`).** Replaced the fragile
+`prev.length === 0` gate with a time-based gate
+(`chimedAtRef`, 600 ms window) so a stale socketId in
+`transmittingPeerIds` can't suppress the chime. Also awaits the
+AudioContext `resume()` promise before playback so a suspended
+context no longer eats the sound silently. Dropped the
+`!isPTTActive` sub-gate — the RX chime belongs to the listener even
+if they're keyed up.
 
 ---
 
@@ -219,8 +225,11 @@ applies.
 - `frontend/src/components/RadioTwinTiles.jsx` → the Radio-only gear
   Disconnect `HoldButton` (currently `hintText="Hold to disconnect"`).
 
-**Status.** Logged for future fix. Simple string sweep, no logic
-changes required.
+**Status (fixed 2026-11-15 in `1883525`).** Swept all four surfaces
+(Banner DisconnectHoldButton, RadioModule PowerBtn, RadioTwinTiles
+PowerHoldIB, Radio-only gear Disconnect HoldButton) to the single
+string "Click and hold to disconnect" on `title`, `aria-label`, and
+the hover hint.
 
 ---
 
@@ -310,10 +319,13 @@ Sequence when the user holds a powered radio to completion:
   `PowerHoldIB` — it uses a similar conditional-on-powered structure
   and may have the same bug.
 
-**Status.** Logged for future fix. High priority — this makes it
-functionally impossible to power off a radio with the current
-build, which is what the whole hold-to-confirm gesture was designed
-to make safer.
+**Status (fixed 2026-11-15 in `1883525`).** Added a
+`justCompletedRef` on both PowerBtn (`RadioModule`) and PowerHoldIB
+(`RadioTwinTiles`). Set inside the `useHold` `onComplete` callback,
+read by a wrapper `onClick` on the button that swallows and
+`preventDefault`s the synthetic click. The real toggle (fired from
+`onComplete`) lands exactly once; the ghost click no longer
+re-toggles the radio on.
 
 ---
 
@@ -343,5 +355,4 @@ documented to behave.
   is being broadcast to the Command frequency's room in
   `backend/services/socketManager.js` with the right tuner id.
 
-**Status.** Logged for future fix. Not yet triaged with live
-reproduction.
+**Status.** Logged for future fix. Not yet triaged.
