@@ -211,6 +211,60 @@ workflow (silencing the chatter channel but keeping Command hot).
 
 ---
 
+## 7. Hold-to-turn-off completes but power snaps back on
+
+**Symptom.** On a powered radio (Crew or Command), press-and-hold
+the power button. The ring fills, the hold completes, the radio
+briefly flips off, then immediately flips back on. Repeat attempts
+produce the same result — the radio is effectively stuck ON.
+
+**Expected behavior.** A completed hold fires `onPowerToggle` exactly
+once and the radio stays in the OFF state until the user single-
+clicks it back on.
+
+**Root cause (identified, not yet fixed).** In
+`frontend/src/components/RadioModule.jsx`'s `PowerBtn`, the mouse
+handlers are conditional on `powered`:
+
+```jsx
+onMouseUp={() => { setPressing(false); if (powered) bindProps.onMouseUp(); }}
+onClick={powered ? undefined : commonHandlers.onClick}
+```
+
+Sequence when the user holds a powered radio to completion:
+1. `onComplete` fires → parent calls `setPowered(false)` → React re-
+   renders with `powered = false`.
+2. The physical release has not happened yet, but by the time the
+   user lifts the mouse, `powered` is already `false`.
+3. `onMouseUp` checks `powered` (now `false`) → skips
+   `bindProps.onMouseUp` (the `useHold.release` that would set
+   `completedRef = false`).
+4. The browser then synthesises `click` (because the press started
+   on the button). Now `onClick = commonHandlers.onClick` because
+   `powered` is `false` → runs `onClick?.()` → `setPowered(true)`.
+5. Radio is back ON. User gives up.
+
+**Fix sketch.**
+- Capture the "was powered at press start" into a ref when `onMouseDown`
+  fires, and read from THAT ref in `onMouseUp` / `onClick` instead of
+  the live `powered` state. That decouples the pointer-release path
+  from the fact that `powered` has already flipped.
+- Alternative: on `onClick`, if `completedRef.current` is still true
+  (just completed a hold), swallow the click. Requires exposing the
+  completedRef from `useHold`, or guarding via a local
+  `justCompletedRef` on PowerBtn that we set in the `onComplete`
+  callback and clear on next mousedown.
+- Same pattern should be audited in `RadioTwinTiles.jsx`'s
+  `PowerHoldIB` — it uses a similar conditional-on-powered structure
+  and may have the same bug.
+
+**Status.** Logged for future fix. High priority — this makes it
+functionally impossible to power off a radio with the current
+build, which is what the whole hold-to-confirm gesture was designed
+to make safer.
+
+---
+
 ## 2. Player names don't light up when transmitting on Command (maybe Crew too)
 
 **Symptom.** On the Command radio, when a peer is transmitting, their
