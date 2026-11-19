@@ -86,6 +86,55 @@ reproduction.
 
 ---
 
+## 4. Stale peer list + possibly empty frequency field after view switch
+
+**Symptom.** After switching between Full dashboard and Radio-only
+and back, the roster/peer list on Full shows the player names from a
+previous frequency rather than the ones on the currently-tuned
+frequency. The frequency itself appears to be preserved across the
+switch (as expected), BUT the user suspects they had to re-type
+their frequency back into the LCD input after returning from
+Radio-only to Full. This second half is unconfirmed — may just be a
+display glitch where the input renders empty even though the engine
+is still tuned.
+
+**Expected behavior.** On a view switch:
+- Tuned frequency persists and is displayed correctly in every input
+  field (no re-typing required).
+- Peer / roster list reflects only the peers currently on that
+  frequency — no stale names from a prior session.
+
+**Where to look first.**
+- Roster staleness is very likely connected to issue #3 — when the
+  arriving window joins the room, the departing window hasn't fully
+  left, so both roster snapshots are in flight and the newcomer
+  shows a mix. Check how `radioPeers` is seeded on the newly-active
+  window:
+  `frontend/src/hooks/useRadioConnectionUDP.js` — the join handler
+  should wipe `peersRef.current` and seed from the server's latest
+  room members. If the hook re-uses a persisted state from a prior
+  mount, that's the stale list.
+- The dedupe helper `frontend/src/utils/peerList.js` (added in
+  `27b0115`) should still be deduping by userId; verify it isn't
+  letting stale entries from the old frequency through.
+- For the LCD-field display question: check whether
+  `pages/Dashboard.jsx`'s radio-state lift (`tunedFrequency`) is
+  being re-read from the persisted saved-frequency store on view
+  remount. The RadioModule's `freqInput` starts from the `freq`
+  prop (see `components/RadioModule.jsx`); if the parent passes an
+  empty string during the brief re-mount window, the LCD shows
+  empty even though the engine is tuned. Compare to how
+  `components/CrewRadioCard.jsx` seeds `freq` from
+  `tunedFrequency` on mount.
+- Also check that the `nexus:window-state` broadcast to the newly-
+  active window fires BEFORE the renderer renders its first frame,
+  otherwise the freq input won't have its initial value.
+
+**Status.** Logged for future fix. Not yet triaged. Possibly
+partially overlaps with issue #3's root cause.
+
+---
+
 ## 2. Player names don't light up when transmitting on Command (maybe Crew too)
 
 **Symptom.** On the Command radio, when a peer is transmitting, their
