@@ -33,6 +33,7 @@ import MissionBoardV2 from '../components/MissionBoardV2';
 import Banner, { AnchoredPopover } from '../components/Banner';
 import FriendsDrawer from '../components/FriendsDrawer';
 import FriendAcceptedBanner from '../components/FriendAcceptedBanner';
+import AdminHintBanner from '../components/AdminHintBanner';
 import IdCardPopover from '../components/IdCardPopover';
 import { useFriends } from '../hooks/useFriends';
 import { useDMs } from '../hooks/useDMs';
@@ -3204,6 +3205,7 @@ export default function Dashboard() {
       )}
 
       <FriendAcceptedBanner event={friends.lastAccepted} onDismiss={friends.clearLastAccepted} />
+      <AdminHintBanner />
 
       {/* 3-panel grid (or MY SHIPS panel when myShipsMode) */}
       <div style={{
