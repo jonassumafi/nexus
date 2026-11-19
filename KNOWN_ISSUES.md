@@ -35,3 +35,34 @@ short moment, not overlap with it.
 
 **Status.** Logged for future fix. Not yet triaged with live
 reproduction.
+
+---
+
+## 2. Player names don't light up when transmitting on Command (maybe Crew too)
+
+**Symptom.** On the Command radio, when a peer is transmitting, their
+name in the roster / peer list doesn't light up or get a TX indicator.
+Unclear whether Crew has the same bug — needs confirmation on the
+next test.
+
+**Expected behavior.** Any peer currently transmitting should be
+visually highlighted in the roster — lime dot, color change, or
+whatever the existing TX indicator is. Matches how Crew is
+documented to behave.
+
+**Where to look first.**
+- `frontend/src/hooks/useCommandTunerRx.js` — `transmittingIds` state
+  is set from `onPttStart` / `onPttStop` payloads. Verify it's being
+  populated.
+- `frontend/src/components/CommandRadioCard.jsx` — check the
+  `transmittingPeerIds` prop flow from the hook to the UI; the roster
+  render may be reading a stale or wrong field.
+- Compare the Crew flow in `useRadioConnectionUDP.js` and
+  `CrewRadioCard.jsx` — if Crew works, the difference between the
+  two paths is the fix.
+- Could also be a server-side emit issue: check that `radio:ptt-start`
+  is being broadcast to the Command frequency's room in
+  `backend/services/socketManager.js` with the right tuner id.
+
+**Status.** Logged for future fix. Not yet triaged with live
+reproduction.
