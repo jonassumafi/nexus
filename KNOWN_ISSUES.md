@@ -5,6 +5,42 @@ to start digging, and current status.
 
 ---
 
+## DESIGN PRINCIPLE — Read before working on any view-switch bug
+
+**The two views are shells of one radio system, not two.** Full
+dashboard and Radio-only are UI presentations of the same underlying
+voice layer. A single operator has:
+
+- One identity (`userId`).
+- One mic chain (filter graph, voice profile, sensitivity).
+- One pair of radios (Crew + Command), each with:
+  - one tuned frequency,
+  - one power state,
+  - one voice profile / rig,
+  - one PTT key binding,
+  - one presence on the server-side frequency room,
+  - one UDP session (or one WebRTC peer connection set).
+
+Switching views must **never** change any of the above. The player's
+frequency, peer list, power state, transmission state, and roster
+identity all remain exactly as they were. The view just re-draws them
+in a different shape.
+
+The current implementation is wrong on this point — each view runs
+in its own BrowserWindow, which spawns its own renderer process,
+its own socket, its own UDP session, its own mic chain. Issues #3
+and #4 are direct symptoms of that architectural mismatch; future
+fixes should move the voice layer out of per-window state into
+something shared (either keep one BrowserWindow and switch layouts
+inside it, or move the entire voice engine into the Electron main
+process and have each window be a thin observer).
+
+**Treat this as the north star for any view-switch fix.** A fix
+that makes the symptoms go away but keeps two parallel voice stacks
+is not a real fix.
+
+---
+
 ## 1. Command radio pre-chirp doesn't play on the RX side
 
 **Symptom.** When I receive a transmission on the Command radio, I do
