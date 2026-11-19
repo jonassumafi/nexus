@@ -135,6 +135,43 @@ partially overlaps with issue #3's root cause.
 
 ---
 
+## 5. Add "Click and hold to disconnect" tooltips to every power-off button
+
+**Type.** Enhancement, not a bug — the hold-to-confirm gesture works
+correctly on every power/disconnect button today, but new players
+don't know the gesture exists. One already-partial surface: the
+Banner Disconnect icon uses a hover-hint; the radio power-off
+buttons also have one on hover. This issue is about **all**
+power-off surfaces having a consistent tooltip string.
+
+**Expected behavior.** Every power-off / disconnect control — radio
+power icon (Crew + Command, in Full and Radio-only), the dashboard
+Banner Disconnect icon, the Radio-only gear panel Disconnect
+button, and any future power-off control — shows a tooltip reading
+exactly: **"Click and hold to disconnect"** on hover. Even if the
+button type is non-radio (e.g. app disconnect), the same string
+applies.
+
+**Where to look first.**
+- `frontend/src/components/HoldButton.jsx` — `HoldButton` takes a
+  `hintText` / `title` prop; `useHold` + `HoldRing` are used inline
+  elsewhere. Make sure every call site passes the same string.
+- `frontend/src/components/Banner.jsx` → `DisconnectHoldButton`
+  (`data-tip="Hold to disconnect"` currently) — change to
+  "Click and hold to disconnect".
+- `frontend/src/components/RadioModule.jsx` → `PowerBtn` (currently
+  `title="Hold to turn off"` and hover-label "Hold to turn off").
+  Change label + title.
+- `frontend/src/components/RadioTwinTiles.jsx` → `PowerHoldIB`
+  (currently `title="Hold to turn off"`).
+- `frontend/src/components/RadioTwinTiles.jsx` → the Radio-only gear
+  Disconnect `HoldButton` (currently `hintText="Hold to disconnect"`).
+
+**Status.** Logged for future fix. Simple string sweep, no logic
+changes required.
+
+---
+
 ## 2. Player names don't light up when transmitting on Command (maybe Crew too)
 
 **Symptom.** On the Command radio, when a peer is transmitting, their
