@@ -769,9 +769,24 @@ export function useRadioConnectionUDP({
       });
     };
 
+    // Same-user duplicate (view switch) — swap old socketId → new
+    // without flashing the peer as "left". Stops the roster + the
+    // transmitting-ids set from going stale when the peer's window
+    // changes views.
+    const onPeerReplaced = (payload) => {
+      if (!payload) return;
+      const { oldSocketId, newSocketId, userId, citizenName, tunerId } = payload;
+      if (tunerId !== 'right') return;
+      setPeers(prev => prev.map(p =>
+        p.socketId === oldSocketId ? { ...p, socketId: newSocketId, userId, citizenName } : p
+      ));
+      setTransmittingPeerIds(prev => prev.map(id => id === oldSocketId ? newSocketId : id));
+    };
+
     socket.on('radio:room-peers',    onRoomPeers);
     socket.on('radio:peer-joined',   onPeerJoined);
     socket.on('radio:peer-left',     onPeerLeft);
+    socket.on('radio:peer-replaced', onPeerReplaced);
     socket.on('radio:ptt-start',     onPttStart);
     socket.on('radio:ptt-stop',      onPttStop);
     socket.on('radio:collision',     onCollision);
@@ -782,6 +797,7 @@ export function useRadioConnectionUDP({
       socket.off('radio:room-peers',    onRoomPeers);
       socket.off('radio:peer-joined',   onPeerJoined);
       socket.off('radio:peer-left',     onPeerLeft);
+      socket.off('radio:peer-replaced', onPeerReplaced);
       socket.off('radio:ptt-start',     onPttStart);
       socket.off('radio:ptt-stop',      onPttStop);
       socket.off('radio:collision',     onCollision);

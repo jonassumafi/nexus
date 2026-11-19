@@ -117,8 +117,24 @@ just UI; the voice layer should be identical.
   fix a version of this bug for Companion. The same class of race
   may have re-surfaced for the Full ↔ Radio-only pair.
 
-**Status.** Logged for future fix. Not yet triaged with live
-reproduction.
+**Mitigation shipped (2026-11-15).** Server now emits a dedicated
+`radio:peer-replaced` event on same-user socket eviction with
+`{ oldSocketId, newSocketId, userId, citizenName, tunerId }`. Crew
+(`useRadioConnectionUDP`) and Command (`useCommandTunerRx`) both
+listen and swap the stale socketId in `peers` and
+`transmittingPeerIds` atomically instead of treating it as left+join.
+Command also transfers the WebRTC peer-connection object by key, so
+audio keeps flowing across the swap.
+
+This makes the symptom better (roster stops flashing, TX indicator
+tracks the new socket) but does NOT fix the root cause — each view
+still runs its own BrowserWindow with its own socket, voice stack,
+and mic chain. A view switch still tears down one audio graph and
+builds a new one.
+
+**Status.** Mitigated, not resolved. Full architectural fix still
+pending — see "DESIGN PRINCIPLE" preamble at the top of this file
+for the north-star and the two acceptable implementation paths.
 
 ---
 

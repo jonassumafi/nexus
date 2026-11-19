@@ -640,9 +640,36 @@ export function useCommandTunerRx(opts = {}) {
       });
     };
 
+    // Same-user duplicate (view switch) — swap old socketId → new
+    // without tearing down the peer connection. Prevents roster +
+    // transmittingIds from going stale across a view swap.
+    const onPeerReplaced = (payload) => {
+      if (!payload) return;
+      const { oldSocketId, newSocketId, userId, citizenName, tunerId } = payload;
+      if (tunerId !== TUNER_ID) return;
+      setPeers(prev => prev.map(p =>
+        p.socketId === oldSocketId ? { ...p, socketId: newSocketId, userId, citizenName } : p
+      ));
+      setTransmittingIds(prev => prev.map(id => id === oldSocketId ? newSocketId : id));
+      // WebRTC pc keyed by socketId — move the object reference. The
+      // next offer/answer will use the new id so the audio stream stays
+      // connected without a renegotiation.
+      const pc = peerConnsRef.current[oldSocketId];
+      if (pc) {
+        peerConnsRef.current[newSocketId] = pc;
+        delete peerConnsRef.current[oldSocketId];
+      }
+      const pend = pendingIceRef.current[oldSocketId];
+      if (pend) {
+        pendingIceRef.current[newSocketId] = pend;
+        delete pendingIceRef.current[oldSocketId];
+      }
+    };
+
     socket.on('radio:room-peers',    onRoomPeers);
     socket.on('radio:peer-joined',   onPeerJoined);
     socket.on('radio:peer-left',     onPeerLeft);
+    socket.on('radio:peer-replaced', onPeerReplaced);
     socket.on('radio:offer',         onOffer);
     socket.on('radio:answer',        onAnswer);
     socket.on('radio:ice-candidate', onIce);
@@ -652,6 +679,7 @@ export function useCommandTunerRx(opts = {}) {
       socket.off('radio:room-peers',    onRoomPeers);
       socket.off('radio:peer-joined',   onPeerJoined);
       socket.off('radio:peer-left',     onPeerLeft);
+      socket.off('radio:peer-replaced', onPeerReplaced);
       socket.off('radio:offer',         onOffer);
       socket.off('radio:answer',        onAnswer);
       socket.off('radio:ice-candidate', onIce);

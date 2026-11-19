@@ -234,15 +234,23 @@ function init(socketIo) {
           });
         }
 
-        // Evict stale sockets for this user+tuner (duplicate connections).
+        // Evict stale sockets for this user+tuner (duplicate connections —
+        // typically a view-switch where the same operator now has two
+        // sockets racing for the same frequency). Emit a dedicated
+        // `radio:peer-replaced` event so other peers can transfer their
+        // per-socketId state (transmittingPeerIds, WebRTC peer
+        // connections, roster entries) from the OLD socket id to the
+        // NEW one atomically instead of reading a stale left/join pair
+        // as two independent events.
         const existingSockets = await io.in(room).fetchSockets();
         for (const s of existingSockets) {
           if (s.userId === socket.userId && s.id !== socket.id) {
             s.leave(room);
-            io.to(room).emit('radio:peer-left', {
-              socketId: s.id,
+            io.to(room).emit('radio:peer-replaced', {
               userId: s.userId,
               citizenName: s.citizenName,
+              oldSocketId: s.id,
+              newSocketId: socket.id,
               tunerId: tuner,
             });
           }
