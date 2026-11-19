@@ -21,10 +21,18 @@ import './radioMotion.css';
 function PowerBtn({ onClick, powered }) {
   const [hover, setHover] = useState(false);
   const [pressing, setPressing] = useState(false);
+  // Swallow the synthetic click the browser fires right after a hold
+  // completes. By the time the release lands, `powered` has already
+  // flipped to false (parent re-render), so without this guard the
+  // click path re-toggles the radio back on.
+  const justCompletedRef = useRef(false);
   const { bindProps, progress, holding, showHint } = useHold({
     holdMs: 1500,                               // was 3000 — too long felt broken
-    hintText: 'Hold to turn off',
-    onComplete: () => { try { onClick?.(); } catch {} },
+    hintText: 'Click and hold to disconnect',
+    onComplete: () => {
+      justCompletedRef.current = true;
+      try { onClick?.(); } catch {}
+    },
   });
 
   // When powered on: show a filling ring, no instant click. When off:
@@ -49,10 +57,19 @@ function PowerBtn({ onClick, powered }) {
       onKeyDown={powered ? bindProps.onKeyDown : undefined}
       onKeyUp={powered ? bindProps.onKeyUp : undefined}
       onBlur={powered ? bindProps.onBlur : undefined}
-      onClick={powered ? undefined : commonHandlers.onClick}
-      aria-label={powered ? 'Power off (hold 3 seconds)' : 'Power on'}
+      onClick={(e) => {
+        // If the hold just completed, the browser still synthesises a
+        // click from the mousedown/mouseup pair — swallow it.
+        if (justCompletedRef.current) {
+          justCompletedRef.current = false;
+          e.preventDefault();
+          return;
+        }
+        if (!powered) { try { onClick?.(); } catch {} }
+      }}
+      aria-label={powered ? 'Click and hold to disconnect' : 'Power on'}
       aria-pressed={powered}
-      title={powered ? 'Hold to turn off' : 'Power on radio'}
+      title={powered ? 'Click and hold to disconnect' : 'Power on radio'}
       style={{
         position: 'relative',
         width: 36, height: 36, minHeight: 0,

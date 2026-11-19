@@ -57,7 +57,7 @@ function injectStyles() {
 function DisconnectHoldButton({ powerBtnRef, onConfirm }) {
   const { bindProps, progress, holding, showHint } = useHold({
     holdMs: 6000,
-    hintText: 'Hold to disconnect',
+    hintText: 'Click and hold to disconnect',
     onComplete: () => { try { onConfirm?.(); } catch {} },
   });
   // Larger than a normal .ib.sm so the 32-px ring circumscribes the
@@ -67,8 +67,8 @@ function DisconnectHoldButton({ powerBtnRef, onConfirm }) {
     <button
       ref={powerBtnRef}
       className="ib dng"
-      data-tip={showHint ? 'Hold to disconnect' : 'Hold to disconnect'}
-      aria-label="Disconnect (hold 6 seconds)"
+      data-tip="Click and hold to disconnect"
+      aria-label="Click and hold to disconnect"
       {...bindProps}
       style={{
         position: 'relative',

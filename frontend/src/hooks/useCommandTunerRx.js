@@ -57,6 +57,9 @@ export function useCommandTunerRx(opts = {}) {
 
   const [tunedFrequency, setTunedFrequency]       = useState(null);
   const [peers, setPeers]                         = useState([]);
+  // Timestamp of the last RX chime so the time-based gate in onPttStart
+  // can suppress stacking without being fooled by stale transmittingIds.
+  const chimedAtRef = useRef(0);
   const [transmittingPeerIds, setTransmittingIds] = useState([]);
   const [isPTTActive, setIsPTTActive]             = useState(false);
   const [bindError, setBindError]                 = useState(null);
@@ -586,22 +589,36 @@ export function useCommandTunerRx(opts = {}) {
       setTransmittingIds(prev => {
         if (prev.includes(payload.socketId)) return prev;
         // RX-side chime so listeners hear the same keyup click the
-        // transmitter heard. Only fires on the FIRST peer going live
-        // (0 → 1) so overlapping speakers don't stack clicks. Matches
-        // the Crew UDP side's behavior at useRadioConnectionUDP.js's
-        // receive handler.
-        if (prev.length === 0 && !isPTTActive) {
+        // transmitter heard. Previously gated on prev.length === 0,
+        // which silently suppressed the chime whenever a prior
+        // transmitter's ptt-stop was missed (disconnect-mid-TX, lost
+        // packet) and their socketId stayed stuck in prev. Now gated
+        // on time instead: skip only if we rang within the last
+        // 600 ms, to prevent chime-stacking when two speakers key up
+        // simultaneously. Dropping the !isPTTActive gate too — the
+        // chime belongs to the RX side; if a receiver happens to be
+        // keyed up themselves, the incoming cue should still play.
+        const now = Date.now();
+        const last = chimedAtRef.current || 0;
+        if (now - last > 600) {
+          chimedAtRef.current = now;
           try {
             const ctx = audioCtxRef.current;
-            // Chromium auto-suspends inactive contexts. Without this
-            // resume the ding-ding goes to a frozen context and no
-            // peer hears the incoming cue, even though the transmit
-            // self-cue fired fine on the sender's side.
+            // Chromium auto-suspends inactive contexts. Resume + wait
+            // for the state flip before playback, otherwise the
+            // chime fires into a frozen context and never reaches the
+            // listener (while the transmit self-cue works fine).
+            const ring = () => {
+              try {
+                const rc = getRadioChrome(audioCtxRef.current);
+                playCommandKeyUp(rc);
+              } catch {}
+            };
             if (ctx && ctx.state === 'suspended') {
-              try { ctx.resume().catch(() => {}); } catch {}
+              ctx.resume().then(ring).catch(ring);
+            } else {
+              ring();
             }
-            const rc = getRadioChrome(ctx);
-            playCommandKeyUp(rc);
           } catch {}
         }
         return [...prev, payload.socketId];

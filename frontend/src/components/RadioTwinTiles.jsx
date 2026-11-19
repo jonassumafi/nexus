@@ -416,16 +416,31 @@ function shortName(n) {
 // Radio-only `ib`-sized power button. Turning OFF requires a short
 // hold with a progress ring; turning ON stays a single click.
 function PowerHoldIB({ powered, onToggle }) {
+  // Swallow the synthetic click fired right after a completed hold —
+  // same race as RadioModule's PowerBtn: `powered` flips to false
+  // before the release lands, so without this guard the subsequent
+  // click re-toggles the radio on.
+  const justCompletedRef = useRef(false);
   const { bindProps, progress, showHint, holding } = useHold({
     holdMs: 1500,                               // was 3000 — too long felt broken
-    hintText: 'Hold to turn off',
-    onComplete: () => { try { onToggle?.(); } catch {} },
+    hintText: 'Click and hold to disconnect',
+    onComplete: () => {
+      justCompletedRef.current = true;
+      try { onToggle?.(); } catch {}
+    },
   });
   if (!powered) {
     return (
       <button
         className="ib bad"
-        onClick={() => { try { onToggle?.(); } catch {} }}
+        onClick={(e) => {
+          if (justCompletedRef.current) {
+            justCompletedRef.current = false;
+            e.preventDefault();
+            return;
+          }
+          try { onToggle?.(); } catch {}
+        }}
         title="Power on selected radio"
       >
         {POWER_SVG}
@@ -439,8 +454,8 @@ function PowerHoldIB({ powered, onToggle }) {
     <button
       className="ib"
       {...bindProps}
-      aria-label="Power off (hold 1.5 seconds)"
-      title="Hold to turn off"
+      aria-label="Click and hold to disconnect"
+      title="Click and hold to disconnect"
       style={{
         position: 'relative',
         width: 26, height: 26,
@@ -1130,9 +1145,9 @@ export default function RadioTwinTiles() {
               <HoldButton
                 holdMs={6000}
                 variant="danger"
-                hintText="Hold to disconnect"
-                ariaLabel="Disconnect from Nexus (hold 6 seconds)"
-                title="Hold to disconnect"
+                hintText="Click and hold to disconnect"
+                ariaLabel="Click and hold to disconnect"
+                title="Click and hold to disconnect"
                 style={{ width: '100%', padding: '9px 14px' }}
                 onComplete={goDisconnect}
               >DISCONNECT</HoldButton>
