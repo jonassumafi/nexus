@@ -172,6 +172,45 @@ changes required.
 
 ---
 
+## 6. Powering off Crew radio appears to silence Command transmissions too
+
+**Symptom (unconfirmed).** On Full dashboard: I powered off the Crew
+radio and left Command radio powered on. When I keyed up and
+transmitted on Command, no peers heard me. It felt as though
+powering off Crew had also stopped Command's TX path — even though
+the Command radio UI stayed "on."
+
+**Expected behavior.** The two radios are independent. Powering off
+Crew should only drop Crew from its frequency and stop Crew's
+mic chain. Command's TX path should be completely unaffected.
+
+**Where to look first.**
+- `frontend/src/components/CrewRadioCard.jsx:52-56` — the
+  power-off effect calls `leaveFrequency()`. That hook comes from
+  `useRadioConnectionUDP`. If `leaveFrequency` ever tears down the
+  SHARED mic/filter chain (not just the Crew-side peer connection),
+  Command's TX would die with it. Audit what `leaveFrequency` cleans
+  up — tracks, GainNodes, the UDP socket, etc.
+- `frontend/src/hooks/useRadioConnectionUDP.js` — specifically the
+  cleanup paths. There was a historical bug (`ded2fff`'s predecessor,
+  the "Chromium silences cross-context audio on close") where
+  closing the AudioContext killed BOTH radios. Make sure power-off
+  of Crew doesn't accidentally trigger an `audioCtx.close()` or
+  `filteredStreamRef.current` reset that Command depends on.
+- Command's own TX chain is partially shared with Crew's mic
+  (one mic, two tuners). Check whether the mic stream's `.enabled`
+  flag or the active filter chain is being toggled off by Crew's
+  power-down.
+- Also verify the Command card's `powered` state really stayed true
+  — a glance at `nexus_command_powered` in localStorage after the
+  repro would confirm Command wasn't silently flipped off too.
+
+**Status.** Logged for future fix. Needs repro + isolation. If
+confirmed, high priority — directly blocks a common operator
+workflow (silencing the chatter channel but keeping Command hot).
+
+---
+
 ## 2. Player names don't light up when transmitting on Command (maybe Crew too)
 
 **Symptom.** On the Command radio, when a peer is transmitting, their
