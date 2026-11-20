@@ -316,7 +316,7 @@ export default function SharedMicStrip({
           {devicesOpen && (
             <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
               {setMicDeviceId && (
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                   <span style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     Microphone
                   </span>
@@ -327,9 +327,12 @@ export default function SharedMicStrip({
                       setMicDeviceId(v);
                     }}
                     style={{
+                      width: '100%', maxWidth: '100%', minWidth: 0,
+                      boxSizing: 'border-box',
                       background: 'var(--bg0)', color: 'var(--fg0)',
                       border: '1px solid var(--rim0)', borderRadius: 3,
                       padding: '4px 6px', fontSize: 11,
+                      textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
                     }}
                   >
                     <option value="__default__">Default microphone</option>
@@ -340,7 +343,7 @@ export default function SharedMicStrip({
                 </label>
               )}
               {setOutputDeviceId && (
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                   <span style={{ fontSize: 10, color: 'var(--fg3)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     Speakers / Headphones
                   </span>
@@ -351,9 +354,12 @@ export default function SharedMicStrip({
                       setOutputDeviceId(v);
                     }}
                     style={{
+                      width: '100%', maxWidth: '100%', minWidth: 0,
+                      boxSizing: 'border-box',
                       background: 'var(--bg0)', color: 'var(--fg0)',
                       border: '1px solid var(--rim0)', borderRadius: 3,
                       padding: '4px 6px', fontSize: 11,
+                      textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
                     }}
                   >
                     <option value="__default__">Default speakers</option>
