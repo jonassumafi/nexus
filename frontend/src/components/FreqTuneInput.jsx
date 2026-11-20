@@ -89,11 +89,17 @@ export default function FreqTuneInput({
       }}
     >
       <TuneDotWave trigger={waveTrigger} />
+      {/* Scoped placeholder scaling — stock placeholders inherit the
+          full LCD font size (18–22 px), which overflows into the TUNE
+          button once you add explanatory text. Scale it to 55 % of the
+          input font so the "50–350" hint fits cleanly on every tile
+          size. */}
+      <style>{`.fti-lcd::placeholder { font-size: 0.55em; letter-spacing: 0.08em; opacity: 0.6; }`}</style>
       <input
         ref={inputRef}
         type="text"
         inputMode="decimal"
-        className={`lcd${transmitting ? ' tx' : ''}`}
+        className={`lcd fti-lcd${transmitting ? ' tx' : ''}`}
         value={value}
         onChange={e => {
           typingRef.current = true;
@@ -105,7 +111,7 @@ export default function FreqTuneInput({
           if (e.key === 'Escape') { onCancel?.(); e.currentTarget.blur(); }
         }}
         onBlur={fireCommit}
-        placeholder="50.0 – 350.0"
+        placeholder="50 – 350"
         title="Type a frequency between 50.0 and 350.0, then press TUNE or Enter"
         style={{
           // Digits layer sits above the dot overlay.
