@@ -422,9 +422,19 @@ const FULLVIEW_SVG = (
     <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
   </svg>
 );
+// Classic pushpin silhouette — round head on top, tapered shaft, point
+// at the bottom. Reads unmistakably as "pin on top" at 12 px, unlike
+// the old stylised ribbon.
 const PIN_SVG = (
   <svg className="i" viewBox="0 0 24 24">
-    <path d="M12 2l-1 6-5 2 5 2v10M12 4l1 6 5 2-5 2" />
+    <path d="M9 2h6v5h3L15 13v8h-1l-3-5H8l6-3L6 7h3z" />
+  </svg>
+);
+// Half-filled disc — the universal opacity glyph.
+const OPACITY_SVG = (
+  <svg className="i" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" />
+    <path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none" />
   </svg>
 );
 
@@ -649,6 +659,9 @@ export default function RadioTwinTiles() {
   const rootRef = useRef(null);
   const settingsRef = useRef(null);
   const gearRef = useRef(null);
+  const opacityBtnRef = useRef(null);
+  const opacityPopRef = useRef(null);
+  const [opacityOpen, setOpacityOpen] = useState(false);
   const editRef = useRef(null);
 
   // Measure the overlay root and tell main to match the window to it,
@@ -694,16 +707,29 @@ export default function RadioTwinTiles() {
     return () => document.removeEventListener('mousedown', onDown);
   }, [settingsOpen]);
 
-  // Escape: cancel editing first, otherwise close settings.
+  // Click outside opacity popover closes it.
+  useEffect(() => {
+    if (!opacityOpen) return;
+    const onDown = (e) => {
+      if (opacityPopRef.current?.contains(e.target)) return;
+      if (opacityBtnRef.current?.contains(e.target)) return;
+      setOpacityOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [opacityOpen]);
+
+  // Escape: cancel editing first, then close opacity, then settings.
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
       if (editing != null)      setEditing(null);
+      else if (opacityOpen)     setOpacityOpen(false);
       else if (settingsOpen)    setSettingsOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editing, settingsOpen]);
+  }, [editing, settingsOpen, opacityOpen]);
 
   // Opacity (persisted). Applied natively on the Electron window.
   const [opacityPct, setOpacityPct] = useState(() => {
@@ -969,14 +995,8 @@ export default function RadioTwinTiles() {
             );
           })}
           <div className="mute glass" aria-hidden={!muted}>{MICOFF_SVG}MUTED</div>
-          <button
-            ref={gearRef}
-            className={`gearb${settingsOpen ? ' open' : ''}`}
-            title="Settings"
-            onClick={(e) => { e.stopPropagation(); setSettingsOpen(o => !o); }}
-          >
-            {GEAR_SVG}
-          </button>
+          {/* Pin → Opacity → Settings, in that order. Full view lives
+              inside the Settings panel as before. */}
           <button
             className={`gearb${pinned ? ' open' : ''}`}
             title={pinned ? 'Unpin from top' : 'Pin on top'}
@@ -986,13 +1006,57 @@ export default function RadioTwinTiles() {
             {PIN_SVG}
           </button>
           <button
-            className="gearb"
-            title="Return to Full view"
-            onClick={(e) => { e.stopPropagation(); goFull(); }}
+            ref={opacityBtnRef}
+            className={`gearb${opacityOpen ? ' open' : ''}`}
+            title={`Window opacity (${opacityPct}%)`}
+            aria-pressed={opacityOpen}
+            onClick={(e) => { e.stopPropagation(); setOpacityOpen(o => !o); }}
           >
-            {FULLVIEW_SVG}
+            {OPACITY_SVG}
+          </button>
+          <button
+            ref={gearRef}
+            className={`gearb${settingsOpen ? ' open' : ''}`}
+            title="Settings"
+            onClick={(e) => { e.stopPropagation(); setSettingsOpen(o => !o); }}
+          >
+            {GEAR_SVG}
           </button>
         </div>
+
+        {/* Inline opacity popover — fast change without digging into
+            the full settings panel. The Settings panel's own slider
+            stays as a second way to do it. */}
+        {opacityOpen && (
+          <div
+            ref={opacityPopRef}
+            className="opacity-pop glass"
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              alignSelf: 'flex-end',
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '6px 8px',
+              marginTop: 2,
+              borderRadius: 6,
+              font: '700 10px Inter, system-ui, sans-serif',
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: 'var(--t2)',
+            }}
+          >
+            <span>Opacity</span>
+            <input
+              type="range" min="25" max="100" step="1"
+              value={opacityPct}
+              onChange={(e) => setOpacityPct(Number(e.target.value))}
+              style={{ width: 120, accentColor: 'var(--acc, #66AADD)' }}
+              aria-label="Window opacity"
+            />
+            <span style={{
+              minWidth: 32, textAlign: 'right',
+              color: 'var(--t1)', fontVariantNumeric: 'tabular-nums',
+            }}>{opacityPct}%</span>
+          </div>
+        )}
 
         {/* Thin red line under strip when muted */}
         <div className="mtr" />
