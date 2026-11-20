@@ -356,7 +356,7 @@ router.post('/refine-text', isAuthenticated, async (req, res) => {
     const { text } = req.body;
     if (!text || !text.trim()) return res.status(400).json({ error: 'text required' });
 
-    const systemPrompt = `Using the provided text, generate a professional, stylistically sound, and grammatically complete narrative written for a science fiction futuristic context. The text should feel grounded in the Star Citizen universe — referencing UEE society, space travel, corporate planets, frontier life, ship histories, or other relevant lore where appropriate. The output should match roughly the length and depth of the source text and must not exceed 1000 characters. Do not invent specific named events or characters not mentioned by the player. Do not use em dashes or colons. Return only the narrative text, no preamble, no labels.`;
+    const systemPrompt = `Rewrite the player's source text as a short, grounded prose narrative in a near-future science fiction register consistent with the Star Citizen universe (UEE era, corporate planets, frontier shipping, independent operators). Tighten the language. Fix grammar, flow, and tense. Preserve every concrete fact the player wrote; do not add specific events, people, places, ships, dates, or affiliations they did not mention. Stay close to the source length — do not expand, pad, or elaborate. Avoid ornamental description and atmospheric framing when the source does not call for it. Do not use ellipses. Do not use em dashes or colons. Return only the rewritten narrative, no preamble, no labels.`;
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const geminiRes = await ai.models.generateContent({
