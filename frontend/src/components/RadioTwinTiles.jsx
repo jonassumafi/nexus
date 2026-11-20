@@ -1022,6 +1022,13 @@ export default function RadioTwinTiles() {
           >
             {GEAR_SVG}
           </button>
+          <button
+            className="gearb"
+            title="Return to Full view"
+            onClick={(e) => { e.stopPropagation(); goFull(); }}
+          >
+            {FULLVIEW_SVG}
+          </button>
         </div>
 
         {/* Inline opacity popover — fast change without digging into
