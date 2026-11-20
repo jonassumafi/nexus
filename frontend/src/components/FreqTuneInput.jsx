@@ -94,7 +94,7 @@ export default function FreqTuneInput({
           button once you add explanatory text. Scale it to 55 % of the
           input font so the "50–350" hint fits cleanly on every tile
           size. */}
-      <style>{`.fti-lcd::placeholder { font-size: 0.72em; letter-spacing: 0.06em; opacity: 0.6; }`}</style>
+      <style>{`.fti-lcd::placeholder { font-size: 0.60em; letter-spacing: 0.04em; opacity: 0.6; }`}</style>
       <input
         ref={inputRef}
         type="text"
@@ -111,7 +111,7 @@ export default function FreqTuneInput({
           if (e.key === 'Escape') { onCancel?.(); e.currentTarget.blur(); }
         }}
         onBlur={fireCommit}
-        placeholder="50 – 350"
+        placeholder="50.0 – 350.0 MHz"
         title="Type a frequency between 50.0 and 350.0, then press TUNE or Enter"
         style={{
           // Digits layer sits above the dot overlay.
