@@ -94,7 +94,7 @@ export default function FreqTuneInput({
           button once you add explanatory text. Scale it to 55 % of the
           input font so the "50–350" hint fits cleanly on every tile
           size. */}
-      <style>{`.fti-lcd::placeholder { font-size: 0.55em; letter-spacing: 0.08em; opacity: 0.6; }`}</style>
+      <style>{`.fti-lcd::placeholder { font-size: 0.72em; letter-spacing: 0.06em; opacity: 0.6; }`}</style>
       <input
         ref={inputRef}
         type="text"
