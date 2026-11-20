@@ -131,19 +131,35 @@ function injectStyles() {
  * much. Inherits -webkit-app-region: drag from the strip and the
  * grab cursor from the strip hover state. */
 .rov .strip > .grip {
-  display: grid; grid-template-columns: repeat(2, 2px);
-  gap: 2px 2px; align-content: center;
-  width: 10px; height: 20px;
-  margin-right: 2px;
-  flex: none; opacity: 0.55;
-  transition: opacity .15s;
+  display: grid; grid-template-columns: repeat(3, 3px);
+  gap: 3px 3px; align-content: center; justify-content: center;
+  width: 18px; height: 22px;
+  margin-left: -2px;    /* extend slightly past the strip padding */
+  margin-right: 4px;
+  padding: 2px 2px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--acc) 14%, transparent) 0%,
+      color-mix(in srgb, var(--acc)  6%, transparent) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--acc) 26%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--bg0) 60%, transparent);
+  flex: none; opacity: 0.85;
+  transition: opacity .15s, background .15s;
 }
 .rov .strip > .grip i {
-  width: 2px; height: 2px; border-radius: 50%;
+  width: 3px; height: 3px; border-radius: 50%;
   background: var(--acc);
   display: block;
 }
-.rov .strip:hover > .grip { opacity: 0.85; }
+.rov .strip:hover > .grip {
+  opacity: 1;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--acc) 22%, transparent) 0%,
+      color-mix(in srgb, var(--acc) 10%, transparent) 100%);
+}
 
 .rov .chip {
   flex: 1; display: flex; align-items: center; gap: 6px;
@@ -386,10 +402,14 @@ const MICOFF_SVG = (
     <path d="M5 11a7 7 0 0 0 14 0M12 18v3M3 3l18 18" />
   </svg>
 );
+// Toothed gear. Previous version was a center-circle + eight radial
+// rays, which read visually as a sun/star rather than a settings cog.
+// This one uses a cog silhouette (8 outer teeth + inner hole) so the
+// icon is immediately legible at 12 px.
 const GEAR_SVG = (
   <svg className="i" viewBox="0 0 24 24">
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1 0 2.8 2 2 0 0 1-2.8 0l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 0 1-2.8 0 2 2 0 0 1 0-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 0 1 0-2.8 2 2 0 0 1 2.8 0l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 0 1 2.8 0 2 2 0 0 1 0 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
     <circle cx="12" cy="12" r="3" />
-    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" />
   </svg>
 );
 const POWER_SVG = (
@@ -887,7 +907,7 @@ export default function RadioTwinTiles() {
               gives the player a clear "pick me up" target before the
               crew chip. Six vertical dots in two columns. */}
           <span className="grip" aria-hidden="true" title="Drag to move">
-            <i /><i /><i /><i /><i /><i />
+            <i /><i /><i /><i /><i /><i /><i /><i /><i />
           </span>
           {chips.map(ch => {
             const classes = ['chip', 'glass'];
@@ -964,6 +984,13 @@ export default function RadioTwinTiles() {
             onClick={(e) => { e.stopPropagation(); togglePin(); }}
           >
             {PIN_SVG}
+          </button>
+          <button
+            className="gearb"
+            title="Return to Full view"
+            onClick={(e) => { e.stopPropagation(); goFull(); }}
+          >
+            {FULLVIEW_SVG}
           </button>
         </div>
 

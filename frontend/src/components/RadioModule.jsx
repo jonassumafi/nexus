@@ -523,17 +523,36 @@ export default function RadioModule({
             }}>{role}</span>
             <button
               onClick={onOpenRigPicker}
-              title={rigLabel || rigShort || 'Change radio'}
+              title={(locked || !powered)
+                ? (rigLabel || rigShort || 'Radio type')
+                : `Change radio type (${rigLabel || rigShort || 'none picked'})`}
               disabled={locked || !powered}
+              className="rm-rig-chip"
               style={{
-                background: 'none', border: 0, padding: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 6px', border: '1px dashed var(--rim1)',
+                borderRadius: 3, background: 'transparent',
                 color: 'var(--fg2)', font: '400 11px Inter',
                 minWidth: 0, whiteSpace: 'nowrap',
                 overflow: 'hidden', textOverflow: 'ellipsis',
                 cursor: (locked || !powered) ? 'default' : 'pointer',
                 opacity: !powered ? 0.5 : 1,
+                transition: 'color .12s, border-color .12s, background .12s',
               }}
-            >{rigShort || rigLabel || '(no rig)'}</button>
+            >
+              <span style={{
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap', minWidth: 0,
+              }}>{rigShort || rigLabel || '(choose radio)'}</span>
+              {!locked && powered && (
+                <svg width="10" height="10" viewBox="0 0 24 24"
+                  aria-hidden="true" style={{ flex: 'none', opacity: 0.6 }}>
+                  <path d="M4 20h4L20 8l-4-4L4 16v4z" fill="none"
+                    stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
           </span>
           <span className="rm-t-cfg">
             <span style={{
@@ -770,19 +789,26 @@ export default function RadioModule({
         </div>
 
         <div className="rm-row" style={{ '--i': 1 }}>
-          <span className="rm-lb" style={rowLabelStyle}>Lock tuner</span>
+          <span className="rm-lb" style={rowLabelStyle}>Radio type</span>
           <div style={rowCtlStyle}>
-            <span className="rm-val" style={{ color: 'var(--fg2)', minWidth: 62, textAlign: 'right' }}>
-              {locked ? 'Locked' : 'Unlocked'}
+            <span className="rm-val" style={{
+              color: 'var(--fg2)',
+              minWidth: 0, flex: 1,
+              textAlign: 'right',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {rigShort || rigLabel || '(none picked)'}
             </span>
             <button
-              className="rm-sw"
-              role="switch"
-              aria-checked={locked}
-              aria-label="Lock tuner"
-              disabled={!powered}
-              onClick={() => { onLockToggle?.(); showSaved(); }}
-            />
+              onClick={() => { onOpenRigPicker?.(); }}
+              disabled={locked || !powered}
+              style={{
+                ...btn,
+                opacity: (locked || !powered) ? 0.55 : 1,
+                cursor: (locked || !powered) ? 'not-allowed' : 'pointer',
+              }}
+              title={locked ? 'Unlock tuner first' : 'Pick a different radio type'}
+            >Change</button>
           </div>
         </div>
 

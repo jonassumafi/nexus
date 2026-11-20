@@ -581,3 +581,16 @@
     transition-duration: .001ms !important;
   }
 }
+
+/* Rig label in the radio header. Dashed border + pencil icon already
+   on the element; this adds the hover affordance so users understand
+   it's a clickable control, not plain text. */
+.rm-rig-chip:not(:disabled):hover {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: color-mix(in srgb, var(--cyan) 10%, transparent);
+}
+.rm-rig-chip:disabled {
+  border-style: dotted;
+  opacity: 0.55;
+}
